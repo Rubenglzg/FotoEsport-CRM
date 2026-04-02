@@ -1,0 +1,24 @@
+{
+  "name": "fotoesport-crm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rubenglzg/FotoEsport-CRM.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rubenglzg/FotoEsport-CRM/issues"
+  },
+  "homepage": "https://github.com/Rubenglzg/FotoEsport-CRM#readme",
+  "dependencies": {
+    "firebase": "^12.11.0",
+    "lucide-react": "^1.7.0"
+  }
+}
