@@ -11,24 +11,10 @@ import {
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { auth, db } from './lib/firebase.js';
 
-// --- TU CONFIGURACIÓN REAL DE FIREBASE ---
-const firebaseConfig = {
-  apiKey: "AIzaSyAL_6VEsWaNIYT5Mw1vxL682jAEh1c9x4I",
-  authDomain: "fotoesport-crm.firebaseapp.com",
-  projectId: "fotoesport-crm",
-  storageBucket: "fotoesport-crm.firebasestorage.app",
-  messagingSenderId: "905001341850",
-  appId: "1:905001341850:web:b6889e6b56b58b0bec6023",
-  measurementId: "G-5R2ZQ5CVSC"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 const appId = 'fotoesport-crm';
 
 /**
@@ -154,6 +140,18 @@ const SALES_SCRIPTS = {
 const SEED_CLUBS = [
   { id: '1', name: "C.D. Castellón Base", status: "signed", lat: 50, lng: 50, category: "Fútbol", lastInteraction: "2d", assets: { hasLogo: true, hasRoster: true, contractSigned: true }, sessionDate: "2025-11-15T16:00", contacts: [{ name: "Carlos", role: "Coordinador", phone: "600000000", email: "carlos@cdcastellon.com", isDecisionMaker: true }] },
   { id: '2', name: "Atlético Vivero", status: "lead", lat: 45, lng: 55, category: "Fútbol", lastInteraction: "Never", assets: { hasLogo: false, hasRoster: false, contractSigned: false }, contacts: [{ name: "Roberto", role: "Presidente", phone: "611111111", email: "presi@atleticovivero.com", isDecisionMaker: true }] }
+];
+
+// 🟢 AÑADE ESTO JUSTO DEBAJO:
+const INITIAL_SEASONS = ['2024-2025'];
+
+const INITIAL_TASKS = [
+  { id: 1, clubId: '1', task: 'Confirmar hora de la sesión fotográfica', priority: 'high', due: '2025-10-22', time: '10:00' },
+  { id: 2, clubId: '2', task: 'Enviar propuesta de merchandising', priority: 'medium', due: '2025-10-24', time: '12:00' }
+];
+
+const INITIAL_TIMELINE = [
+  { id: 1, clubId: '1', type: 'call', user: 'Tú', note: 'Llamada inicial de presentación', date: '01/10/2025' }
 ];
 
 /**
@@ -1078,6 +1076,11 @@ export default function SeasonManagerApp() {
       if(selectedClub?.id === updatedClub.id) {
           setSelectedClub(updatedClub);
       }
+  };
+
+  const handleCreateManualTask = async (newTask) => {
+      await addTask(newTask);
+      setShowTaskModal(false);
   };
 
   const handleSeasonRollover = async (nextSeasonName) => {

@@ -3,15 +3,14 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// Reemplaza ESTE objeto con el que copiaste de tu consola de Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAL_6VEsWaNIYT5Mw1vxL682jAEh1c9x4I",
-  authDomain: "fotoesport-crm.firebaseapp.com",
-  projectId: "fotoesport-crm",
-  storageBucket: "fotoesport-crm.firebasestorage.app",
-  messagingSenderId: "905001341850",
-  appId: "1:905001341850:web:b6889e6b56b58b0bec6023",
-  measurementId: "G-5R2ZQ5CVSC"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Inicializa Firebase
