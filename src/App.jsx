@@ -791,26 +791,37 @@ function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab,
         const finalType = customType || interactionType;
         if(!finalText) return;
         
-        setIsSubmitting(true); // Encendemos el loader
+        setIsSubmitting(true); // 1. Encendemos el botón
+        const startTime = Date.now(); // Guardamos en qué milisegundo exacto empezamos
         
         try {
-            // Usamos await para esperar a que Firebase y Google terminen
+            // 2. Ejecutamos las tareas reales (Firebase / Google)
             await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: finalType, user: "Tú", note: finalText, date: new Date().toLocaleDateString() });
             
             if(nextDate) {
                 await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${finalType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             }
             
+            // 3. EL TRUCO ANTI-FLICKER
+            // Calculamos cuánto han tardado las bases de datos en responder
+            const elapsedTime = Date.now() - startTime;
+            const minimumLoadTime = 600; // Queremos que el botón gire al menos 600ms (0.6 seg)
+            
+            // Si la base de datos fue más rápida que 600ms, forzamos una espera para completar el tiempo
+            if (elapsedTime < minimumLoadTime) {
+                await new Promise(resolve => setTimeout(resolve, minimumLoadTime - elapsedTime));
+            }
+            
+            // 4. Limpiamos la interfaz
             setNote("");
             setNextDate("");
         } catch (error) {
             console.error("Error guardando datos:", error);
             alert("Hubo un error al guardar.");
         } finally {
-            setIsSubmitting(false); // Apagamos el loader
+            setIsSubmitting(false); // Apagamos el botón suavemente
         }
     };
-
     const toggleAsset = (assetKey) => {
         const updatedAssets = { ...club.assets, [assetKey]: !club.assets[assetKey] };
         onUpdateClub({ ...club, assets: updatedAssets });
@@ -933,7 +944,15 @@ function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab,
                                 <input type="date" className="bg-zinc-950 text-white text-xs border border-zinc-800 rounded px-2 py-1 w-full outline-none focus:border-emerald-500" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
                              </div>
                              <div className="flex items-end">
-                                <Button variant="primary" size="sm" onClick={() => handleAddInteraction()} disabled={!note}><Send className="w-3 h-3 mr-1"/> Guardar</Button>
+                                <Button 
+                                    variant="primary" 
+                                    size="sm" 
+                                    onClick={() => handleAddInteraction()} 
+                                    disabled={!note}
+                                    isLoading={isSubmitting}
+                                    >
+                                    <Send className="w-3 h-3 mr-1"/> Guardar
+                                </Button>
                              </div>
                         </div>
                      </div>
