@@ -15,6 +15,8 @@ import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebas
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, db } from './lib/firebase.js';
 
+import { useGoogleLogin } from '@react-oauth/google';
+
 const appId = 'fotoesport-crm';
 
 /**
@@ -169,7 +171,7 @@ const Badge = ({ children, variant = 'default', className }) => {
   return <span className={cn("px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider border", variants[variant], className)}>{children}</span>;
 };
 
-const Button = ({ children, variant = 'primary', size = 'md', className, onClick, disabled, title }) => {
+const Button = ({ children, variant = 'primary', size = 'md', className, onClick, disabled, title, isLoading }) => {
   const variants = {
     primary: "bg-zinc-100 text-black hover:bg-white border-transparent shadow-[0_0_15px_rgba(255,255,255,0.1)]",
     ghost: "bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800",
@@ -179,7 +181,24 @@ const Button = ({ children, variant = 'primary', size = 'md', className, onClick
     danger: "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
   };
   const sizes = { xs: "h-6 px-2 text-[10px]", sm: "h-7 px-2 text-xs", md: "h-9 px-4 text-sm", icon: "h-9 w-9 p-0 grid place-items-center" };
-  return <button onClick={onClick} disabled={disabled} title={title} className={cn("rounded-lg font-medium transition-all duration-200 flex items-center justify-center border disabled:opacity-50", variants[variant], sizes[size], className)}>{children}</button>;
+  
+  return (
+    <button 
+      onClick={onClick} 
+      disabled={disabled || isLoading} 
+      title={title} 
+      className={cn(
+        "rounded-lg font-medium transition-all duration-200 flex items-center justify-center border", 
+        (disabled || isLoading) ? "opacity-50 cursor-not-allowed" : "active:scale-95",
+        variants[variant], 
+        sizes[size], 
+        className
+      )}
+    >
+      {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+      {children}
+    </button>
+  );
 };
 
 /**
@@ -573,7 +592,7 @@ const NotificationCenter = ({ notifications, onClose, onClearAll }) => {
 };
 
 // 6. SETTINGS MODAL
-const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason }) => {
+const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason, setGoogleToken }) => {
     const [localTarget, setLocalTarget] = useState(targetClients);
     const [nextSeasonName, setNextSeasonName] = useState(() => {
         const last = seasons[seasons.length - 1];
@@ -581,6 +600,23 @@ const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, s
         const [start, end] = last.split('-').map(Number);
         return `${start + 1}-${end + 1}`;
     });
+
+    // --- NUEVO CÓDIGO DE GOOGLE ---
+    const handleGoogleConnect = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
+            console.log("¡Conexión exitosa! Token:", tokenResponse.access_token);
+            // Guardamos el token en el estado global
+            setGoogleToken(tokenResponse.access_token);
+            alert("Cuenta de Google vinculada correctamente al CRM.");
+        },
+        onError: (error) => {
+            console.error('Error conectando con Google:', error);
+            alert("Hubo un error al conectar con Google.");
+        },
+        // Pedimos permiso para leer/escribir en el calendario y leer correos
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly',
+    });
+    // ------------------------------
 
     const handleSaveObjectives = () => { setTargetClients(Number(localTarget)); alert("Objetivos actualizados correctamente."); };
 
@@ -598,6 +634,20 @@ const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, s
               <button onClick={onClose}><X className="w-5 h-5 text-zinc-500 hover:text-white"/></button>
            </div>
            <div className="p-6 space-y-6">
+            {/* --- NUEVO BLOQUE INTEGRACIONES --- */}
+              <div>
+                 <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Integraciones de Sistema</h3>
+                 <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center justify-between">
+                    <div>
+                        <div className="text-white font-bold text-sm">Google Workspace</div>
+                        <div className="text-xs text-zinc-500 mt-1">Conectar Calendario y Gmail para IA</div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => handleGoogleConnect()}>
+                        <RefreshCw className="w-4 h-4 mr-2 text-blue-400"/> Vincular Cuenta
+                    </Button>
+                 </div>
+              </div>
+              {/* ----------------------------------- */}
               <div>
                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Objetivos de Temporada</h3>
                  <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800">
@@ -731,20 +781,34 @@ function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab,
     const [interactionType, setInteractionType] = useState('call');
     const [nextDate, setNextDate] = useState("");
     const [showScripts, setShowScripts] = useState(false);
+    
+    // 1. Añadimos el estado de carga
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleAddInteraction = (customNote = null, customType = null) => {
+    // 2. Modificamos la función para que sea asíncrona y use el estado de carga
+    const handleAddInteraction = async (customNote = null, customType = null) => {
         const finalText = customNote || note;
         const finalType = customType || interactionType;
         if(!finalText) return;
         
-        onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: finalType, user: "Tú", note: finalText, date: new Date().toLocaleDateString() });
+        setIsSubmitting(true); // Encendemos el loader
         
-        if(nextDate) {
-            onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${finalType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
-            alert(`Tarea añadida al calendario para el ${nextDate}`);
+        try {
+            // Usamos await para esperar a que Firebase y Google terminen
+            await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: finalType, user: "Tú", note: finalText, date: new Date().toLocaleDateString() });
+            
+            if(nextDate) {
+                await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${finalType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
+            }
+            
+            setNote("");
+            setNextDate("");
+        } catch (error) {
+            console.error("Error guardando datos:", error);
+            alert("Hubo un error al guardar.");
+        } finally {
+            setIsSubmitting(false); // Apagamos el loader
         }
-        setNote("");
-        setNextDate("");
     };
 
     const toggleAsset = (assetKey) => {
@@ -1046,12 +1110,22 @@ export default function SeasonManagerApp() {
       }
   };
 
-  // Funciones CRUD Firebase
+  // Modificamos la función addTask existente
   const addTask = async (newTask) => {
       if(!user) return;
+      
+      // 1. Intentamos crear el evento en Google Calendar si tenemos el token
+      let googleEventId = null;
+      if (googleToken) {
+         googleEventId = await createGoogleCalendarEvent(newTask, googleToken);
+      }
+
+      // 2. Guardamos en Firebase (ahora incluyendo el ID de Google si existe)
+      const taskToSave = { ...newTask, googleEventId: googleEventId || null };
       const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', newTask.id.toString());
-      await setDoc(ref, newTask);
+      await setDoc(ref, taskToSave);
   };
+  // ---------------------------------------------
 
   const addInteraction = async (interaction) => {
       if(!user) return;
@@ -1077,6 +1151,49 @@ export default function SeasonManagerApp() {
           setSelectedClub(updatedClub);
       }
   };
+
+  // Guardamos el token en el estado cuando el usuario se conecta
+  const [googleToken, setGoogleToken] = useState(null);
+
+  // Función para crear el evento en la API de Google
+  const createGoogleCalendarEvent = async (taskDetails, token) => {
+    if (!token) {
+        console.warn("No hay token de Google disponible. La tarea se guardará solo localmente.");
+        return;
+    }
+
+    // Preparamos las fechas. Asumimos que la tarea dura 1 hora por defecto.
+    const startDateTime = new Date(`${taskDetails.due}T${taskDetails.time}:00`).toISOString();
+    const endDateTime = new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
+
+    const event = {
+      summary: taskDetails.task,
+      description: `Generado desde CRM FotoEsport.\nClub ID: ${taskDetails.clubId}`,
+      start: { dateTime: startDateTime, timeZone: 'Europe/Madrid' },
+      end: { dateTime: endDateTime, timeZone: 'Europe/Madrid' },
+      colorId: taskDetails.priority === 'high' ? '11' : '9', // 11=Rojo (Alta), 9=Azul oscuro
+    };
+
+    try {
+      const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(event)
+      });
+      
+      if (!response.ok) throw new Error("Error creando evento en Google");
+      const data = await response.json();
+      console.log("Evento creado en Google Calendar:", data.htmlLink);
+      return data.id; // Retornamos el ID de google por si luego queremos borrarlo
+    } catch (error) {
+      console.error("Error en createGoogleCalendarEvent:", error);
+    }
+  };
+
+
 
   const handleCreateManualTask = async (newTask) => {
       await addTask(newTask);
@@ -1233,7 +1350,17 @@ export default function SeasonManagerApp() {
         }
       </aside>
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} targetClients={targetClients} setTargetClients={setTargetClients} onRollover={handleSeasonRollover} seasons={seasons} currentSeason={selectedSeason} />}
+      {showSettings && (
+        <SettingsModal 
+            onClose={() => setShowSettings(false)} 
+            targetClients={targetClients} 
+            setTargetClients={setTargetClients} 
+            onRollover={handleSeasonRollover} 
+            seasons={seasons} 
+            currentSeason={selectedSeason} 
+            setGoogleToken={setGoogleToken} // <-- Añade esta línea
+        />
+      )}
       {showTaskModal && <NewTaskModal onClose={() => setShowTaskModal(false)} onSave={handleCreateManualTask} />}
     </div>
   );
