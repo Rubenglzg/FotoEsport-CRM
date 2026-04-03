@@ -592,7 +592,7 @@ const NotificationCenter = ({ notifications, onClose, onClearAll }) => {
 };
 
 // 6. SETTINGS MODAL
-const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason, setGoogleToken }) => {
+const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason, setGoogleToken, googleEmail, setGoogleEmail, showToast }) => {
     const [localTarget, setLocalTarget] = useState(targetClients);
     const [nextSeasonName, setNextSeasonName] = useState(() => {
         const last = seasons[seasons.length - 1];
@@ -601,24 +601,36 @@ const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, s
         return `${start + 1}-${end + 1}`;
     });
 
-    // --- NUEVO CÓDIGO DE GOOGLE ---
+    // --- 1. NUEVO ESTADO PARA EL MENSAJE EMERGENTE ---
+    const [toast, setToast] = useState(null);
+
     const handleGoogleConnect = useGoogleLogin({
-        onSuccess: (tokenResponse) => {
-            console.log("¡Conexión exitosa! Token:", tokenResponse.access_token);
-            // Guardamos el token en el estado global
+        onSuccess: async (tokenResponse) => {
             setGoogleToken(tokenResponse.access_token);
-            alert("Cuenta de Google vinculada correctamente al CRM.");
+            try {
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const userInfo = await userInfoResponse.json();
+                
+                setGoogleEmail(userInfo.email);
+                showToast(`Cuenta vinculada: ${userInfo.email}`, 'success'); // <-- Sustituimos el alert()
+            } catch (error) {
+                console.error("Error obteniendo el email:", error);
+                showToast("Error al obtener datos de Google.", 'error');     // <-- Sustituimos el alert()
+            }
         },
         onError: (error) => {
             console.error('Error conectando con Google:', error);
-            alert("Hubo un error al conectar con Google.");
+            showToast("Hubo un error al conectar con Google.", 'error');     // <-- Sustituimos el alert()
         },
-        // Pedimos permiso para leer/escribir en el calendario y leer correos
         scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly',
     });
-    // ------------------------------
 
-    const handleSaveObjectives = () => { setTargetClients(Number(localTarget)); alert("Objetivos actualizados correctamente."); };
+    const handleSaveObjectives = () => { 
+        setTargetClients(Number(localTarget)); 
+        showToast("Objetivos actualizados correctamente.", 'success');       // <-- ¡Aprovechamos para cambiar este alert también!
+    };
 
     const handleLogout = () => {
         if(window.confirm('¿Seguro que deseas cerrar sesión?')) {
@@ -628,7 +640,20 @@ const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, s
 
     return (
       <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        {/* Le añadimos 'relative' a este div contenedor */}
+        <div className="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative">
+           
+           {/* --- NUEVO COMPONENTE TOAST (BURBUJA VISUAL) --- */}
+           {toast && (
+               <div className={cn(
+                   "absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border z-[70] animate-in slide-in-from-top-4 fade-in duration-300",
+                   toast.type === 'success' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
+               )}>
+                   {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4"/> : <AlertTriangle className="w-4 h-4"/>}
+                   <span className="text-xs font-bold whitespace-nowrap">{toast.message}</span>
+               </div>
+           )}
+           {/* ------------------------------------------------- */}
            <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings className="w-5 h-5"/> Configuración</h2>
               <button onClick={onClose}><X className="w-5 h-5 text-zinc-500 hover:text-white"/></button>
@@ -639,12 +664,28 @@ const SettingsModal = ({ onClose, targetClients, setTargetClients, onRollover, s
                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Integraciones de Sistema</h3>
                  <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center justify-between">
                     <div>
-                        <div className="text-white font-bold text-sm">Google Workspace</div>
-                        <div className="text-xs text-zinc-500 mt-1">Conectar Calendario y Gmail para IA</div>
+                        <div className="text-white font-bold text-sm flex items-center gap-2">
+                           Google Workspace
+                           {googleEmail && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                        {googleEmail ? (
+                           <div className="text-xs text-zinc-400 mt-1">
+                               Sincronizado con: <span className="text-emerald-400 font-bold">{googleEmail}</span>
+                           </div>
+                        ) : (
+                           <div className="text-xs text-zinc-500 mt-1">Conectar Calendario y Gmail para IA</div>
+                        )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleGoogleConnect()}>
-                        <RefreshCw className="w-4 h-4 mr-2 text-blue-400"/> Vincular Cuenta
-                    </Button>
+                    
+                    {googleEmail ? (
+                        <Button variant="outline" size="sm" onClick={() => { setGoogleToken(null); setGoogleEmail(null); }} className="border-red-500/50 text-red-400 hover:bg-red-500/10">
+                            Desvincular
+                        </Button>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => handleGoogleConnect()}>
+                            <RefreshCw className="w-4 h-4 mr-2 text-blue-400"/> Vincular Cuenta
+                        </Button>
+                    )}
                  </div>
               </div>
               {/* ----------------------------------- */}
@@ -1058,6 +1099,14 @@ export default function SeasonManagerApp() {
   const [routeStops, setRouteStops] = useState([]); 
   const [origin] = useState({ lat: 39.9864, lng: -0.0513, label: "Oficina" });
 
+  // --- NUEVO ESTADO GLOBAL PARA TOASTS ---
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 3500);
+  };
+
   // 1. Inicializar Auth de Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1173,6 +1222,7 @@ export default function SeasonManagerApp() {
 
   // Guardamos el token en el estado cuando el usuario se conecta
   const [googleToken, setGoogleToken] = useState(null);
+  const [googleEmail, setGoogleEmail] = useState(null);
 
   // Función para crear el evento en la API de Google
   const createGoogleCalendarEvent = async (taskDetails, token) => {
@@ -1377,10 +1427,27 @@ export default function SeasonManagerApp() {
             onRollover={handleSeasonRollover} 
             seasons={seasons} 
             currentSeason={selectedSeason} 
-            setGoogleToken={setGoogleToken} // <-- Añade esta línea
+            setGoogleToken={setGoogleToken}
+            googleEmail={googleEmail}
+            setGoogleEmail={setGoogleEmail}
+            showToast={showToast}
         />
       )}
+
       {showTaskModal && <NewTaskModal onClose={() => setShowTaskModal(false)} onSave={handleCreateManualTask} />}
+      
+      {/* --- DISEÑO DEL TOAST GLOBAL FLOTANTE --- */}
+      {toast && (
+          <div className={cn(
+              "fixed top-6 right-6 px-4 py-3 rounded-xl flex items-center gap-3 shadow-2xl border z-[100] animate-in slide-in-from-top-8 fade-in duration-300",
+              toast.type === 'success' ? "bg-zinc-900 text-emerald-400 border-emerald-500/20" : "bg-zinc-900 text-red-400 border-red-500/20"
+          )}>
+              {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5"/>}
+              <span className="text-sm font-bold text-white whitespace-nowrap">{toast.message}</span>
+          </div>
+      )}
+      {/* ---------------------------------------- */}
+
     </div>
   );
 }
