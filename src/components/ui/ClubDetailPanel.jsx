@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, ExternalLink, Camera, Upload, List, Map, Smartphone, CheckCircle2, RefreshCw, Send, BookOpen } from 'lucide-react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Search } from 'lucide-react'; // Añadimos iconos de MapPin y Search
 import { Button } from './Button';
-import { Badge } from './Badge';
 import { cn, generateContractFile } from '../../utils/helpers';
 
 export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, interactions, onAddInteraction, currentSeason }) {
@@ -9,6 +8,11 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
     const [interactionType, setInteractionType] = useState('call');
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Nuevos estados para la geocodificación
+    const [addressInput, setAddressInput] = useState(club.address || "");
+    const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+    const [addressError, setAddressError] = useState("");
 
     const handleAddInteraction = async () => {
         if(!note) return;
@@ -27,6 +31,40 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
     };
 
     const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
+
+const handleGeocode = async (query = addressInput) => {
+    if (!query.trim()) return;
+    setIsSearchingAddress(true);
+    setAddressError("");
+
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            const result = data[0];
+            onUpdateClub({
+                ...club,
+                address: query,
+                lat: parseFloat(result.lat),
+                lng: parseFloat(result.lon)
+            });
+        } else {
+            // SI FALLA: Intentamos simplificar la dirección (quitando números/letras específicos)
+            const parts = query.split(',');
+            if (parts.length > 1) {
+                const simplified = parts.slice(1).join(',').trim(); // Quita lo primero (el número/calle exacta)
+                console.log("Reintentando con:", simplified);
+                return handleGeocode(simplified); 
+            }
+            setAddressError("No se encontró. Prueba a poner solo Calle y Pueblo.");
+        }
+    } catch (error) {
+        setAddressError("Error de conexión.");
+    } finally {
+        setIsSearchingAddress(false);
+    }
+};
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
@@ -67,6 +105,68 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                             </div>
                         ))}
                       </div>
+
+                        {/* --- SECCIÓN: UBICACIÓN (BUSCADOR + MANUAL) --- */}
+                      <div>
+                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
+                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                              
+                              {/* Buscador de texto */}
+                              <div className="flex gap-2">
+                                  <div className="flex-1 relative">
+                                      <MapPin className="absolute left-2.5 top-2 w-4 h-4 text-zinc-400" />
+                                      <input 
+                                          type="text"
+                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded py-1.5 pl-8 pr-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                                          value={addressInput}
+                                          onChange={(e) => {
+                                              setAddressInput(e.target.value);
+                                              // También guardamos el texto en el club aunque no busquemos
+                                              onUpdateClub({ ...club, address: e.target.value });
+                                          }}
+                                          placeholder="Ej: Carrer Camí Fondo, Rafelbunyol..."
+                                      />
+                                  </div>
+                                  <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={handleGeocode} 
+                                      disabled={isSearchingAddress || !addressInput.trim()}
+                                      className="flex items-center gap-2 whitespace-nowrap bg-white dark:bg-zinc-800"
+                                  >
+                                      {isSearchingAddress ? <Search className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                                      Buscar
+                                  </Button>
+                              </div>
+                              
+                              {addressError && (
+                                  <span className="text-[10px] text-red-500">{addressError} (Prueba quitando el número o código postal)</span>
+                              )}
+
+                              {/* Coordenadas Manuales (Se autocompletan con la búsqueda) */}
+                              <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                  <div className="flex-1">
+                                      <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
+                                      <input 
+                                          type="number" step="any"
+                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                          value={club.lat || ''}
+                                          onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
+                                      />
+                                  </div>
+                                  <div className="flex-1">
+                                      <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
+                                      <input 
+                                          type="number" step="any"
+                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                          value={club.lng || ''}
+                                          onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      {/* ----------------------------------------------- */}
 
                       {/* Assets y Contrato */}
                       <div>
