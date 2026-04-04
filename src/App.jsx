@@ -21,6 +21,7 @@ import ClubDetailPanel from './components/ui/ClubDetailPanel';
 import SettingsModal from './components/ui/SettingsModal';
 import NewTaskModal from './components/ui/NewTaskModal';
 import NotificationCenter from './components/ui/NotificationCenter';
+import NewClubModal from './components/ui/NewClubModal';
 
 const appId = 'fotoesport-crm';
 
@@ -95,6 +96,7 @@ export default function App() {
   // --- MODALES Y TOASTS ---
   const [showSettings, setShowSettings] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showNewClubModal, setShowNewClubModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [clearedNotifications, setClearedNotifications] = useState(false);
   const [toast, setToast] = useState(null);
@@ -349,6 +351,18 @@ export default function App() {
       } catch (e) { console.error(e); }
   };
 
+  const handleCreateClub = async (newClubData) => {
+      if(!user) return;
+      try {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', newClubData.id), newClubData);
+          showToast("Club añadido exitosamente", "success");
+          setShowNewClubModal(false);
+      } catch (error) {
+          console.error("Error al crear club:", error);
+          showToast("Error al crear el club", "error");
+      }
+  };
+
   const addTask = async (newTask) => {
       if(!user) return;
       let googleEventId = null;
@@ -418,6 +432,37 @@ export default function App() {
       showToast(`¡Temporada ${nextSeasonName} iniciada!`);
   };
 
+  // --- NUEVAS FUNCIONES DE GESTIÓN EN App.jsx ---
+
+    // 1. Borrar un club y sus datos asociados
+    const handleDeleteClub = async (clubId) => {
+        if (!window.confirm("¿Estás seguro de eliminar este club? Se perderán todos sus datos.")) return;
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', clubId));
+            setSelectedClub(null);
+            showToast("Club eliminado", "success");
+        } catch (e) { console.error(e); }
+    };
+
+    // 2. Modificar una interacción existente
+    const handleUpdateInteraction = async (interactionId, newNote) => {
+        try {
+            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interactionId), {
+                note: newNote,
+                updatedAt: Date.now()
+            });
+            showToast("Actividad actualizada", "success");
+        } catch (e) { console.error(e); }
+    };
+
+    // 3. Eliminar una interacción
+    const handleDeleteInteraction = async (interactionId) => {
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interactionId));
+            showToast("Actividad eliminada", "success");
+        } catch (e) { console.error(e); }
+    };
+
   // --- DATOS DERIVADOS ---
   const filteredClubs = useMemo(() => filterNeedsAttention ? clubs.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubs, [clubs, filterNeedsAttention]);
   const stats = useMemo(() => ({ total: clubs.length, signed: clubs.filter(c => c.status === 'signed').length, negotiation: clubs.filter(c => c.status === 'negotiation').length }), [clubs]);
@@ -469,7 +514,7 @@ export default function App() {
             onExportRoute={handleOpenGoogleMapsNav}
         />;
 
-      case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} />;
+      case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} onNewClub={() => setShowNewClubModal(true)} />;
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} />;
       default: return <MapView clubs={filteredClubs} />;
@@ -555,11 +600,22 @@ export default function App() {
                 interactions={interactions.filter(i => i.clubId === selectedClub.id)}
                 onAddInteraction={addInteraction}
                 currentSeason={selectedSeason}
+                onDeleteClub={() => handleDeleteClub(selectedClub.id)}
+                onUpdateInteraction={handleUpdateInteraction}
+                onDeleteInteraction={handleDeleteInteraction}
             />
         }
       </aside>
 
       {/* MODALES FLOTANTES */}
+
+      {showNewClubModal && (
+          <NewClubModal 
+              onClose={() => setShowNewClubModal(false)} 
+              onSave={handleCreateClub} 
+          />
+      )}
+
       {showSettings && (
           <SettingsModal 
               onClose={() => setShowSettings(false)} 
