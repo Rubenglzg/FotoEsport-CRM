@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Search } from 'lucide-react'; // Añadimos iconos de MapPin y Search
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile } from '../../utils/helpers';
 
@@ -9,10 +9,9 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Nuevos estados para la geocodificación
     const [addressInput, setAddressInput] = useState(club.address || "");
-    const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-    const [addressError, setAddressError] = useState("");
+    const autoCompleteRef = useRef();
+    const inputRef = useRef();
 
     const handleAddInteraction = async () => {
         if(!note) return;
@@ -32,39 +31,38 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
     const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
 
-const handleGeocode = async (query = addressInput) => {
-    if (!query.trim()) return;
-    setIsSearchingAddress(true);
-    setAddressError("");
-
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-            const result = data[0];
-            onUpdateClub({
-                ...club,
-                address: query,
-                lat: parseFloat(result.lat),
-                lng: parseFloat(result.lon)
+    // Configuración del Autocompletado de Google
+    useEffect(() => {
+        if (window.google && inputRef.current && !autoCompleteRef.current) {
+            autoCompleteRef.current = new window.google.maps.places.Autocomplete(
+                inputRef.current,
+                { types: ['address'], componentRestrictions: { country: "es" } }
+            );
+            
+            autoCompleteRef.current.addListener("place_changed", () => {
+                const place = autoCompleteRef.current.getPlace();
+                if (place.geometry) {
+                    const lat = place.geometry.location.lat();
+                    const lng = place.geometry.location.lng();
+                    const formattedAddress = place.formatted_address;
+                    
+                    setAddressInput(formattedAddress);
+                    onUpdateClub({
+                        ...club,
+                        address: formattedAddress,
+                        lat: lat,
+                        lng: lng
+                    });
+                }
             });
-        } else {
-            // SI FALLA: Intentamos simplificar la dirección (quitando números/letras específicos)
-            const parts = query.split(',');
-            if (parts.length > 1) {
-                const simplified = parts.slice(1).join(',').trim(); // Quita lo primero (el número/calle exacta)
-                console.log("Reintentando con:", simplified);
-                return handleGeocode(simplified); 
-            }
-            setAddressError("No se encontró. Prueba a poner solo Calle y Pueblo.");
         }
-    } catch (error) {
-        setAddressError("Error de conexión.");
-    } finally {
-        setIsSearchingAddress(false);
-    }
-};
+    }, [club, onUpdateClub]);
+
+    // Sincronizar el input cuando cambia de club
+    useEffect(() => {
+        setAddressInput(club.address || "");
+    }, [club.id]);
+
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
@@ -106,44 +104,28 @@ const handleGeocode = async (query = addressInput) => {
                         ))}
                       </div>
 
-                        {/* --- SECCIÓN: UBICACIÓN (BUSCADOR + MANUAL) --- */}
+                      {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES + MANUAL) --- */}
                       <div>
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
                           <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
                               
-                              {/* Buscador de texto */}
                               <div className="flex gap-2">
                                   <div className="flex-1 relative">
                                       <MapPin className="absolute left-2.5 top-2 w-4 h-4 text-zinc-400" />
                                       <input 
+                                          ref={inputRef}
                                           type="text"
                                           className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded py-1.5 pl-8 pr-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
                                           value={addressInput}
                                           onChange={(e) => {
                                               setAddressInput(e.target.value);
-                                              // También guardamos el texto en el club aunque no busquemos
                                               onUpdateClub({ ...club, address: e.target.value });
                                           }}
-                                          placeholder="Ej: Carrer Camí Fondo, Rafelbunyol..."
+                                          placeholder="Empieza a escribir la dirección..."
                                       />
                                   </div>
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={handleGeocode} 
-                                      disabled={isSearchingAddress || !addressInput.trim()}
-                                      className="flex items-center gap-2 whitespace-nowrap bg-white dark:bg-zinc-800"
-                                  >
-                                      {isSearchingAddress ? <Search className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                                      Buscar
-                                  </Button>
                               </div>
                               
-                              {addressError && (
-                                  <span className="text-[10px] text-red-500">{addressError} (Prueba quitando el número o código postal)</span>
-                              )}
-
-                              {/* Coordenadas Manuales (Se autocompletan con la búsqueda) */}
                               <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
                                   <div className="flex-1">
                                       <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>

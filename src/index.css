@@ -18,3 +18,90 @@
     @apply bg-zinc-950 text-zinc-100;
   }
 }
+
+/* ==========================================================================
+   ESTILOS PERSONALIZADOS PARA EL AUTOCOMPLETADO DE GOOGLE PLACES
+   ========================================================================== */
+
+/* Contenedor principal de las sugerencias (la lista desplegable) */
+.pac-container {
+  background-color: #ffffff;
+  border: 1px solid #e4e4e7; /* zinc-200 */
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+  font-family: inherit; /* Usa la fuente de tu app */
+  margin-top: 4px;
+  padding: 4px;
+  z-index: 9999 !important; /* Asegura que quede por encima de otros paneles */
+}
+
+/* Modo oscuro para el contenedor (si tu CRM usa la clase 'dark' en el body/html) */
+.dark .pac-container {
+  background-color: #18181b; /* zinc-900 */
+  border-color: #27272a; /* zinc-800 */
+}
+
+/* Cada elemento de la lista (cada sugerencia) */
+.pac-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-top: none; /* Quita el borde feo por defecto */
+  border-radius: 0.25rem; /* rounded */
+  transition: background-color 0.2s ease;
+  color: #3f3f46; /* zinc-700 */
+  font-size: 0.75rem; /* text-xs */
+}
+
+.dark .pac-item {
+  color: #a1a1aa; /* zinc-400 */
+}
+
+/* Efecto hover sobre las sugerencias */
+.pac-item:hover,
+.pac-item.pac-item-selected {
+  background-color: #f4f4f5; /* zinc-100 */
+}
+
+.dark .pac-item:hover,
+.dark .pac-item.pac-item-selected {
+  background-color: #27272a; /* zinc-800 */
+}
+
+/* Icono de ubicación al lado de la sugerencia (lo ocultamos para que quede más limpio) */
+.pac-icon {
+  display: none;
+}
+
+/* El texto principal de la sugerencia (ej. nombre de la calle) */
+.pac-item-query {
+  font-size: 0.875rem; /* text-sm */
+  color: #18181b; /* zinc-900 */
+  font-weight: 600; /* font-semibold */
+  margin-right: 4px;
+}
+
+.dark .pac-item-query {
+  color: #f4f4f5; /* zinc-100 */
+}
+
+/* ==========================================================================
+   LOGO "POWERED BY GOOGLE"
+   ========================================================================== */
+
+/* MODO CLARO (Por defecto) */
+.pac-logo::after {
+  background-color: transparent !important;
+  padding: 4px 8px;
+  opacity: 0.8;
+  /* Eliminamos cualquier filtro para que el texto sea negro y Google tenga color */
+  filter: none !important;
+}
+
+/* MODO OSCURO */
+.dark .pac-container.pac-logo::after {
+  /* 1. invert(1): Convierte el texto negro en blanco (pero invierte los colores de Google).
+     2. hue-rotate(180deg): Devuelve los colores de Google a su tono original.
+  */
+  filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+  opacity: 0.9;
+}
