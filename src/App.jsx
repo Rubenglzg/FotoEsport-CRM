@@ -76,7 +76,21 @@ export default function App() {
   const [showRadius, setShowRadius] = useState(false);
   const [showRoute, setShowRoute] = useState(false); 
   const [routeStops, setRouteStops] = useState([]); 
-  const [origin] = useState({ lat: 39.9864, lng: -0.0513, label: "Oficina" });
+
+  // --- GESTOR DE UBICACIONES Y RUTAS ---
+  const [savedLocations, setSavedLocations] = useState(() => {
+      const saved = localStorage.getItem(`${appId}_locations`);
+      // Si no hay guardadas, ponemos tu oficina por defecto
+      return saved ? JSON.parse(saved) : [
+          { id: '1', label: "Oficina Principal", lat: 39.9864, lng: -0.0513 }
+      ];
+  });
+  const [activeOrigin, setActiveOrigin] = useState(savedLocations[0]);
+
+  // Guardar automáticamente cualquier nueva ubicación que añadas
+  useEffect(() => {
+      localStorage.setItem(`${appId}_locations`, JSON.stringify(savedLocations));
+  }, [savedLocations]);
   
   // --- MODALES Y TOASTS ---
   const [showSettings, setShowSettings] = useState(false);
@@ -200,6 +214,109 @@ export default function App() {
       }
   };
 
+  const deleteGoogleCalendarEvent = async (eventId, token) => {
+      if (!token || !eventId) return;
+      try {
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+          method: "DELETE",
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Detectar si la llave del servidor ha caducado
+        if (response.status === 401) {
+            setGoogleToken(null); 
+            showToast("La sesión del Calendario ha caducado. Vuelve a autorizar en Ajustes.", "error");
+            return;
+        }
+
+        if (!response.ok) throw new Error("Error eliminando evento en Google");
+      } catch (error) {
+        console.error("Error API Google Calendar Delete:", error);
+      }
+  };
+
+  // --- MOTOR DE RUTAS (Haversine) ---
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // Radio de la Tierra en kilómetros
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c; 
+  };
+
+    const handleOptimizeRoute = () => {
+      if (routeStops.length === 0) {
+          showToast("Añade los clubes que quieras visitar a la ruta primero.", "info");
+          return;
+      }
+
+      let unvisited = [...routeStops];
+      let currentLoc = activeOrigin; // 📍 AHORA SALE DESDE EL ORIGEN ELEGIDO
+      let optimized = [];
+
+      while (unvisited.length > 0) {
+          let nearestIdx = 0;
+          let minDistance = Infinity;
+
+          for (let i = 0; i < unvisited.length; i++) {
+              const stop = unvisited[i];
+              const stopLat = stop.lat || stop.coordinates?.lat;
+              const stopLng = stop.lng || stop.coordinates?.lng;
+              
+              if (!stopLat || !stopLng) continue;
+              
+              const dist = calculateDistance(currentLoc.lat, currentLoc.lng, stopLat, stopLng);
+              if (dist < minDistance) {
+                  minDistance = dist;
+                  nearestIdx = i;
+              }
+          }
+
+          if (minDistance === Infinity) {
+              optimized = [...optimized, ...unvisited];
+              break;
+          }
+
+          const nearestStop = unvisited.splice(nearestIdx, 1)[0];
+          optimized.push(nearestStop);
+          
+          currentLoc = { 
+              lat: nearestStop.lat || nearestStop.coordinates?.lat, 
+              lng: nearestStop.lng || nearestStop.coordinates?.lng 
+          }; 
+      }
+
+      setRouteStops(optimized);
+      showToast("Ruta comercial optimizada desde: " + activeOrigin.label, "success");
+  };
+
+  // Función para añadir/quitar un club específico de la ruta
+  const toggleRouteStop = (club) => {
+      const exists = routeStops.find(s => s.id === club.id);
+      if (exists) {
+          setRouteStops(routeStops.filter(s => s.id !== club.id));
+      } else {
+          setRouteStops([...routeStops, club]);
+      }
+  };
+
+  // Función para añadir una nueva base de salida
+  const addNewLocation = () => {
+      const label = window.prompt("Nombre de la ubicación (ej: Mi Casa, Hotel Madrid):");
+      if (!label) return;
+      const lat = window.prompt("Latitud (ej: 39.4699):");
+      const lng = window.prompt("Longitud (ej: -0.3774):");
+      
+      if (lat && lng) {
+          const newLoc = { id: Math.random().toString(), label, lat: parseFloat(lat), lng: parseFloat(lng) };
+          setSavedLocations([...savedLocations, newLoc]);
+          setActiveOrigin(newLoc);
+          showToast("Ubicación guardada", "success");
+      }
+  };
+
   // --- LOGICA DE NEGOCIO ---
   const handleSeedDatabase = async () => {
       if(!user) return;
@@ -227,8 +344,17 @@ export default function App() {
       if(!user) return;
       if (window.confirm("¿Estás seguro de que quieres eliminar esta tarea?")) {
           try {
+              // 1. Buscamos la tarea exacta para recuperar su ID de Google Calendar
+              const taskToDelete = tasks.find(t => t.id.toString() === taskId.toString());
+              
+              // 2. Si tiene ID y tenemos token, mandamos la orden de borrar a tu móvil
+              if (taskToDelete && taskToDelete.googleEventId && googleToken) {
+                  await deleteGoogleCalendarEvent(taskToDelete.googleEventId, googleToken);
+              }
+
+              // 3. Borramos definitivamente de la base de datos de Firebase
               await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId.toString()));
-              showToast("Tarea eliminada", "success");
+              showToast("Tarea eliminada del CRM y del Calendario", "success");
           } catch (error) {
               console.error("Error al eliminar la tarea:", error);
               showToast("Error al eliminar", "error");
@@ -302,7 +428,27 @@ export default function App() {
         );
     }
     switch (currentView) {
-      case 'map': return <MapView clubs={filteredClubs} selectedId={selectedClub?.id} onSelect={setSelectedClub} showRadius={showRadius} setShowRadius={setShowRadius} showRoute={showRoute} setShowRoute={setShowRoute} tasks={tasks} origin={origin} routeStops={routeStops} setRouteStops={setRouteStops} onOptimizeRoute={() => showToast("Ruta optimizada", "success")} />;
+      case 'map': return <MapView 
+            clubs={filteredClubs} 
+            selectedId={selectedClub?.id} 
+            onSelect={setSelectedClub} 
+            showRadius={showRadius} 
+            setShowRadius={setShowRadius} 
+            showRoute={showRoute} 
+            setShowRoute={setShowRoute} 
+            tasks={tasks} 
+            
+            // --- NUEVAS PROPS DEL GESTOR ---
+            savedLocations={savedLocations}
+            activeOrigin={activeOrigin}
+            setActiveOrigin={setActiveOrigin}
+            addNewLocation={addNewLocation}
+            routeStops={routeStops} 
+            setRouteStops={setRouteStops} 
+            toggleRouteStop={toggleRouteStop}
+            onOptimizeRoute={handleOptimizeRoute} 
+        />;
+
       case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} />;
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} />;
