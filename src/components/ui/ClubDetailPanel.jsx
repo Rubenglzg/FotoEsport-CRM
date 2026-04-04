@@ -52,6 +52,7 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
                 // Le aplicamos unos estilos básicos para que encaje
                 autocomplete.style.width = '100%';
+                autocomplete.style.boxSizing = 'border-box';
                 
                 // 4. Escuchamos cuando el usuario elige una calle
                 autocomplete.addEventListener('gmp-placeselect', async (e) => {
@@ -132,42 +133,42 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                       </div>
 
                         {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES 2025 + MANUAL) --- */}
-                        <div>
-                            <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
-                            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
-                                
-                                <div className="flex gap-2">
-                                    <div className="flex-1 relative">
-                                        <MapPin className="absolute left-2.5 top-2.5 w-4 h-4 text-zinc-400 z-10" />
-                                        {/* Google inyectará aquí su buscador inteligente */}
-                                        <div ref={inputContainerRef} className="pl-8 overflow-hidden rounded"></div>
-                                        <div className="text-[10px] text-zinc-400 mt-1">Dirección actual guardada: {club.address || "Ninguna"}</div>
+                      <div>
+                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
+                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm overflow-hidden">
+                              
+                              <div className="w-full">
+                                  {/* Google inyectará aquí su buscador inteligente */}
+                                  <div ref={inputContainerRef} className="w-full rounded overflow-hidden"></div>
+                                                                    
+                                    <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}>
+                                        <span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}
                                     </div>
-                                </div>
-                                
-                                <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                                    <div className="flex-1">
-                                        <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
-                                        <input 
-                                            type="number" step="any"
-                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                            value={club.lat || ''}
-                                            onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
-                                        <input 
-                                            type="number" step="any"
-                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                            value={club.lng || ''}
-                                            onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* ----------------------------------------------- */}
+                              </div>
+                              
+                              <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                  <div className="flex-1 min-w-0">
+                                      <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
+                                      <input 
+                                          type="number" step="any"
+                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                          value={club.lat || ''}
+                                          onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
+                                      />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                      <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
+                                      <input 
+                                          type="number" step="any"
+                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                          value={club.lng || ''}
+                                          onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      {/* ----------------------------------------------- */}
 
                       {/* Assets y Contrato */}
                       <div>
