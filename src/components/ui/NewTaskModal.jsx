@@ -18,7 +18,8 @@ export default function NewTaskModal({ onClose, onSave, clubs, taskToEdit }) {
         if (!title) return;
         
         onSave({ 
-            id: taskToEdit ? taskToEdit.id : Math.random().toString(), // Mantenemos el ID original si estamos editando
+            id: taskToEdit ? taskToEdit.id : Math.random().toString(),
+            googleEventId: taskToEdit?.googleEventId,
             task: title, 
             priority, 
             due: date, 

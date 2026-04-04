@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Settings, CheckCircle2, RefreshCw, Save, FileSpreadsheet } from 'lucide-react';
+import { X, Settings, CheckCircle2, RefreshCw, Save, FileSpreadsheet, Mail, Calendar } from 'lucide-react';
 import { Button } from './Button';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from "jwt-decode";
 
-export default function SettingsModal({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason, showToast, setGoogleToken, googleEmail, setGoogleEmail }) {
+export default function SettingsModal({ onClose, targetClients, setTargetClients, onRollover, seasons, currentSeason, showToast, googleToken, setGoogleToken, googleEmail, setGoogleEmail }) {
     const [localTarget, setLocalTarget] = useState(targetClients);
     const [nextSeasonName, setNextSeasonName] = useState(() => {
         const last = seasons[seasons.length - 1];
@@ -14,27 +15,18 @@ export default function SettingsModal({ onClose, targetClients, setTargetClients
         return `${start + 1}-${end + 1}`;
     });
 
-    const handleGoogleConnect = useGoogleLogin({
-        onSuccess: async (tokenResponse) => {
+    // Esta función ahora SOLO pide permisos de Calendario (Modo Redirección)
+    const handleCalendarConnect = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
             setGoogleToken(tokenResponse.access_token);
-            try {
-                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                const userInfo = await userInfoResponse.json();
-                
-                setGoogleEmail(userInfo.email);
-                showToast(`Cuenta vinculada: ${userInfo.email}`, 'success'); 
-            } catch (error) {
-                console.error("Error obteniendo el email:", error);
-                showToast("Error al obtener datos de Google.", 'error');
-            }
+            showToast("Permisos de calendario concedidos", 'success');
         },
         onError: (error) => {
-            console.error('Error conectando con Google:', error);
-            showToast("Hubo un error al conectar con Google.", 'error');
+            console.error('Error Calendario:', error);
+            showToast("Error al autorizar el calendario.", 'error');
         },
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly',
+        scope: 'https://www.googleapis.com/auth/calendar',
+        ux_mode: 'redirect',
     });
 
     const handleSaveObjectives = () => { 
@@ -53,35 +45,73 @@ export default function SettingsModal({ onClose, targetClients, setTargetClients
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Settings className="w-5 h-5"/> Configuración</h2>
               <button onClick={onClose}><X className="w-5 h-5 text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-white"/></button>
            </div>
+           
            <div className="p-6 space-y-6">
               
-              {/* --- BLOQUE INTEGRACIONES GOOGLE --- */}
+              {/* --- BLOQUE INTEGRACIONES GOOGLE (ACTUALIZADO PARA FEDCM) --- */}
               <div>
                  <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">Integraciones de Sistema</h3>
-                 <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm">
-                    <div>
-                        <div className="text-zinc-900 dark:text-white font-bold text-sm flex items-center gap-2">
-                           Google Workspace
-                           {googleEmail && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                 <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-4">
+                    
+                    {/* 1. SECCIÓN FEDCM (IDENTIDAD) */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-zinc-900 dark:text-white font-bold text-sm flex items-center gap-2">
+                               <Mail className="w-4 h-4"/> Perfil Google (FedCM)
+                               {googleEmail && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            </div>
+                            {googleEmail ? (
+                               <div className="text-xs text-zinc-500 mt-1">Usuario: <span className="font-bold text-emerald-600 dark:text-emerald-400">{googleEmail}</span></div>
+                            ) : (
+                               <div className="text-xs text-zinc-500 mt-1">Identidad nativa del navegador</div>
+                            )}
                         </div>
+                        
                         {googleEmail ? (
-                           <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                               Sincronizado con: <span className="text-emerald-600 dark:text-emerald-400 font-bold">{googleEmail}</span>
-                           </div>
+                            <Button variant="outline" size="sm" onClick={() => setGoogleEmail(null)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10">
+                                Desvincular
+                            </Button>
                         ) : (
-                           <div className="text-xs text-zinc-500 mt-1">Conectar Calendario para IA</div>
+                            <div className="scale-90 origin-right">
+                                <GoogleLogin
+                                    onSuccess={(credentialResponse) => {
+                                        const decoded = jwtDecode(credentialResponse.credential);
+                                        setGoogleEmail(decoded.email);
+                                        showToast(`Bienvenido: ${decoded.email}`, 'success');
+                                    }}
+                                    onError={() => showToast("Error al conectar FedCM.", 'error')}
+                                    useOneTap
+                                    shape="rectangular"
+                                />
+                            </div>
                         )}
                     </div>
-                    
-                    {googleEmail ? (
-                        <Button variant="outline" size="sm" onClick={() => { setGoogleToken(null); setGoogleEmail(null); }} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10">
-                            Desvincular
-                        </Button>
-                    ) : (
-                        <Button variant="outline" size="sm" onClick={() => handleGoogleConnect()} className="bg-white dark:bg-transparent">
-                            <RefreshCw className="w-4 h-4 mr-2 text-blue-500 dark:text-blue-400"/> Vincular
-                        </Button>
-                    )}
+
+                    <div className="h-px bg-zinc-200 dark:bg-zinc-800 w-full"></div>
+
+                    {/* 2. SECCIÓN OAUTH (CALENDARIO) */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-zinc-900 dark:text-white font-bold text-sm flex items-center gap-2">
+                               <Calendar className="w-4 h-4"/> Permisos Calendario
+                               {googleToken && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">
+                                {googleToken ? 'Conectado para crear eventos' : 'Requerido para la agenda'}
+                            </div>
+                        </div>
+                        
+                        {googleToken ? (
+                            <Button variant="outline" size="sm" onClick={() => setGoogleToken(null)} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10">
+                                Revocar
+                            </Button>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={() => handleCalendarConnect()} className="bg-white dark:bg-transparent">
+                                <RefreshCw className="w-4 h-4 mr-2 text-blue-500 dark:text-blue-400"/> Autorizar
+                            </Button>
+                        )}
+                    </div>
+
                  </div>
               </div>
               {/* ----------------------------------- */}

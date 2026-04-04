@@ -40,9 +40,33 @@ export default function App() {
   const [tasks, setTasks] = useState([]);
   const [interactions, setInteractions] = useState([]);
 
-  // --- ESTADOS DE GOOGLE ---
-  const [googleToken, setGoogleToken] = useState(null);
-  const [googleEmail, setGoogleEmail] = useState(null);
+    // --- ESTADOS DE GOOGLE CON PERSISTENCIA (src/App.jsx) ---
+
+    // 1. Inicializamos los estados leyendo directamente del localStorage
+    const [googleToken, setGoogleToken] = useState(() => 
+        localStorage.getItem(`${appId}_gtoken`) || null
+    );
+    const [googleEmail, setGoogleEmail] = useState(() => 
+        localStorage.getItem(`${appId}_gemail`) || null
+    );
+
+    // 2. Creamos un efecto que guarde el Token cada vez que cambie
+    useEffect(() => {
+        if (googleToken) {
+            localStorage.setItem(`${appId}_gtoken`, googleToken);
+        } else {
+            localStorage.removeItem(`${appId}_gtoken`);
+        }
+    }, [googleToken]);
+
+    // 3. Creamos un efecto que guarde el Email cada vez que cambie
+    useEffect(() => {
+        if (googleEmail) {
+            localStorage.setItem(`${appId}_gemail`, googleEmail);
+        } else {
+            localStorage.removeItem(`${appId}_gemail`);
+        }
+    }, [googleEmail]);
   
   // --- UI STATE ---
   const [targetClients, setTargetClients] = useState(50);
@@ -109,50 +133,71 @@ export default function App() {
   }, [user, isLocked]);
 
   // --- LOGICA DE GOOGLE CALENDAR ---
+  
+  // Función para construir la carga útil (payload) del evento con los datos correctos
+  const buildGoogleEventPayload = (taskDetails) => {
+      let start, end;
+
+      if (taskDetails.isAllDay) {
+          start = { date: taskDetails.due };
+          const endDate = new Date(taskDetails.due);
+          endDate.setDate(endDate.getDate() + 1);
+          end = { date: endDate.toISOString().split('T')[0] };
+      } else {
+          const timeStr = taskDetails.time || '09:00';
+          const endTimeStr = taskDetails.endTime || '10:00';
+          const startDateTime = new Date(`${taskDetails.due}T${timeStr}:00`).toISOString();
+          const endDateTime = new Date(`${taskDetails.due}T${endTimeStr}:00`).toISOString();
+          
+          start = { dateTime: startDateTime, timeZone: 'Europe/Madrid' };
+          end = { dateTime: endDateTime, timeZone: 'Europe/Madrid' };
+      }
+
+      // Buscamos el club en el array de clubs para extraer su nombre y ubicación real
+      const associatedClub = clubs.find(c => c.id === taskDetails.clubId);
+      const clubName = associatedClub ? associatedClub.name : 'Ninguno';
+      const eventLocation = associatedClub?.address || taskDetails.location || '';
+
+      return {
+        summary: taskDetails.task,
+        location: eventLocation, // Esto hace que aparezca la ubicación nativa en Google Maps/Calendar
+        description: `Generado desde CRM Sooner.\nClub: ${clubName}\nDetalles: ${taskDetails.description || ''}`,
+        start: start,
+        end: end,
+        colorId: taskDetails.priority === 'high' ? '11' : '9',
+      };
+  };
+
   const createGoogleCalendarEvent = async (taskDetails, token) => {
-    if (!token) return;
+      if (!token) return;
+      const event = buildGoogleEventPayload(taskDetails);
+      try {
+        const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+          method: "POST",
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(event)
+        });
+        if (!response.ok) throw new Error("Error creando evento");
+        const data = await response.json();
+        return data.id; 
+      } catch (error) {
+        console.error("Error API Google Calendar Create:", error);
+      }
+  };
 
-    let start, end;
-
-    if (taskDetails.isAllDay) {
-        // Para eventos de todo el día, Google pide formato "YYYY-MM-DD" en la propiedad 'date'
-        start = { date: taskDetails.due };
-        
-        // En Google Calendar, la fecha de fin de un evento de todo el día debe ser el día siguiente
-        const endDate = new Date(taskDetails.due);
-        endDate.setDate(endDate.getDate() + 1);
-        end = { date: endDate.toISOString().split('T')[0] };
-    } else {
-        // Si tiene horas específicas, usamos la hora que marcaste o por defecto 09:00 - 10:00
-        const timeStr = taskDetails.time || '09:00';
-        const endTimeStr = taskDetails.endTime || '10:00';
-        const startDateTime = new Date(`${taskDetails.due}T${timeStr}:00`).toISOString();
-        const endDateTime = new Date(`${taskDetails.due}T${endTimeStr}:00`).toISOString();
-        
-        start = { dateTime: startDateTime, timeZone: 'Europe/Madrid' };
-        end = { dateTime: endDateTime, timeZone: 'Europe/Madrid' };
-    }
-
-    const event = {
-      summary: taskDetails.task,
-      description: `Generado desde CRM Sooner.\nClub: ${taskDetails.clubId || 'Ninguno'}\nDetalles: ${taskDetails.description || ''}`,
-      start: start,
-      end: end,
-      colorId: taskDetails.priority === 'high' ? '11' : '9',
-    };
-
-    try {
-      const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
-        method: "POST",
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(event)
-      });
-      if (!response.ok) throw new Error("Error creando evento");
-      const data = await response.json();
-      return data.id; 
-    } catch (error) {
-      console.error("Error API Google Calendar:", error);
-    }
+  const updateGoogleCalendarEvent = async (taskDetails, token) => {
+      if (!token || !taskDetails.googleEventId) return;
+      const event = buildGoogleEventPayload(taskDetails);
+      try {
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${taskDetails.googleEventId}`, {
+          method: "PUT",
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(event)
+        });
+        if (!response.ok) throw new Error("Error actualizando evento");
+      } catch (error) {
+        console.error("Error API Google Calendar Update:", error);
+      }
   };
 
   // --- LOGICA DE NEGOCIO ---
@@ -358,24 +403,30 @@ export default function App() {
               seasons={seasons} 
               currentSeason={selectedSeason} 
               showToast={showToast}
+              googleToken={googleToken}
               setGoogleToken={setGoogleToken}
               googleEmail={googleEmail}
               setGoogleEmail={setGoogleEmail}
           />
       )}
       
-      {(showTaskModal || taskToEdit) && (
+        {(showTaskModal || taskToEdit) && (
           <NewTaskModal 
               clubs={clubs}
               taskToEdit={taskToEdit}
               onClose={() => { setShowTaskModal(false); setTaskToEdit(null); }} 
               onSave={async (t) => { 
                   if (taskToEdit) {
-                      // Si estábamos editando, actualizamos en Firebase
+                      // 1. Actualizamos el evento en el Calendario de Google (si hay token y tiene evento previo)
+                      if (googleToken && t.googleEventId) {
+                          await updateGoogleCalendarEvent(t, googleToken);
+                      }
+                      
+                      // 2. Actualizamos en Firebase
                       await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', t.id.toString()), t);
                       showToast("Tarea actualizada", "success");
                   } else {
-                      // Si es nueva, la creamos
+                      // Si es nueva, la creamos (aquí ya llamaba a createGoogleCalendarEvent por dentro)
                       addTask(t); 
                   }
                   setShowTaskModal(false); 
