@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile } from '../../utils/helpers';
@@ -9,9 +9,9 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     
+    // Estado para controlar lo que se escribe en el input de la dirección
     const [addressInput, setAddressInput] = useState(club.address || "");
-    const autoCompleteRef = useRef();
-    const inputRef = useRef();
+    const inputRef = useRef(null);
 
     const handleAddInteraction = async () => {
         if(!note) return;
@@ -31,55 +31,55 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
     const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
 
-    // Configuración del Autocompletado de Google
+    // --- CONFIGURACIÓN DEL AUTOCOMPLETADO DE GOOGLE MAPS ---
     useEffect(() => {
-        // 1. Cargamos la librería de forma asíncrona si no está
-        const setupAutocomplete = async () => {
-            const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
+        // Verificamos que el input exista en pantalla y que el script de Google se haya cargado
+        if (!inputRef.current || !window.google || !window.google.maps.places) return;
+
+        // Iniciamos la API clásica y estable de Autocomplete
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+            types: ['establishment', 'geocode'], // Busca clubes, negocios y calles
+            componentRestrictions: { country: 'es' }, // Limitamos a España
+        });
+
+        // Evento que salta cuando el usuario hace clic en una de las sugerencias
+        const listener = autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
             
-            if (inputRef.current && !autoCompleteRef.current) {
-                // Creamos el nuevo elemento de autocompletado
-                const autocomplete = new PlaceAutocompleteElement({
-                    inputElement: inputRef.current,
-                    componentRestrictions: { country: "es" }
-                });
-
-                autoCompleteRef.current = autocomplete;
-
-                // El nuevo evento es 'gmp-placeselect'
-                autocomplete.addEventListener("gmp-placeselect", ({ settlement }) => {
-                    const place = autocomplete.value; // El lugar seleccionado
-                    
-                    if (place && place.location) {
-                        const lat = place.location.lat();
-                        const lng = place.location.lng();
-                        const formattedAddress = place.formattedAddress;
-                        
-                        setAddressInput(formattedAddress);
-                        onUpdateClub({
-                            ...club,
-                            address: formattedAddress,
-                            lat: lat,
-                            lng: lng
-                        });
-                    }
+            if (place.geometry && place.geometry.location) {
+                const lat = place.geometry.location.lat();
+                const lng = place.geometry.location.lng();
+                const formattedAddress = place.formatted_address || place.name;
+                
+                // Actualizamos el input visualmente
+                setAddressInput(formattedAddress);
+                
+                // Actualizamos el objeto completo y lo enviamos al padre (Firebase)
+                onUpdateClub({
+                    ...club,
+                    address: formattedAddress,
+                    lat: lat,
+                    lng: lng
                 });
             }
+        });
+
+        // Limpieza de memoria al desmontar el panel
+        return () => {
+            if (window.google) window.google.maps.event.removeListener(listener);
         };
-
-        if (window.google) {
-            setupAutocomplete();
-        }
     }, [club, onUpdateClub]);
+    // -------------------------------------------------------
 
-    // Sincronizar el input cuando cambia de club
+    // Sincronizar el input visual si cambiamos de un club a otro haciendo clics rápidos
     useEffect(() => {
         setAddressInput(club.address || "");
-    }, [club.id]);
+    }, [club.id, club.address]);
 
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
+              {/* CABECERA DEL PANEL */}
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
                  <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
                  <div className="flex items-start gap-4 mb-4">
@@ -93,11 +93,13 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                  </div>
               </div>
 
+              {/* PESTAÑAS */}
               <div className="flex border-b border-zinc-200 dark:border-zinc-800">
                  <button onClick={() => setActiveTab('details')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'details' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Gestión</button>
                  <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
               </div>
 
+              {/* CONTENIDO DEL PANEL */}
               <div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
