@@ -1,29 +1,33 @@
-const functions = require("firebase-functions");
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { google } = require("googleapis");
 const cors = require("cors")({ origin: true });
 
-// Iniciamos la conexión con Firebase
 admin.initializeApp();
 
-// --- CONFIGURACIÓN DE SEGURIDAD ---
-const CLIENT_ID = "6259490332964411im6ignisp9qo0mqp2orbovgnua2p.apps.googleusercontent.com"; // El mismo de main.jsx
-const CLIENT_SECRET = "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"; // El que copiaste en el bloc de notas
-const REDIRECT_URI = "postmessage"; // Obligatorio cuando se usa el flujo auth-code
+// 1. Definimos las credenciales
+const CLIENT_ID = "625949033296-4411im6ignisp9qo0mqp2orbovgnua2p.apps.googleusercontent.com";
+// Llamamos al secreto de la caja fuerte
+const clientSecret = defineSecret("CLIENT_SECRET");
+const REDIRECT_URI = "postmessage";
 
-exports.conectarCalendario = functions.https.onRequest((req, res) => {
-    // cors() permite que tu web (localhost o dominio) hable con este servidor
+// 2. Exportamos la función usando el formato v2 (onRequest) y le pasamos el secreto en las opciones
+exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) => {
     cors(req, res, async () => {
         try {
             const { code, userId } = req.body;
             if (!code || !userId) return res.status(400).send("Faltan datos");
 
-            const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+            // 3. Extraemos el valor del secreto
+            const secretValue = clientSecret.value();
+
+            // 4. Instanciamos OAuth2 con el secreto real
+            const oauth2Client = new google.auth.OAuth2(CLIENT_ID, secretValue, REDIRECT_URI);
             
-            // 1. Intercambiamos el código temporal por las llaves oficiales
             const { tokens } = await oauth2Client.getToken(code);
 
-            // 2. Si Google nos da la Llave Maestra (Refresh Token), la guardamos bajo llave en Firestore
+            // 5. Guardamos el refresh token si Google nos lo envía
             if (tokens.refresh_token) {
                 await admin.firestore()
                     .collection("artifacts").doc("fotoesport-crm")
@@ -31,7 +35,6 @@ exports.conectarCalendario = functions.https.onRequest((req, res) => {
                     .set({ calendarRefreshToken: tokens.refresh_token }, { merge: true });
             }
 
-            // 3. Devolvemos la llave de uso diario (Access Token) al CRM para que la empiece a usar ya
             res.status(200).json({ accessToken: tokens.access_token });
         } catch (error) {
             console.error("Error en servidor:", error);
