@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { auth, db } from './lib/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List } from 'lucide-react';
 
 // --- UTILIDADES ---
@@ -60,6 +60,7 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [clearedNotifications, setClearedNotifications] = useState(false);
   const [toast, setToast] = useState(null);
+  const [taskToEdit, setTaskToEdit] = useState(null);
 
   const showToast = (message, type = 'success') => {
       setToast({ message, type });
@@ -110,15 +111,36 @@ export default function App() {
   // --- LOGICA DE GOOGLE CALENDAR ---
   const createGoogleCalendarEvent = async (taskDetails, token) => {
     if (!token) return;
-    const startDateTime = new Date(`${taskDetails.due}T${taskDetails.time}:00`).toISOString();
-    const endDateTime = new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
+
+    let start, end;
+
+    if (taskDetails.isAllDay) {
+        // Para eventos de todo el día, Google pide formato "YYYY-MM-DD" en la propiedad 'date'
+        start = { date: taskDetails.due };
+        
+        // En Google Calendar, la fecha de fin de un evento de todo el día debe ser el día siguiente
+        const endDate = new Date(taskDetails.due);
+        endDate.setDate(endDate.getDate() + 1);
+        end = { date: endDate.toISOString().split('T')[0] };
+    } else {
+        // Si tiene horas específicas, usamos la hora que marcaste o por defecto 09:00 - 10:00
+        const timeStr = taskDetails.time || '09:00';
+        const endTimeStr = taskDetails.endTime || '10:00';
+        const startDateTime = new Date(`${taskDetails.due}T${timeStr}:00`).toISOString();
+        const endDateTime = new Date(`${taskDetails.due}T${endTimeStr}:00`).toISOString();
+        
+        start = { dateTime: startDateTime, timeZone: 'Europe/Madrid' };
+        end = { dateTime: endDateTime, timeZone: 'Europe/Madrid' };
+    }
+
     const event = {
       summary: taskDetails.task,
-      description: `Generado desde CRM Sooner.\nClub ID: ${taskDetails.clubId}`,
-      start: { dateTime: startDateTime, timeZone: 'Europe/Madrid' },
-      end: { dateTime: endDateTime, timeZone: 'Europe/Madrid' },
+      description: `Generado desde CRM Sooner.\nClub: ${taskDetails.clubId || 'Ninguno'}\nDetalles: ${taskDetails.description || ''}`,
+      start: start,
+      end: end,
       colorId: taskDetails.priority === 'high' ? '11' : '9',
     };
+
     try {
       const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
         method: "POST",
@@ -129,7 +151,7 @@ export default function App() {
       const data = await response.json();
       return data.id; 
     } catch (error) {
-      console.error(error);
+      console.error("Error API Google Calendar:", error);
     }
   };
 
@@ -154,6 +176,19 @@ export default function App() {
       }
       const taskToSave = { ...newTask, googleEventId: googleEventId || null };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', newTask.id.toString()), taskToSave);
+  };
+
+  const deleteTask = async (taskId) => {
+      if(!user) return;
+      if (window.confirm("¿Estás seguro de que quieres eliminar esta tarea?")) {
+          try {
+              await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId.toString()));
+              showToast("Tarea eliminada", "success");
+          } catch (error) {
+              console.error("Error al eliminar la tarea:", error);
+              showToast("Error al eliminar", "error");
+          }
+      }
   };
 
   const addInteraction = async (interaction) => {
@@ -224,7 +259,7 @@ export default function App() {
     switch (currentView) {
       case 'map': return <MapView clubs={filteredClubs} selectedId={selectedClub?.id} onSelect={setSelectedClub} showRadius={showRadius} setShowRadius={setShowRadius} showRoute={showRoute} setShowRoute={setShowRoute} tasks={tasks} origin={origin} routeStops={routeStops} setRouteStops={setRouteStops} onOptimizeRoute={() => showToast("Ruta optimizada", "success")} />;
       case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} />;
-      case 'calendar': return <CalendarView tasks={tasks} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} />;
+      case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} />;
       default: return <MapView clubs={filteredClubs} />;
     }
@@ -328,7 +363,26 @@ export default function App() {
               setGoogleEmail={setGoogleEmail}
           />
       )}
-      {showTaskModal && <NewTaskModal onClose={() => setShowTaskModal(false)} onSave={(t) => { addTask(t); setShowTaskModal(false); }} />}
+      
+      {(showTaskModal || taskToEdit) && (
+          <NewTaskModal 
+              clubs={clubs}
+              taskToEdit={taskToEdit}
+              onClose={() => { setShowTaskModal(false); setTaskToEdit(null); }} 
+              onSave={async (t) => { 
+                  if (taskToEdit) {
+                      // Si estábamos editando, actualizamos en Firebase
+                      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', t.id.toString()), t);
+                      showToast("Tarea actualizada", "success");
+                  } else {
+                      // Si es nueva, la creamos
+                      addTask(t); 
+                  }
+                  setShowTaskModal(false); 
+                  setTaskToEdit(null);
+              }} 
+          />
+      )}
       
       {/* TOAST FLOTANTE */}
       {toast && (
