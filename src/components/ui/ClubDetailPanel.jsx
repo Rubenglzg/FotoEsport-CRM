@@ -31,44 +31,55 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
     const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
 
-    // --- CONFIGURACIÓN DEL AUTOCOMPLETADO DE GOOGLE MAPS ---
+    const inputContainerRef = useRef(null);
+
+    // --- CONFIGURACIÓN DEL AUTOCOMPLETADO (ESTÁNDAR 2025) ---
     useEffect(() => {
-        // Verificamos que el input exista en pantalla y que el script de Google se haya cargado
-        if (!inputRef.current || !window.google || !window.google.maps.places) return;
+        const setupModernAutocomplete = async () => {
+            if (!inputContainerRef.current || !window.google) return;
 
-        // Iniciamos la API clásica y estable de Autocomplete
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-            types: ['establishment', 'geocode'], // Busca clubes, negocios y calles
-            componentRestrictions: { country: 'es' }, // Limitamos a España
-        });
+            try {
+                // 1. Importamos la librería moderna de Google
+                const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
 
-        // Evento que salta cuando el usuario hace clic en una de las sugerencias
-        const listener = autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
-            
-            if (place.geometry && place.geometry.location) {
-                const lat = place.geometry.location.lat();
-                const lng = place.geometry.location.lng();
-                const formattedAddress = place.formatted_address || place.name;
-                
-                // Actualizamos el input visualmente
-                setAddressInput(formattedAddress);
-                
-                // Actualizamos el objeto completo y lo enviamos al padre (Firebase)
-                onUpdateClub({
-                    ...club,
-                    address: formattedAddress,
-                    lat: lat,
-                    lng: lng
+                // 2. Limpiamos el contenedor para evitar duplicados al cambiar de club
+                inputContainerRef.current.innerHTML = '';
+
+                // 3. Creamos el nuevo Web Component de Google
+                const autocomplete = new PlaceAutocompleteElement({
+                    componentRestrictions: { country: ['es'] }
                 });
-            }
-        });
 
-        // Limpieza de memoria al desmontar el panel
-        return () => {
-            if (window.google) window.google.maps.event.removeListener(listener);
+                // Le aplicamos unos estilos básicos para que encaje
+                autocomplete.style.width = '100%';
+                
+                // 4. Escuchamos cuando el usuario elige una calle
+                autocomplete.addEventListener('gmp-placeselect', async (e) => {
+                    const place = e.place;
+                    
+                    // Extraemos los datos precisos (lat, lng y calle)
+                    await place.fetchFields({ fields: ['location', 'formattedAddress'] });
+                    
+                    if (place.location) {
+                        const lat = place.location.lat();
+                        const lng = place.location.lng();
+                        const address = place.formattedAddress;
+
+                        // Actualizamos Firebase
+                        onUpdateClub({ ...club, address, lat, lng });
+                    }
+                });
+
+                // 5. Insertamos el buscador de Google en nuestra interfaz
+                inputContainerRef.current.appendChild(autocomplete);
+                
+            } catch (error) {
+                console.error("Error cargando Google Places 2025:", error);
+            }
         };
-    }, [club, onUpdateClub]);
+
+        setupModernAutocomplete();
+    }, [club.id]);
     // -------------------------------------------------------
 
     // Sincronizar el input visual si cambiamos de un club a otro haciendo clics rápidos
@@ -120,51 +131,43 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                         ))}
                       </div>
 
-                      {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES + MANUAL) --- */}
-                      <div>
-                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
-                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
-                              
-                              <div className="flex gap-2">
-                                  <div className="flex-1 relative">
-                                      <MapPin className="absolute left-2.5 top-2 w-4 h-4 text-zinc-400" />
-                                      <input 
-                                          ref={inputRef}
-                                          type="text"
-                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded py-1.5 pl-8 pr-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
-                                          value={addressInput}
-                                          onChange={(e) => {
-                                              setAddressInput(e.target.value);
-                                              onUpdateClub({ ...club, address: e.target.value });
-                                          }}
-                                          placeholder="Empieza a escribir la dirección..."
-                                      />
-                                  </div>
-                              </div>
-                              
-                              <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                                  <div className="flex-1">
-                                      <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
-                                      <input 
-                                          type="number" step="any"
-                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                          value={club.lat || ''}
-                                          onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
-                                      />
-                                  </div>
-                                  <div className="flex-1">
-                                      <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
-                                      <input 
-                                          type="number" step="any"
-                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                          value={club.lng || ''}
-                                          onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
-                                      />
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      {/* ----------------------------------------------- */}
+                        {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES 2025 + MANUAL) --- */}
+                        <div>
+                            <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
+                            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                                
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <MapPin className="absolute left-2.5 top-2.5 w-4 h-4 text-zinc-400 z-10" />
+                                        {/* Google inyectará aquí su buscador inteligente */}
+                                        <div ref={inputContainerRef} className="pl-8 overflow-hidden rounded"></div>
+                                        <div className="text-[10px] text-zinc-400 mt-1">Dirección actual guardada: {club.address || "Ninguna"}</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                    <div className="flex-1">
+                                        <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
+                                        <input 
+                                            type="number" step="any"
+                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                            value={club.lat || ''}
+                                            onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
+                                        <input 
+                                            type="number" step="any"
+                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
+                                            value={club.lng || ''}
+                                            onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* ----------------------------------------------- */}
 
                       {/* Assets y Contrato */}
                       <div>

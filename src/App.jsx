@@ -237,7 +237,6 @@ export default function App() {
 
   // --- GESTOR DE RUTAS POR CARRETERA (OSRM API Gratuita) ---
   const handleOptimizeRoute = async () => {
-      // 1. Filtramos solo los clubes que tengan coordenadas válidas
       const validStops = routeStops.filter(s => (s.lat || s.coordinates?.lat) && (s.lng || s.coordinates?.lng));
       
       if (validStops.length === 0) {
@@ -248,8 +247,7 @@ export default function App() {
       showToast("Calculando ruta por carretera (coche)...", "info");
 
       try {
-          // 2. Preparamos las coordenadas. OSRM usa el formato Longitud,Latitud (lng,lat)
-          // El índice 0 siempre es nuestro origen activo
+          // 2. Preparamos coordenadas (El index 0 siempre es el Origen)
           const coordinatesStr = [
               `${activeOrigin.lng},${activeOrigin.lat}`,
               ...validStops.map(stop => {
@@ -259,27 +257,28 @@ export default function App() {
               })
           ].join(';');
 
-          // 3. Llamada a la API de OSRM 
-          // 'trip' optimiza el orden. 'driving' fuerza la ruta en coche.
-          // source=first asegura que salgas del origen. roundtrip=false no te obliga a volver.
+          // 3. Llamada a la API
           const response = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordinatesStr}?source=first&roundtrip=false`);
           
           if (!response.ok) throw new Error("Error en servidor de rutas");
           const data = await response.json();
 
-          // 4. Reconstruimos el array con el orden de conducción más eficiente
-          const sortedWaypoints = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index);
+          // 4. NUEVO: Reconstrucción perfecta del orden
+          // OSRM nos devuelve 'waypoints' en el mismo orden que los enviamos.
           const optimizedRoute = [];
           
-          for (let i = 1; i < sortedWaypoints.length; i++) {
-              // Restamos 1 porque el origen ocupaba la posición 0
-              const originalIndex = sortedWaypoints[i].original_index - 1;
-              optimizedRoute.push(validStops[originalIndex]);
-          }
+          data.waypoints.forEach((wp, requestIndex) => {
+              // Saltamos el índice 0 porque es nuestra oficina/casa (no es un club a visitar)
+              if (requestIndex === 0) return; 
+              
+              // El waypoint_index es la posición en la que debe ir ese club para hacer la ruta más corta
+              optimizedRoute[wp.waypoint_index] = validStops[requestIndex - 1];
+          });
 
-          setRouteStops(optimizedRoute); // Actualizamos la vista
+          // Filtramos cualquier espacio vacío (Boolean) y guardamos la ruta final
+          setRouteStops(optimizedRoute.filter(Boolean)); 
 
-          // 5. Extraer la distancia real y el tiempo de conducción estimado
+          // 5. Extraer la distancia
           if (data.trips && data.trips.length > 0) {
               const durationMin = Math.round(data.trips[0].duration / 60);
               const distanceKm = (data.trips[0].distance / 1000).toFixed(1);

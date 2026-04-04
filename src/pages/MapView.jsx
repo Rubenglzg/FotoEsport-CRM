@@ -20,16 +20,15 @@ export default function MapView({
 
   // Calculamos la línea de la ruta dibujada en el mapa (Origen + Paradas ordenadas)
   const routeLine = useMemo(() => {
-      if (!showRoute || routeStops.length === 0) return [];
+      if (!showRoute || !routeStops || routeStops.length === 0) return [];
       const points = [];
       
-      // Añadimos el origen
       if (activeOrigin?.lat && activeOrigin?.lng) {
           points.push([activeOrigin.lat, activeOrigin.lng]);
       }
       
-      // Añadimos las paradas en su orden actual
       routeStops.forEach(stop => {
+          if (!stop) return; // <--- ESTO EVITA EL CRASHEO
           const lat = stop.lat || stop.coordinates?.lat;
           const lng = stop.lng || stop.coordinates?.lng;
           if (lat && lng) points.push([lat, lng]);
@@ -118,7 +117,8 @@ export default function MapView({
                           Haz clic en los pines del mapa para añadir clubes a la ruta.
                       </div>
                    ) : (
-                      routeStops.map((stop, i) => (
+                      // Añadimos filter(Boolean) aquí por seguridad extrema
+                      routeStops.filter(Boolean).map((stop, i) => (
                          <div key={stop.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1.5 rounded-lg text-xs group">
                             <span className="font-semibold text-zinc-700 dark:text-zinc-300 truncate"><span className="text-zinc-400 mr-1">{i+1}.</span>{stop.name}</span>
                             <button onClick={() => toggleRouteStop(stop)} className="text-zinc-400 hover:text-red-500 transition-colors p-1">
