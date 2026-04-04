@@ -132,18 +132,19 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                         ))}
                       </div>
 
-                        {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES 2025 + MANUAL) --- */}
-                      <div>
+                      {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES 2025 + MANUAL) --- */}
+                      <div className="relative z-50">
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
-                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm overflow-hidden">
+                          {/* Eliminamos el overflow-hidden de aquí */}
+                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
                               
-                              <div className="w-full">
-                                  {/* Google inyectará aquí su buscador inteligente */}
-                                  <div ref={inputContainerRef} className="w-full rounded overflow-hidden"></div>
-                                                                    
-                                    <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}>
-                                        <span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}
-                                    </div>
+                              <div className="w-full relative z-50">
+                                  {/* Eliminamos el overflow-hidden de aquí también */}
+                                  <div ref={inputContainerRef} className="w-full rounded"></div>
+                                  
+                                  <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}>
+                                      <span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}
+                                  </div>
                               </div>
                               
                               <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
