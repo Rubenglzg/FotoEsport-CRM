@@ -33,28 +33,42 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
     // Configuración del Autocompletado de Google
     useEffect(() => {
-        if (window.google && inputRef.current && !autoCompleteRef.current) {
-            autoCompleteRef.current = new window.google.maps.places.Autocomplete(
-                inputRef.current,
-                { types: ['address'], componentRestrictions: { country: "es" } }
-            );
+        // 1. Cargamos la librería de forma asíncrona si no está
+        const setupAutocomplete = async () => {
+            const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
             
-            autoCompleteRef.current.addListener("place_changed", () => {
-                const place = autoCompleteRef.current.getPlace();
-                if (place.geometry) {
-                    const lat = place.geometry.location.lat();
-                    const lng = place.geometry.location.lng();
-                    const formattedAddress = place.formatted_address;
+            if (inputRef.current && !autoCompleteRef.current) {
+                // Creamos el nuevo elemento de autocompletado
+                const autocomplete = new PlaceAutocompleteElement({
+                    inputElement: inputRef.current,
+                    componentRestrictions: { country: "es" }
+                });
+
+                autoCompleteRef.current = autocomplete;
+
+                // El nuevo evento es 'gmp-placeselect'
+                autocomplete.addEventListener("gmp-placeselect", ({ settlement }) => {
+                    const place = autocomplete.value; // El lugar seleccionado
                     
-                    setAddressInput(formattedAddress);
-                    onUpdateClub({
-                        ...club,
-                        address: formattedAddress,
-                        lat: lat,
-                        lng: lng
-                    });
-                }
-            });
+                    if (place && place.location) {
+                        const lat = place.location.lat();
+                        const lng = place.location.lng();
+                        const formattedAddress = place.formattedAddress;
+                        
+                        setAddressInput(formattedAddress);
+                        onUpdateClub({
+                            ...club,
+                            address: formattedAddress,
+                            lat: lat,
+                            lng: lng
+                        });
+                    }
+                });
+            }
+        };
+
+        if (window.google) {
+            setupAutocomplete();
         }
     }, [club, onUpdateClub]);
 
