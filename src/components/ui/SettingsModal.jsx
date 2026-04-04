@@ -17,16 +17,36 @@ export default function SettingsModal({ onClose, targetClients, setTargetClients
 
     // Esta función ahora SOLO pide permisos de Calendario (Modo Redirección)
     const handleCalendarConnect = useGoogleLogin({
-        onSuccess: (tokenResponse) => {
-            setGoogleToken(tokenResponse.access_token);
-            showToast("Permisos de calendario concedidos", 'success');
+        flow: 'auth-code', // <--- VITAL: Pedimos un código seguro, no un token directo
+        ux_mode: 'popup', 
+        scope: 'https://www.googleapis.com/auth/calendar',
+        onSuccess: async (codeResponse) => {
+            showToast("Procesando seguridad en el servidor...", "info");
+            try {
+                // Mandamos el código a nuestra nueva Cloud Function
+                const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: codeResponse.code,
+                        userId: auth.currentUser.uid // Identificamos al usuario
+                    })
+                });
+                
+                if(!res.ok) throw new Error("Error del servidor");
+                const data = await res.json();
+                
+                setGoogleToken(data.accessToken);
+                showToast("¡Calendario vinculado con máxima seguridad!", "success");
+            } catch (error) {
+                console.error(error);
+                showToast("Fallo al autorizar con el servidor.", "error");
+            }
         },
         onError: (error) => {
             console.error('Error Calendario:', error);
-            showToast("Error al autorizar el calendario.", 'error');
+            showToast("Error al abrir la ventana de Google.", 'error');
         },
-        scope: 'https://www.googleapis.com/auth/calendar',
-        ux_mode: 'redirect',
     });
 
     const handleSaveObjectives = () => { 
