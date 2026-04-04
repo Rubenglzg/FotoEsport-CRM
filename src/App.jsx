@@ -6,7 +6,7 @@ import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Sear
 
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
-import { INITIAL_SEASONS, SEED_CLUBS, INITIAL_TASKS, INITIAL_TIMELINE } from './utils/constants';
+import { INITIAL_SEASONS, SEED_CLUBS, INITIAL_TASKS, INITIAL_TIMELINE, DEFAULT_STATUSES } from './utils/constants';
 
 // --- PÁGINAS Y VISTAS ---
 import LoginScreen from './pages/LoginScreen';
@@ -40,6 +40,7 @@ export default function App() {
   const [clubs, setClubs] = useState([]); 
   const [tasks, setTasks] = useState([]);
   const [interactions, setInteractions] = useState([]);
+  const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
 
     // --- ESTADOS DE GOOGLE CON PERSISTENCIA (src/App.jsx) ---
 
@@ -145,7 +146,17 @@ export default function App() {
         setInteractions(data.sort((a, b) => b.createdAt - a.createdAt));
     });
 
-    return () => { unsubClubs(); unsubTasks(); unsubInt(); };
+    // NUEVO: Suscripción a los Estados Personalizados
+    const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
+    const unsubSettings = onSnapshot(settingsRef, (snapshot) => {
+        if (snapshot.exists() && snapshot.data().statuses) {
+            setStatuses(snapshot.data().statuses);
+        } else {
+            setStatuses(DEFAULT_STATUSES);
+        }
+    });
+
+    return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); }; // Añadir unsubSettings()
   }, [user, isLocked]);
 
   // --- LOGICA DE GOOGLE CALENDAR ---
@@ -415,6 +426,12 @@ export default function App() {
       if(selectedClub?.id === updatedClub.id) setSelectedClub(updatedClub);
   };
 
+  const handleUpdateStatuses = async (newStatuses) => {
+      if(!user) return;
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { statuses: newStatuses }, { merge: true });
+      showToast("Estados actualizados", "success");
+  };
+
   const handleSeasonRollover = async (nextSeasonName) => {
       if(!user) return;
       exportToCSV(clubs, selectedSeason);
@@ -514,7 +531,14 @@ export default function App() {
             onExportRoute={handleOpenGoogleMapsNav}
         />;
 
-      case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} onNewClub={() => setShowNewClubModal(true)} />;
+      case 'database': return <DatabaseView 
+            clubs={filteredClubs} 
+            onSelect={setSelectedClub} 
+            onNewClub={() => setShowNewClubModal(true)} 
+            statuses={statuses} 
+            onUpdateStatuses={handleUpdateStatuses} 
+        />;
+
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} />;
       default: return <MapView clubs={filteredClubs} />;
@@ -603,6 +627,7 @@ export default function App() {
                 onDeleteClub={() => handleDeleteClub(selectedClub.id)}
                 onUpdateInteraction={handleUpdateInteraction}
                 onDeleteInteraction={handleDeleteInteraction}
+                statuses={statuses}
             />
         }
       </aside>

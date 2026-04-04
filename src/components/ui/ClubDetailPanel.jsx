@@ -1,106 +1,111 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin } from 'lucide-react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2 } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile } from '../../utils/helpers';
 
-export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, interactions, onAddInteraction, currentSeason }) {
+export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, interactions, onAddInteraction, currentSeason, onDeleteClub, onUpdateInteraction, onDeleteInteraction, statuses }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('call');
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Estado para controlar lo que se escribe en el input de la dirección
-    const [addressInput, setAddressInput] = useState(club.address || "");
-    const inputRef = useRef(null);
+    // Estados de Edición Local
+    const [tempName, setTempName] = useState(club.name);
+    const [contacts, setContacts] = useState(club.contacts || []);
+    const [editingInteraction, setEditingInteraction] = useState(null);
+    const [editNote, setEditNote] = useState("");
 
+    const inputContainerRef = useRef(null);
+
+    // Sincronizar al cambiar de club
+    useEffect(() => {
+        setTempName(club.name);
+        setContacts(club.contacts || []);
+    }, [club.id, club.name, club.contacts]);
+
+    // Lógicas de Actualización del Club
+    const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
+    const handleStatusChange = (e) => onUpdateClub({...club, status: e.target.value});
+    const handleSaveContacts = () => onUpdateClub({...club, contacts});
+    const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
+
+    // Gestión de Contactos
+    const handleAddContact = () => setContacts([...contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }]);
+    const updateContact = (index, field, value) => {
+        const newContacts = [...contacts];
+        newContacts[index][field] = value;
+        setContacts(newContacts);
+    };
+    const removeContact = (index) => {
+        const newContacts = contacts.filter((_, i) => i !== index);
+        setContacts(newContacts);
+        onUpdateClub({...club, contacts: newContacts});
+    };
+
+    // Gestión de Interacciones
     const handleAddInteraction = async () => {
         if(!note) return;
         setIsSubmitting(true);
         try {
             await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: interactionType, user: "Tú", note, date: new Date().toLocaleDateString() });
-            if(nextDate) {
-                await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
-            }
+            if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             setNote(""); setNextDate("");
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
+    };
+    const startEditInteraction = (event) => {
+        setEditingInteraction(event.id);
+        setEditNote(event.note);
+    };
+    const saveEditInteraction = async (id) => {
+        await onUpdateInteraction(id, editNote);
+        setEditingInteraction(null);
+        setEditNote("");
     };
 
-    const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
-
-    const inputContainerRef = useRef(null);
-
-    // --- CONFIGURACIÓN DEL AUTOCOMPLETADO (ESTÁNDAR 2025) ---
+    // Autocompletado de Google Places
     useEffect(() => {
         const setupModernAutocomplete = async () => {
             if (!inputContainerRef.current || !window.google) return;
-
             try {
-                // 1. Importamos la librería moderna de Google
                 const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
-
-                // 2. Limpiamos el contenedor para evitar duplicados al cambiar de club
                 inputContainerRef.current.innerHTML = '';
-
-                // 3. Creamos el nuevo Web Component de Google
-                const autocomplete = new PlaceAutocompleteElement({
-                    componentRestrictions: { country: ['es'] }
-                });
-
-                // Le aplicamos unos estilos básicos para que encaje
-                autocomplete.style.width = '100%';
-                autocomplete.style.boxSizing = 'border-box';
-                
-                // 4. Escuchamos cuando el usuario elige una calle
+                const autocomplete = new PlaceAutocompleteElement({ componentRestrictions: { country: ['es'] } });
+                autocomplete.style.width = '100%'; autocomplete.style.boxSizing = 'border-box';
                 autocomplete.addEventListener('gmp-placeselect', async (e) => {
                     const place = e.place;
-                    
-                    // Extraemos los datos precisos (lat, lng y calle)
                     await place.fetchFields({ fields: ['location', 'formattedAddress'] });
-                    
-                    if (place.location) {
-                        const lat = place.location.lat();
-                        const lng = place.location.lng();
-                        const address = place.formattedAddress;
-
-                        // Actualizamos Firebase
-                        onUpdateClub({ ...club, address, lat, lng });
-                    }
+                    if (place.location) onUpdateClub({ ...club, address: place.formattedAddress, lat: place.location.lat(), lng: place.location.lng() });
                 });
-
-                // 5. Insertamos el buscador de Google en nuestra interfaz
                 inputContainerRef.current.appendChild(autocomplete);
-                
-            } catch (error) {
-                console.error("Error cargando Google Places 2025:", error);
-            }
+            } catch (error) { console.error("Error Google Places:", error); }
         };
-
         setupModernAutocomplete();
     }, [club.id]);
-    // -------------------------------------------------------
-
-    // Sincronizar el input visual si cambiamos de un club a otro haciendo clics rápidos
-    useEffect(() => {
-        setAddressInput(club.address || "");
-    }, [club.id, club.address]);
-
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
-              {/* CABECERA DEL PANEL */}
+              {/* CABECERA (NOMBRE Y ESTADO) */}
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
                  <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
-                 <div className="flex items-start gap-4 mb-4">
-                    <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold border", club.status === 'signed' ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-500 dark:border-emerald-500/20" : "bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700")}>
+                 <div className="flex items-start gap-4 mb-2 pr-6">
+                    <div className="w-12 h-12 rounded-lg flex flex-shrink-0 items-center justify-center text-lg font-bold border bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700">
                       {club.name.substring(0,2).toUpperCase()}
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">{club.name}</h2>
-                      <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1 flex items-center gap-2"><Users className="w-3 h-3" /> {club.category}</p>
+                    <div className="flex-1">
+                      <input 
+                         value={tempName} 
+                         onChange={(e) => setTempName(e.target.value)} 
+                         onBlur={handleSaveName}
+                         className="text-lg font-bold text-zinc-900 dark:text-white leading-tight bg-transparent border-b border-transparent hover:border-zinc-300 focus:border-emerald-500 outline-none w-full transition-colors"
+                         placeholder="Nombre del Club"
+                      />
+                      <select 
+                         value={club.status || 'to_contact'} 
+                         onChange={handleStatusChange}
+                         className="mt-1 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded py-1 px-2 outline-none text-zinc-700 dark:text-zinc-300 font-bold cursor-pointer shadow-sm"
+                      >
+                         {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      </select>
                     </div>
                  </div>
               </div>
@@ -115,61 +120,39 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
               <div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
-                      {/* Contactos */}
+                      {/* Contactos Editables */}
                       <div>
-                        <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Contactos</h4>
-                        {club.contacts && club.contacts.map((contact, idx) => (
-                            <div key={idx} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg mb-2">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">{contact.name}</span>
-                                </div>
-                                <div className="text-xs text-zinc-500 mb-2">{contact.role}</div>
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><Phone className="w-3 h-3"/> {contact.phone}</div>
-                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><MessageSquare className="w-3 h-3"/> {contact.email}</div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contactos</h4>
+                            <button onClick={handleAddContact} className="text-[10px] text-emerald-600 font-bold hover:underline">+ Añadir</button>
+                        </div>
+                        {contacts.map((contact, idx) => (
+                            <div key={idx} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg mb-2 relative group focus-within:ring-1 focus-within:ring-emerald-500">
+                                <button onClick={() => removeContact(idx)} title="Eliminar Contacto" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity"><Trash2 className="w-3.5 h-3.5"/></button>
+                                <input value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} onBlur={handleSaveContacts} className="font-bold text-zinc-800 dark:text-zinc-200 text-sm bg-transparent outline-none w-[90%] border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700 placeholder:font-normal mb-1" placeholder="Nombre completo" />
+                                <input value={contact.role} onChange={e => updateContact(idx, 'role', e.target.value)} onBlur={handleSaveContacts} className="text-xs text-zinc-500 mb-2 bg-transparent outline-none w-full border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Cargo (Ej: Presidente)" />
+                                <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><Phone className="w-3 h-3 text-zinc-400"/> <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Teléfono" /></div>
+                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><MessageSquare className="w-3 h-3 text-zinc-400"/> <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Correo electrónico" /></div>
                                 </div>
                             </div>
                         ))}
                       </div>
 
-                      {/* --- SECCIÓN: UBICACIÓN (GOOGLE PLACES 2025 + MANUAL) --- */}
+                      {/* Ubicación Mapa */}
                       <div className="relative z-50">
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
-                          {/* Eliminamos el overflow-hidden de aquí */}
                           <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
-                              
                               <div className="w-full relative z-50">
-                                  {/* Eliminamos el overflow-hidden de aquí también */}
                                   <div ref={inputContainerRef} className="w-full rounded"></div>
-                                  
-                                  <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}>
-                                      <span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}
-                                  </div>
+                                  <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}><span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}</div>
                               </div>
-                              
                               <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                                  <div className="flex-1 min-w-0">
-                                      <label className="text-[9px] text-zinc-500 block mb-1">LATITUD EXACTA</label>
-                                      <input 
-                                          type="number" step="any"
-                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                          value={club.lat || ''}
-                                          onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })}
-                                      />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                      <label className="text-[9px] text-zinc-500 block mb-1">LONGITUD EXACTA</label>
-                                      <input 
-                                          type="number" step="any"
-                                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono"
-                                          value={club.lng || ''}
-                                          onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })}
-                                      />
-                                  </div>
+                                  <div className="flex-1 min-w-0"><label className="text-[9px] text-zinc-500 block mb-1">LATITUD</label><input type="number" step="any" className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono" value={club.lat || ''} onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })} /></div>
+                                  <div className="flex-1 min-w-0"><label className="text-[9px] text-zinc-500 block mb-1">LONGITUD</label><input type="number" step="any" className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono" value={club.lng || ''} onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })} /></div>
                               </div>
                           </div>
                       </div>
-                      {/* ----------------------------------------------- */}
 
                       {/* Assets y Contrato */}
                       <div>
@@ -192,6 +175,14 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                               ))}
                           </div>
                       </div>
+
+                      {/* Botón Peligro: Eliminar Club */}
+                      <div className="pt-6 mt-6 border-t border-red-100 dark:border-red-500/10">
+                          <button onClick={onDeleteClub} className="w-full py-2.5 flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 rounded-lg transition-colors text-sm font-bold">
+                              <Trash2 className="w-4 h-4" /> Eliminar Club Permanentemente
+                          </button>
+                      </div>
+
                    </div>
                  ) : (
                    <div className="space-y-6">
@@ -205,15 +196,32 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                              <Button variant="primary" size="sm" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar</Button>
                         </div>
                      </div>
-                     <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6">
+                     <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
                      {interactions.map(event => (
-                       <div key={event.id} className="relative pl-6">
-                          <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
+                       <div key={event.id} className="relative group">
+                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                           <div className="flex justify-between items-baseline mb-1">
                              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 capitalize">{event.type}</span>
-                             <span className="text-[10px] text-zinc-500">{event.date}</span>
+                             <div className="flex items-center gap-2">
+                                 <span className="text-[10px] text-zinc-500">{event.date}</span>
+                                 <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                                     <button onClick={() => startEditInteraction(event)} className="text-blue-500 hover:text-blue-600"><Edit2 className="w-3.5 h-3.5"/></button>
+                                     <button onClick={() => onDeleteInteraction(event.id)} className="text-red-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5"/></button>
+                                 </div>
+                             </div>
                           </div>
-                          <p className="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
+                          
+                          {editingInteraction === event.id ? (
+                              <div className="mt-2 bg-zinc-50 dark:bg-zinc-900 p-2 rounded border border-blue-200 dark:border-blue-900/50">
+                                  <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-blue-500 resize-none" rows={2} value={editNote} onChange={e => setEditNote(e.target.value)} />
+                                  <div className="flex gap-2 mt-2">
+                                      <Button size="sm" onClick={() => saveEditInteraction(event.id)}>Guardar</Button>
+                                      <Button size="sm" variant="ghost" onClick={() => { setEditingInteraction(null); setEditNote(""); }}>Cancelar</Button>
+                                  </div>
+                              </div>
+                          ) : (
+                              <p className="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
+                          )}
                        </div>
                      ))}
                    </div>

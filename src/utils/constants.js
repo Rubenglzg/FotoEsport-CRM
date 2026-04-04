@@ -1,4 +1,14 @@
 // src/utils/constants.js
+
+export const DEFAULT_STATUSES = [
+    { id: 'to_contact', label: 'POR CONTACTAR', color: '#64748b' }, // Gris
+    { id: 'contacted_no_reply', label: 'SIN RESPUESTA', color: '#f59e0b' }, // Naranja
+    { id: 'prospect', label: 'POS. CLIENTE', color: '#06b6d4' }, // Cyan
+    { id: 'lead', label: 'LEAD', color: '#3b82f6' }, // Azul
+    { id: 'client', label: 'CLIENTE', color: '#10b981' }, // Verde
+    { id: 'not_interested', label: 'NO INTERESA', color: '#ef4444' } // Rojo
+];
+
 export const SALES_SCRIPTS = {
     cold_call: { title: "Llamada en Frío (Apertura)", text: "Hola [Nombre], soy [TuNombre] de FotoEsport. Trabajamos con clubes como el Villarreal o el Castellón..." },
     closing_contract: { title: "Cierre: Envío de Contrato", text: "Genial. Para formalizarlo y poder agendar el día de la sesión, te envío ahora mismo el contrato..." },
