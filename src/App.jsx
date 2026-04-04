@@ -235,61 +235,81 @@ export default function App() {
       }
   };
 
-  // --- MOTOR DE RUTAS (Haversine) ---
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-      const R = 6371; // Radio de la Tierra en kilómetros
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c; 
-  };
-
-    const handleOptimizeRoute = () => {
-      if (routeStops.length === 0) {
-          showToast("Añade los clubes que quieras visitar a la ruta primero.", "info");
+  // --- GESTOR DE RUTAS POR CARRETERA (OSRM API Gratuita) ---
+  const handleOptimizeRoute = async () => {
+      // 1. Filtramos solo los clubes que tengan coordenadas válidas
+      const validStops = routeStops.filter(s => (s.lat || s.coordinates?.lat) && (s.lng || s.coordinates?.lng));
+      
+      if (validStops.length === 0) {
+          showToast("Añade clubes con ubicación válida a la ruta.", "info");
           return;
       }
 
-      let unvisited = [...routeStops];
-      let currentLoc = activeOrigin; // 📍 AHORA SALE DESDE EL ORIGEN ELEGIDO
-      let optimized = [];
+      showToast("Calculando ruta por carretera (coche)...", "info");
 
-      while (unvisited.length > 0) {
-          let nearestIdx = 0;
-          let minDistance = Infinity;
+      try {
+          // 2. Preparamos las coordenadas. OSRM usa el formato Longitud,Latitud (lng,lat)
+          // El índice 0 siempre es nuestro origen activo
+          const coordinatesStr = [
+              `${activeOrigin.lng},${activeOrigin.lat}`,
+              ...validStops.map(stop => {
+                  const lat = stop.lat || stop.coordinates?.lat;
+                  const lng = stop.lng || stop.coordinates?.lng;
+                  return `${lng},${lat}`;
+              })
+          ].join(';');
 
-          for (let i = 0; i < unvisited.length; i++) {
-              const stop = unvisited[i];
-              const stopLat = stop.lat || stop.coordinates?.lat;
-              const stopLng = stop.lng || stop.coordinates?.lng;
-              
-              if (!stopLat || !stopLng) continue;
-              
-              const dist = calculateDistance(currentLoc.lat, currentLoc.lng, stopLat, stopLng);
-              if (dist < minDistance) {
-                  minDistance = dist;
-                  nearestIdx = i;
-              }
-          }
-
-          if (minDistance === Infinity) {
-              optimized = [...optimized, ...unvisited];
-              break;
-          }
-
-          const nearestStop = unvisited.splice(nearestIdx, 1)[0];
-          optimized.push(nearestStop);
+          // 3. Llamada a la API de OSRM 
+          // 'trip' optimiza el orden. 'driving' fuerza la ruta en coche.
+          // source=first asegura que salgas del origen. roundtrip=false no te obliga a volver.
+          const response = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordinatesStr}?source=first&roundtrip=false`);
           
-          currentLoc = { 
-              lat: nearestStop.lat || nearestStop.coordinates?.lat, 
-              lng: nearestStop.lng || nearestStop.coordinates?.lng 
-          }; 
-      }
+          if (!response.ok) throw new Error("Error en servidor de rutas");
+          const data = await response.json();
 
-      setRouteStops(optimized);
-      showToast("Ruta comercial optimizada desde: " + activeOrigin.label, "success");
+          // 4. Reconstruimos el array con el orden de conducción más eficiente
+          const sortedWaypoints = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index);
+          const optimizedRoute = [];
+          
+          for (let i = 1; i < sortedWaypoints.length; i++) {
+              // Restamos 1 porque el origen ocupaba la posición 0
+              const originalIndex = sortedWaypoints[i].original_index - 1;
+              optimizedRoute.push(validStops[originalIndex]);
+          }
+
+          setRouteStops(optimizedRoute); // Actualizamos la vista
+
+          // 5. Extraer la distancia real y el tiempo de conducción estimado
+          if (data.trips && data.trips.length > 0) {
+              const durationMin = Math.round(data.trips[0].duration / 60);
+              const distanceKm = (data.trips[0].distance / 1000).toFixed(1);
+              showToast(`Ruta lista: ${distanceKm} km en coche (Aprox. ${durationMin} min)`, "success");
+          } else {
+              showToast("Ruta optimizada correctamente.", "success");
+          }
+
+      } catch (error) {
+          console.error("Error API Rutas:", error);
+          showToast("Error al calcular ruta por carretera. Revisa la conexión.", "error");
+      }
+  };
+
+  // --- FUNCIÓN DE NAVEGACIÓN GPS ---
+  const handleOpenGoogleMapsNav = () => {
+      if (routeStops.length === 0) {
+          showToast("No hay ruta que exportar.", "info");
+          return;
+      }
+      
+      const originStr = `${activeOrigin.lat},${activeOrigin.lng}`;
+      const stopsStr = routeStops.map(stop => {
+          const lat = stop.lat || stop.coordinates?.lat;
+          const lng = stop.lng || stop.coordinates?.lng;
+          return `${lat},${lng}`;
+      }).join('/');
+      
+      // Abre la app de Google Maps forzando el modo de transporte a Coche (!3e0)
+      window.open(`https://www.google.com/maps/dir/${originStr}/${stopsStr}/data=!4m2!4m1!3e0`, '_blank');
   };
 
   // Función para añadir/quitar un club específico de la ruta
@@ -447,6 +467,7 @@ export default function App() {
             setRouteStops={setRouteStops} 
             toggleRouteStop={toggleRouteStop}
             onOptimizeRoute={handleOptimizeRoute} 
+            onExportRoute={handleOpenGoogleMapsNav}
         />;
 
       case 'database': return <DatabaseView clubs={filteredClubs} onSelect={setSelectedClub} />;
