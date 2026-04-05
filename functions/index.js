@@ -47,54 +47,75 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
 
             const { clubName, text, token } = req.body;
             
-            // Medida de seguridad básica para que nadie más pueda meter datos
             if (token !== "FOTOESPORT_SECRETO") return res.status(401).send("No autorizado");
             if (!clubName || !text) return res.status(400).send("Faltan datos");
 
             const db = admin.firestore();
             
-            // 1. Buscar el club (traemos todos y filtramos para ignorar mayúsculas/minúsculas)
-            // NOTA: Ajusta "clubs" si el nombre de tu colección principal en Firestore es distinto
-            const clubsSnapshot = await db.collection("clubs").get(); 
-            let targetClub = null;
+            // MAGIA AQUÍ: collectionGroup busca la carpeta 'clubs' sin importar en qué usuario esté
+            const clubsSnapshot = await db.collectionGroup("clubs").get(); 
             
+            let targetClubRef = null;
+            let targetClubName = "";
+            
+            const normalizarTexto = (texto) => {
+                if (!texto) return "";
+                return String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            };
+
+            const inputLimpiado = normalizarTexto(clubName);
+
             clubsSnapshot.forEach(doc => {
                 const data = doc.data();
-                if (data.name && data.name.toLowerCase().includes(clubName.toLowerCase())) {
-                    targetClub = { id: doc.id, ...data };
+                if (data.name) {
+                    const nombreBDLimpiado = normalizarTexto(data.name);
+                    
+                    if (nombreBDLimpiado.includes(inputLimpiado)) {
+                        targetClubRef = doc.ref; // Guardamos la RUTA EXACTA de este club
+                        targetClubName = data.name;
+                    }
                 }
             });
 
-            if (!targetClub) {
-                return res.status(404).send(`No se encontró el club "${clubName}"`);
+            if (!targetClubRef) {
+                return res.status(404).send(`No se encontró el club "${clubName}". Revisa el texto.`);
             }
 
-            // 2. Pedirle a Gemini que resuma el texto
+            // Pedirle a Gemini que resuma el texto
             const prompt = `Actúa como un asistente CRM. Resume la siguiente transcripción de llamada en un formato estructurado y muy corto. Usa viñetas para: Estado actual, Acuerdos, y Siguientes pasos: "${text}"`;
             
-            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey.value()}`, {
+            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value()}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
+            
             const geminiData = await geminiRes.json();
+
+            // --- NUEVO ESCUDO DE DEPURACIÓN ---
+            if (!geminiData.candidates) {
+                console.error(">>> ERROR DESDE GEMINI:", JSON.stringify(geminiData, null, 2));
+                return res.status(500).send("La IA de Gemini ha fallado. Mira los logs.");
+            }
+            // ----------------------------------
+
             const summary = geminiData.candidates[0].content.parts[0].text;
 
-            // 3. Guardar en Firebase dentro del historial del club
+            // Guardar en Firebase dentro del historial del club usando la referencia exacta
             const interactionId = Date.now().toString();
-            await db.collection("clubs").doc(targetClub.id).collection("interactions").doc(interactionId).set({
+            await targetClubRef.collection("interactions").doc(interactionId).set({
                 id: interactionId,
-                clubId: targetClub.id,
+                clubId: targetClubRef.id,
                 type: "call",
                 user: "Tú (iPhone)",
                 note: summary,
                 date: new Date().toLocaleDateString('es-ES')
             });
 
-            res.status(200).json({ success: true, message: `Llamada guardada en ${targetClub.name}` });
+            res.status(200).json({ success: true, message: `Llamada guardada en ${targetClubName}` });
 
         } catch (error) {
-            console.error("Error al procesar llamada de iOS:", error);
+            console.error(">>> ERROR GRAVE:", error);
             res.status(500).send("Error interno del servidor");
         }
     });
