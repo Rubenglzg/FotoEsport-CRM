@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2 } from 'lucide-react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles } from 'lucide-react';
 import { Button } from './Button';
-import { cn, generateContractFile } from '../../utils/helpers';
+import { cn, generateContractFile, summarizeWithAI } from '../../utils/helpers';
 
 export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, interactions, onAddInteraction, currentSeason, onDeleteClub, onUpdateInteraction, onDeleteInteraction, statuses }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('call');
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isSummarizing, setIsSummarizing] = useState(false);
     
     // Estados de Edición Local
     const [tempName, setTempName] = useState(club.name);
@@ -60,6 +62,44 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
         await onUpdateInteraction(id, editNote);
         setEditingInteraction(null);
         setEditNote("");
+    };
+
+    // --- NUEVAS FUNCIONES PARA IA Y VOZ ---
+    const startDictation = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Tu navegador no soporta el dictado por voz. Prueba en Google Chrome.");
+            return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-ES';
+        recognition.interimResults = false;
+        
+        recognition.onstart = () => setIsRecording(true);
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setNote(prev => prev + (prev ? " " : "") + transcript);
+        };
+        recognition.onend = () => setIsRecording(false);
+        recognition.onerror = (event) => {
+            console.error("Error de micrófono", event.error);
+            setIsRecording(false);
+        };
+        
+        recognition.start();
+    };
+
+    const handleAISummary = async () => {
+        if (!note.trim()) return;
+        setIsSummarizing(true);
+        try {
+            const summary = await summarizeWithAI(note);
+            setNote(summary);
+        } catch (error) {
+            alert("Hubo un error al resumir. Revisa la consola.");
+        } finally {
+            setIsSummarizing(false);
+        }
     };
 
     // Autocompletado de Google Places
@@ -184,18 +224,40 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                       </div>
 
                    </div>
-                 ) : (
+                  ) : (
                    <div className="space-y-6">
                      <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg space-y-3 shadow-sm">
-                        <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Registrar Interacción</label>
-                        <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none" rows={2} placeholder={`Notas...`} value={note} onChange={(e) => setNote(e.target.value)} />
+                        <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Registrar Interacción</label>
+                            
+                            {/* NUEVOS BOTONES DE HERRAMIENTAS */}
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={startDictation} 
+                                    className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors ${isRecording ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'}`}
+                                >
+                                    <Mic className="w-3 h-3" /> {isRecording ? "Escuchando..." : "Dictar"}
+                                </button>
+                                <button 
+                                    onClick={handleAISummary} 
+                                    disabled={!note || isSummarizing}
+                                    className="flex items-center gap-1 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 text-[10px] font-bold px-2 py-1 rounded transition-colors dark:bg-indigo-500/20 dark:text-indigo-400"
+                                >
+                                    <Sparkles className="w-3 h-3" /> {isSummarizing ? "Procesando..." : "Resumir con IA"}
+                                </button>
+                            </div>
+                        </div>
+
+                        <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none min-h-[80px]" placeholder="Pega aquí el chat de WhatsApp o usa el botón de dictar para grabar una nota de voz..." value={note} onChange={(e) => setNote(e.target.value)} />
+                        
                         <div className="flex items-center gap-2 pt-2">
                              <div className="flex-1">
                                 <input type="date" className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-xs border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1.5 w-full outline-none focus:border-emerald-500" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
                              </div>
-                             <Button variant="primary" size="sm" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar</Button>
+                             <Button variant="primary" size="sm" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar Historial</Button>
                         </div>
                      </div>
+
                      <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
                      {interactions.map(event => (
                        <div key={event.id} className="relative group">

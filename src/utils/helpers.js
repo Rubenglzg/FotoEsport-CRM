@@ -91,3 +91,28 @@ export const exportToCSV = (clubs, seasonName) => {
     link.click();
     document.body.removeChild(link);
 };
+
+export const summarizeWithAI = async (text) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Falta la API Key de Gemini");
+
+  const prompt = `Actúa como un asistente de ventas CRM profesional. 
+  Toma la siguiente interacción (que puede ser un dictado de voz desordenado o un pegado de WhatsApp) y resúmela en un formato claro, profesional y estructurado en español. 
+  Usa viñetas para: Estado actual, Acuerdos, y Siguientes pasos. Sé muy conciso.
+  
+  Texto original: "${text}"`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+    
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error("Error conectando con Gemini:", error);
+    throw error;
+  }
+};
