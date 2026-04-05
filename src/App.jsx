@@ -529,6 +529,7 @@ export default function App() {
             toggleRouteStop={toggleRouteStop}
             onOptimizeRoute={handleOptimizeRoute} 
             onExportRoute={handleOpenGoogleMapsNav}
+            statuses={statuses}
         />;
 
       case 'database': return <DatabaseView 

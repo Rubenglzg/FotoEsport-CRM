@@ -1,24 +1,30 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, Target, MapPin, Plus, X, Car } from 'lucide-react';
+import { Navigation, Target, MapPin, Plus, X, Car, ChevronDown, Filter } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { Button } from '../components/ui/Button';
 
 export default function MapView({ 
-  clubs, selectedId, onSelect, 
-  showRadius, setShowRadius, 
-  showRoute, setShowRoute, 
-  tasks, 
-  // Nuevas props del Gestor de Rutas
-  savedLocations, activeOrigin, setActiveOrigin, addNewLocation,
-  routeStops = [], setRouteStops, toggleRouteStop, onOptimizeRoute, onExportRoute
+    clubs, selectedId, onSelect, showRadius, setShowRadius, 
+    showRoute, setShowRoute, tasks, savedLocations, activeOrigin, 
+    setActiveOrigin, addNewLocation, routeStops, setRouteStops, 
+    toggleRouteStop, onOptimizeRoute, onExportRoute, statuses
 }) {
+
+    // 1. Estados para el filtro visual
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [isFilterOpen, setIsFilterOpen] = useState(false); // <--- NUEVO ESTADO PARA EL DESPLEGABLE
+
+    // 2. Filtramos los clubes que se van a pintar en el mapa
+    const displayedClubs = statusFilter === 'all' 
+        ? clubs 
+        : clubs.filter(club => club.status === statusFilter);
   
   const mapCenter = [40.4168, -3.7038]; 
   const defaultZoom = 6;
 
-  // Calculamos la línea de la ruta dibujada en el mapa (Origen + Paradas ordenadas)
+  // Calculamos la línea de la ruta dibujada en el mapa
   const routeLine = useMemo(() => {
       if (!showRoute || !routeStops || routeStops.length === 0) return [];
       const points = [];
@@ -28,7 +34,7 @@ export default function MapView({
       }
       
       routeStops.forEach(stop => {
-          if (!stop) return; // <--- ESTO EVITA EL CRASHEO
+          if (!stop) return;
           const lat = stop.lat || stop.coordinates?.lat;
           const lng = stop.lng || stop.coordinates?.lng;
           if (lat && lng) points.push([lat, lng]);
@@ -37,34 +43,24 @@ export default function MapView({
       return points;
   }, [showRoute, routeStops, activeOrigin]);
 
-  // Función para crear tus pines personalizados con Tailwind
+  // Función para crear pines con el COLOR DINÁMICO de los estados
   const createCustomPin = (club, isSelected, isInRoute, routeIndex) => {
-    let pinColor = "bg-zinc-400 border-zinc-300 dark:bg-zinc-600 dark:border-zinc-400";
-    if (club.status === 'signed') pinColor = "bg-emerald-500 border-white shadow-[0_0_15px_rgba(16,185,129,0.5)]";
-    if (club.status === 'negotiation') pinColor = "bg-amber-500 border-amber-200";
-    if (club.status === 'rejected') pinColor = "bg-red-500 border-red-300 dark:bg-red-900 opacity-50";
-    if (club.status === 'renewal_pending') pinColor = "bg-blue-500 border-blue-300 animate-pulse";
-
+    const statusConfig = statuses?.find(s => s.id === club.status);
+    const pinHexColor = statusConfig ? statusConfig.color : '#94a3b8';
     const needsAttention = club.lastInteraction === "Never" || club.lastInteraction === "30d";
 
     const html = `
       <div class="relative group cursor-pointer transition-transform hover:scale-150">
-        <div class="w-4 h-4 rounded-full border-2 ${pinColor} ${isInRoute ? 'ring-4 ring-emerald-500/50 scale-125 bg-emerald-400' : ''}">
+        <div class="w-4 h-4 rounded-full border-2 border-white shadow-md ${isInRoute ? 'ring-4 ring-emerald-500/50 scale-125' : ''}" style="background-color: ${pinHexColor};">
           ${needsAttention && !isSelected ? `<div class="absolute -top-3 -right-3 bg-red-500 text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full border border-white font-bold">!</div>` : ''}
           ${isInRoute ? `<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-zinc-900 text-white font-bold text-[10px] px-1.5 rounded-full z-30 shadow-md border border-zinc-700">${routeIndex + 1}</div>` : ''}
         </div>
       </div>
     `;
 
-    return L.divIcon({
-      className: 'custom-leaflet-pin',
-      html: html,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
-    });
+    return L.divIcon({ className: 'custom-leaflet-pin', html: html, iconSize: [16, 16], iconAnchor: [8, 8] });
   };
 
-  // Marcador especial para el Origen (La Base)
   const createOriginPin = () => {
       const html = `
       <div class="relative group cursor-pointer transition-transform hover:scale-110">
@@ -78,6 +74,72 @@ export default function MapView({
   return (
     <div className="flex-1 relative bg-zinc-100 dark:bg-[#09090b] h-full w-full">
       
+      {/* ======================================================== */}
+      {/* NUEVO FILTRO VISUAL PERSONALIZADO (Arriba a la izquierda) */}
+      {/* ======================================================== */}
+      <div className="absolute top-4 left-4 z-[1000] pointer-events-auto flex flex-col">
+          {/* Botón Principal que abre/cierra */}
+          <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center justify-between gap-3 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900 min-w-[220px]"
+          >
+              <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-zinc-500" />
+                  <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700 mx-1"></div>
+                  
+                  {/* Etiqueta Activa */}
+                  {statusFilter === 'all' ? (
+                     <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                         Todos los clubes
+                     </span>
+                  ) : (
+                     <div className="flex items-center gap-2">
+                         <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: statuses?.find(s => s.id === statusFilter)?.color }}></span>
+                         <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider truncate max-w-[120px]">
+                             {statuses?.find(s => s.id === statusFilter)?.label}
+                         </span>
+                     </div>
+                  )}
+              </div>
+              <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform duration-200", isFilterOpen && "rotate-180")} />
+          </button>
+
+          {/* Menú Desplegable con los colores */}
+          {isFilterOpen && (
+              <div className="absolute top-full left-0 mt-2 w-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden py-2 z-[1001] animate-in fade-in slide-in-from-top-2">
+                  
+                  <button 
+                      onClick={() => { setStatusFilter('all'); setIsFilterOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors text-left"
+                  >
+                      <div className="w-4 h-4 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px]">📍</div>
+                      <span className={cn("text-xs font-bold transition-colors", statusFilter === 'all' ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>
+                          Todos los clubes
+                      </span>
+                  </button>
+                  
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800/50 mx-4 my-2"></div>
+
+                  <div className="px-4 pb-2 pt-1 text-[10px] font-bold uppercase text-zinc-500 tracking-widest">
+                      Por Estado
+                  </div>
+
+                  {statuses?.map(s => (
+                      <button 
+                          key={s.id}
+                          onClick={() => { setStatusFilter(s.id); setIsFilterOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors text-left group"
+                      >
+                          <span className="w-3 h-3 rounded-full border border-black/10 dark:border-white/10 shadow-sm group-hover:scale-110 transition-transform" style={{ backgroundColor: s.color }}></span>
+                          <span className={cn("text-xs font-bold transition-colors truncate", statusFilter === s.id ? "text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200")}>{s.label}</span>
+                          {statusFilter === s.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-zinc-800 dark:bg-zinc-200"></div>}
+                      </button>
+                  ))}
+              </div>
+          )}
+      </div>
+      {/* ======================================================== */}
+
       {/* PANEL FLOTANTE DEL GESTOR DE RUTAS */}
       {showRoute && (
          <div className="absolute top-4 right-4 z-[1000] w-80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in slide-in-from-right-8 fade-in">
@@ -86,7 +148,6 @@ export default function MapView({
                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Planificador de Ruta</h3>
              </div>
              
-             {/* Selección de Origen */}
              <div className="mb-4">
                <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block mb-1">1. Punto de Salida</label>
                <div className="flex gap-2">
@@ -105,7 +166,6 @@ export default function MapView({
                </div>
              </div>
 
-             {/* Paradas Seleccionadas */}
              <div className="mb-4">
                 <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block mb-1 flex justify-between">
                     <span>2. Paradas a visitar</span>
@@ -117,7 +177,6 @@ export default function MapView({
                           Haz clic en los pines del mapa para añadir clubes a la ruta.
                       </div>
                    ) : (
-                      // Añadimos filter(Boolean) aquí por seguridad extrema
                       routeStops.filter(Boolean).map((stop, i) => (
                          <div key={stop.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1.5 rounded-lg text-xs group">
                             <span className="font-semibold text-zinc-700 dark:text-zinc-300 truncate"><span className="text-zinc-400 mr-1">{i+1}.</span>{stop.name}</span>
@@ -130,7 +189,6 @@ export default function MapView({
                 </div>
              </div>
 
-             {/* Acciones */}
              <div className="flex gap-2 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <Button onClick={onOptimizeRoute} className="flex-1 text-xs py-2" variant="primary" disabled={routeStops.length === 0}>
                     Optimizar
@@ -154,12 +212,10 @@ export default function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
-        {/* Dibujar la ruta desde Origen a Paradas */}
         {showRoute && routeLine.length > 1 && (
            <Polyline positions={routeLine} color="#10b981" weight={4} dashArray="8, 8" className="animate-pulse" opacity={0.7} />
         )}
 
-        {/* Pin del Origen Activo */}
         {showRoute && activeOrigin?.lat && activeOrigin?.lng && (
             <Marker position={[activeOrigin.lat, activeOrigin.lng]} icon={createOriginPin()}>
                 <Popup><div className="font-bold text-sm">Punto de Salida</div><div className="text-xs text-zinc-500">{activeOrigin.label}</div></Popup>
@@ -167,7 +223,7 @@ export default function MapView({
         )}
 
         {/* Marcadores de Clubes */}
-        {clubs.map((club) => {
+        {displayedClubs.map((club) => {
           const isSelected = selectedId === club.id;
           const routeIndex = routeStops.findIndex(s => s.id === club.id);
           const isInRoute = showRoute && routeIndex !== -1;
@@ -188,13 +244,15 @@ export default function MapView({
               <Popup>
                 <div className="p-1">
                     <div className="text-sm font-bold text-zinc-900">{club.name}</div>
-                    <div className="text-xs text-zinc-500 mb-2">Estado: {club.status}</div>
                     
-                    {/* Botón rápido para añadir a la ruta desde el Popup */}
+                    <div className="text-xs font-bold mt-1 px-1.5 py-0.5 rounded inline-block" style={{ backgroundColor: `${statuses?.find(s => s.id === club.status)?.color}20`, color: statuses?.find(s => s.id === club.status)?.color }}>
+                        {statuses?.find(s => s.id === club.status)?.label || club.status}
+                    </div>
+
                     {showRoute && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); toggleRouteStop(club); }}
-                            className={cn("w-full text-xs font-bold py-1.5 rounded-md transition-colors mt-1", isInRoute ? "bg-red-50 text-red-600 border border-red-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100")}
+                            className={cn("w-full text-xs font-bold py-1.5 rounded-md transition-colors mt-3", isInRoute ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100")}
                         >
                             {isInRoute ? "- Quitar de Ruta" : "+ Añadir a Ruta"}
                         </button>
@@ -202,7 +260,6 @@ export default function MapView({
                 </div>
               </Popup>
 
-              {/* Radio de acción */}
               {isSelected && showRadius && club.status === 'signed' && (
                 <Circle 
                   center={[lat, lng]} 
