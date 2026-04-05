@@ -282,7 +282,7 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                                   </div>
                               </div>
                           ) : (
-                              <p className="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
+                              <p className="whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
                           )}
                        </div>
                      ))}

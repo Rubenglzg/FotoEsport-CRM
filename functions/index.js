@@ -82,7 +82,20 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
             }
 
             // Pedirle a Gemini que resuma el texto
-            const prompt = `Actúa como un asistente CRM. Resume la siguiente transcripción de llamada en un formato estructurado y muy corto. Usa viñetas para: Estado actual, Acuerdos, y Siguientes pasos: "${text}"`;
+            // Pedirle a Gemini que resuma el texto
+            const prompt = `Actúa como un asistente CRM. Resume la siguiente transcripción de llamada. 
+            ES OBLIGATORIO usar exactamente esta estructura con saltos de línea claros:
+            
+            ESTADO ACTUAL:
+            - (Escribe aquí el estado de forma concisa)
+            
+            ACUERDOS:
+            - (Escribe los acuerdos aquí)
+            
+            SIGUIENTES PASOS:
+            - (Escribe los próximos pasos)
+            
+            No uses asteriscos dobles ni negritas de Markdown. Transcripción: "${text}"`;
             
             const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value()}`, {
                 method: "POST",
@@ -101,15 +114,24 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
 
             const summary = geminiData.candidates[0].content.parts[0].text;
 
-            // Guardar en Firebase dentro del historial del club usando la referencia exacta
+            // --- BLOQUE CORREGIDO PARA GUARDAR EN LA RUTA CORRECTA ---
+            const pathParts = targetClubRef.path.split('/');
+            const userId = pathParts[3]; // Extraemos tu ID (rKusHvnMN...) de la ruta
+            
             const interactionId = Date.now().toString();
-            await targetClubRef.collection("interactions").doc(interactionId).set({
+            
+            // Accedemos a la colección 'interactions' del usuario, que es la que escucha el CRM
+            const userInteractionsRef = db.collection("artifacts").doc("fotoesport-crm")
+                                          .collection("users").doc(userId)
+                                          .collection("interactions");
+
+            await userInteractionsRef.doc(interactionId).set({
                 id: interactionId,
-                clubId: targetClubRef.id,
+                clubId: targetClubRef.id, // Guardamos el ID del club (ej: "1") para que el filtro funcione
                 type: "call",
                 user: "Tú (iPhone)",
                 note: summary,
-                date: new Date().toLocaleDateString('es-ES')
+                date: new Date().toLocaleDateString('es-ES') // Usamos el formato de fecha de tu CRM
             });
 
             res.status(200).json({ success: true, message: `Llamada guardada en ${targetClubName}` });
