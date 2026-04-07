@@ -80,10 +80,10 @@ export default function App() {
   const [routeStops, setRouteStops] = useState([]); 
   // NUEVO: Estado para guardar la configuración del Checklist
   const [checklistConfig, setChecklistConfig] = useState([
-      { id: 'logo', label: 'Escudo Vectorial', type: 'global' },
-      { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
-      { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
-  ]);
+        { id: 'logo', label: 'Escudo Vectorial', type: 'global' },
+        { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
+        { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
+]);
 
   // --- GESTOR DE UBICACIONES Y RUTAS ---
   const [savedLocations, setSavedLocations] = useState(() => {
@@ -388,6 +388,21 @@ export default function App() {
           showToast("Error al crear el club", "error");
       }
   };
+
+  const handleUpdateChecklist = async (newChecklist) => {
+    if(!user) return;
+    try {
+        // Guardamos la configuración en el documento de settings del usuario
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), 
+            { checklistConfig: newChecklist }, 
+            { merge: true }
+        );
+        showToast("Configuración de requisitos actualizada", "success");
+    } catch (error) {
+        console.error("Error al actualizar checklist:", error);
+        showToast("Error al guardar la configuración", "error");
+    }
+};
 
   const addTask = async (newTask) => {
       if(!user) return;
