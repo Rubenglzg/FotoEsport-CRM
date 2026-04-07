@@ -263,7 +263,9 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                        <div key={event.id} className="relative group">
                           <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                           <div className="flex justify-between items-baseline mb-1">
-                             <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 capitalize">{event.type}</span>
+                             <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type}
+                            </span>
                              <div className="flex items-center gap-2">
                                  <span className="text-[10px] text-zinc-500">{event.date}</span>
                                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">

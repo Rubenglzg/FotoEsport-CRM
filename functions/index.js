@@ -44,7 +44,7 @@ exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) =
     });
 });
 
-// --- NUEVA FUNCIÓN (Atajo de iOS con Audio) ---
+// --- NUEVA FUNCIÓN (Atajo de iOS con Audio / Script de Windows) ---
 exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) => {
     cors(req, res, () => {
         if (req.method !== 'POST') return res.status(405).send('Solo POST');
@@ -52,13 +52,15 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
         const busboy = Busboy({ headers: req.headers });
         let clubName = "";
         let token = "";
+        let tipoInteraccion = "call"; // <-- NUEVA VARIABLE: Valor por defecto
         let audioBuffer = null;
         let mimeType = "audio/m4a"; // Tipo por defecto para grabaciones de iOS
 
-        // 1. Leer los campos de texto (club y token)
+        // 1. Leer los campos de texto (club, token y tipo)
         busboy.on("field", (fieldname, val) => {
             if (fieldname === "club") clubName = val;
             if (fieldname === "token") token = val;
+            if (fieldname === "tipo") tipoInteraccion = val; // <-- NUEVA LÍNEA PARA DIFERENCIAR LLAMADA O WHATSAPP
         });
 
         // 2. Leer el archivo de audio
@@ -112,7 +114,9 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
                 // Convertimos el audio a base64 para enviarlo junto con el prompt
                 const base64Audio = audioBuffer.toString("base64");
                 
-                const prompt = `Actúa como un asistente CRM. Escucha el audio adjunto de una llamada y escribe un resumen de la conversación. 
+                // <-- PROMPT ACTUALIZADO SEGÚN EL TIPO ELEGIDO -->
+                const tipoTexto = tipoInteraccion === 'whatsapp' ? 'conversación de WhatsApp' : 'llamada telefónica';
+                const prompt = `Actúa como un asistente CRM. Escucha el audio adjunto que resume una ${tipoTexto} y escribe un resumen. 
                 ES OBLIGATORIO usar exactamente esta estructura con saltos de línea claros:
                 
                 ESTADO ACTUAL:
@@ -159,11 +163,12 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
                                               .collection("users").doc(userId)
                                               .collection("interactions");
 
+                // <-- GUARDAMOS EN FIREBASE CON EL TIPO CORRECTO -->
                 await userInteractionsRef.doc(interactionId).set({
                     id: interactionId,
                     clubId: targetClubRef.id,
-                    type: "call",
-                    user: "Tú (iPhone)",
+                    type: tipoInteraccion, // Guarda "call" o "whatsapp" dinámicamente
+                    user: "Tú (Audio)", // Adaptado para que sirva tanto a teléfono como a iPhone
                     note: summary,
                     date: new Date().toLocaleDateString('es-ES')
                 });
