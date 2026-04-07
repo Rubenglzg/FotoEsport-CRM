@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus } from 'lucide-react';
+import { X, Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus, ListChecks } from 'lucide-react';
 import { Button } from './Button';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -9,9 +9,15 @@ import { jwtDecode } from "jwt-decode";
 export default function SettingsModal({ 
     onClose, targetClients, onUpdateTarget, seasons, currentSeason, showToast, 
     googleToken, setGoogleToken, googleEmail, setGoogleEmail,
-    onAddSeason, onEditSeason, onDeleteSeason, onExportSeason 
+    onAddSeason, onEditSeason, onDeleteSeason, onExportSeason,
+    checklistConfig = [],
+    onUpdateChecklist 
 }) {
     const [localTarget, setLocalTarget] = useState(targetClients);
+
+    // Estados para el creador de Checklist
+    const [newChecklistLabel, setNewChecklistLabel] = useState('');
+    const [newChecklistType, setNewChecklistType] = useState('global');
     
     // Estados para el gestor de temporadas
     const [newSeasonInput, setNewSeasonInput] = useState('');
@@ -58,6 +64,23 @@ export default function SettingsModal({
 
     const handleLogout = () => {
         if(window.confirm('¿Seguro que deseas cerrar sesión?')) signOut(auth);
+    };
+
+    const handleAddChecklistItem = () => {
+        if (!newChecklistLabel) return;
+        const newItem = {
+            id: newChecklistLabel.toLowerCase().replace(/\s+/g, '_'),
+            label: newChecklistLabel,
+            type: newChecklistType
+        };
+        onUpdateChecklist([...checklistConfig, newItem]);
+        setNewChecklistLabel('');
+    };
+
+    const handleDeleteChecklistItem = (id) => {
+        if(window.confirm("Si eliminas este campo, dejará de aparecer en las fichas de los clubes. ¿Seguro?")) {
+            onUpdateChecklist(checklistConfig.filter(item => item.id !== id));
+        }
     };
 
     return (
@@ -154,6 +177,56 @@ export default function SettingsModal({
                     </div>
                  </div>
                  <p className="text-[10px] text-zinc-500 mt-2 leading-tight">Nota: Al exportar, se descargará el estado actual del directorio bajo la etiqueta de la temporada seleccionada.</p>
+              </div>
+
+              {/* --- GESTOR DE CHECKLIST (NUEVO) --- */}
+              <div>
+                 <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <ListChecks className="w-4 h-4" /> Checklist de Clubes (Requisitos)
+                 </h3>
+                 <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                    
+                    <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                        {checklistConfig.map(item => (
+                            <div key={item.id} className="flex items-center justify-between p-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.label}</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">
+                                        {item.type === 'global' && '🌍 Una sola vez (Para siempre)'}
+                                        {item.type === 'seasonal' && '🔄 Renovable cada temporada'}
+                                        {item.type === 'contract' && '📜 Contrato (Multi-Temporada)'}
+                                    </span>
+                                </div>
+                                <button onClick={() => handleDeleteChecklistItem(item.id)} className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="p-3 bg-zinc-100 dark:bg-zinc-950/50 border-t border-zinc-200 dark:border-zinc-800 flex gap-2 flex-col">
+                        <div className="flex gap-2">
+                            <input 
+                                value={newChecklistLabel} 
+                                onChange={e => setNewChecklistLabel(e.target.value)} 
+                                placeholder="Ej: Logo Patrocinador..." 
+                                className="flex-1 text-sm px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 dark:text-white outline-none focus:border-emerald-500" 
+                            />
+                            <select 
+                                value={newChecklistType}
+                                onChange={e => setNewChecklistType(e.target.value)}
+                                className="text-xs px-2 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                            >
+                                <option value="global">Para siempre</option>
+                                <option value="seasonal">Por Temporada</option>
+                                <option value="contract">Contrato Especial</option>
+                            </select>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={handleAddChecklistItem} className="w-full">
+                            <Plus className="w-4 h-4 mr-1"/> Añadir Requisito al CRM
+                        </Button>
+                    </div>
+                 </div>
               </div>
 
            </div>

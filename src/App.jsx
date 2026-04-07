@@ -78,6 +78,12 @@ export default function App() {
   const [showRadius, setShowRadius] = useState(false);
   const [showRoute, setShowRoute] = useState(false); 
   const [routeStops, setRouteStops] = useState([]); 
+  // NUEVO: Estado para guardar la configuración del Checklist
+  const [checklistConfig, setChecklistConfig] = useState([
+      { id: 'logo', label: 'Escudo Vectorial', type: 'global' },
+      { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
+      { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
+  ]);
 
   // --- GESTOR DE UBICACIONES Y RUTAS ---
   const [savedLocations, setSavedLocations] = useState(() => {
@@ -152,11 +158,12 @@ export default function App() {
         if (snapshot.exists()) {
             const data = snapshot.data();
             if (data.statuses) setStatuses(data.statuses);
-            
-            // Persistencia de Metas y Temporadas
             if (data.targetClients) setTargetClients(data.targetClients);
             if (data.seasons) setSeasons(data.seasons);
             if (data.currentSeason) setSelectedSeason(data.currentSeason);
+            
+            // NUEVO: Leer configuración del checklist
+            if (data.checklistConfig) setChecklistConfig(data.checklistConfig);
         } else {
             setStatuses(DEFAULT_STATUSES);
         }
@@ -699,7 +706,7 @@ export default function App() {
               onSave={handleCreateClub} 
           />
       )}
-
+        
         {showSettings && (
           <SettingsModal 
               onClose={() => setShowSettings(false)} 
@@ -712,12 +719,13 @@ export default function App() {
               setGoogleToken={setGoogleToken}
               googleEmail={googleEmail}
               setGoogleEmail={setGoogleEmail}
-              
-              // Nuevas funciones del gestor
               onAddSeason={handleAddSeason}
               onEditSeason={handleEditSeason}
               onDeleteSeason={handleDeleteSeason}
               onExportSeason={handleExportSeason}
+        
+              checklistConfig={checklistConfig}
+              onUpdateChecklist={handleUpdateChecklist}
           />
       )}
       
