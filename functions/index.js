@@ -4,6 +4,11 @@ const admin = require("firebase-admin");
 const { google } = require("googleapis");
 const cors = require("cors")({ origin: true });
 
+const Busboy = require("busboy");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
+
 admin.initializeApp();
 
 // 1. Definimos las credenciales
@@ -39,106 +44,143 @@ exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) =
     });
 });
 
-// --- NUEVA FUNCIÓN (Atajo de iOS) ---
+// --- NUEVA FUNCIÓN (Atajo de iOS con Audio) ---
 exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) => {
-    cors(req, res, async () => {
-        try {
-            if (req.method !== 'POST') return res.status(405).send('Solo POST');
+    cors(req, res, () => {
+        if (req.method !== 'POST') return res.status(405).send('Solo POST');
 
-            const { clubName, text, token } = req.body;
-            
-            if (token !== "FOTOESPORT_SECRETO") return res.status(401).send("No autorizado");
-            if (!clubName || !text) return res.status(400).send("Faltan datos");
+        const busboy = Busboy({ headers: req.headers });
+        let clubName = "";
+        let token = "";
+        let audioBuffer = null;
+        let mimeType = "audio/m4a"; // Tipo por defecto para grabaciones de iOS
 
-            const db = admin.firestore();
-            
-            // MAGIA AQUÍ: collectionGroup busca la carpeta 'clubs' sin importar en qué usuario esté
-            const clubsSnapshot = await db.collectionGroup("clubs").get(); 
-            
-            let targetClubRef = null;
-            let targetClubName = "";
-            
-            const normalizarTexto = (texto) => {
-                if (!texto) return "";
-                return String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-            };
+        // 1. Leer los campos de texto (club y token)
+        busboy.on("field", (fieldname, val) => {
+            if (fieldname === "club") clubName = val;
+            if (fieldname === "token") token = val;
+        });
 
-            const inputLimpiado = normalizarTexto(clubName);
+        // 2. Leer el archivo de audio
+        busboy.on("file", (fieldname, file, info) => {
+            if (fieldname === "audio") {
+                mimeType = info.mimeType || mimeType;
+                const chunks = [];
+                file.on("data", (data) => chunks.push(data));
+                file.on("end", () => {
+                    audioBuffer = Buffer.concat(chunks);
+                });
+            }
+        });
 
-            clubsSnapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.name) {
-                    const nombreBDLimpiado = normalizarTexto(data.name);
-                    
-                    if (nombreBDLimpiado.includes(inputLimpiado)) {
-                        targetClubRef = doc.ref; // Guardamos la RUTA EXACTA de este club
-                        targetClubName = data.name;
+        // 3. Cuando termina de recibir todo el formulario...
+        busboy.on("finish", async () => {
+            try {
+                // Verificaciones de seguridad
+                if (token !== "FOTOESPORT_SECRETO") return res.status(401).send("No autorizado");
+                if (!clubName || !audioBuffer) return res.status(400).send("Faltan datos o el archivo de audio");
+
+                const db = admin.firestore();
+                const clubsSnapshot = await db.collectionGroup("clubs").get(); 
+                
+                let targetClubRef = null;
+                let targetClubName = "";
+                
+                const normalizarTexto = (texto) => {
+                    if (!texto) return "";
+                    return String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                };
+
+                const inputLimpiado = normalizarTexto(clubName);
+
+                clubsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.name) {
+                        const nombreBDLimpiado = normalizarTexto(data.name);
+                        if (nombreBDLimpiado.includes(inputLimpiado)) {
+                            targetClubRef = doc.ref;
+                            targetClubName = data.name;
+                        }
                     }
+                });
+
+                if (!targetClubRef) {
+                    return res.status(404).send(`No se encontró el club "${clubName}". Revisa el texto.`);
                 }
-            });
 
-            if (!targetClubRef) {
-                return res.status(404).send(`No se encontró el club "${clubName}". Revisa el texto.`);
+                // 4. Enviar el audio a Gemini 
+                // Convertimos el audio a base64 para enviarlo junto con el prompt
+                const base64Audio = audioBuffer.toString("base64");
+                
+                const prompt = `Actúa como un asistente CRM. Escucha el audio adjunto de una llamada y escribe un resumen de la conversación. 
+                ES OBLIGATORIO usar exactamente esta estructura con saltos de línea claros:
+                
+                ESTADO ACTUAL:
+                - (Escribe aquí el estado de forma concisa)
+                
+                ACUERDOS:
+                - (Escribe los acuerdos aquí)
+                
+                SIGUIENTES PASOS:
+                - (Escribe los próximos pasos)
+                
+                No uses asteriscos dobles ni negritas de Markdown.`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: mimeType, data: base64Audio } }
+                        ]
+                    }]
+                };
+
+                const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value()}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                const geminiData = await geminiRes.json();
+
+                if (!geminiData.candidates) {
+                    console.error(">>> ERROR DESDE GEMINI:", JSON.stringify(geminiData, null, 2));
+                    return res.status(500).send("La IA de Gemini ha fallado. Mira los logs.");
+                }
+
+                const summary = geminiData.candidates[0].content.parts[0].text;
+
+                // 5. Guardar el resumen en Firebase
+                const pathParts = targetClubRef.path.split('/');
+                const userId = pathParts[3]; 
+                
+                const interactionId = Date.now().toString();
+                const userInteractionsRef = db.collection("artifacts").doc("fotoesport-crm")
+                                              .collection("users").doc(userId)
+                                              .collection("interactions");
+
+                await userInteractionsRef.doc(interactionId).set({
+                    id: interactionId,
+                    clubId: targetClubRef.id,
+                    type: "call",
+                    user: "Tú (iPhone)",
+                    note: summary,
+                    date: new Date().toLocaleDateString('es-ES')
+                });
+
+                res.status(200).json({ success: true, message: `Resumen de audio guardado en ${targetClubName}` });
+
+            } catch (error) {
+                console.error(">>> ERROR GRAVE:", error);
+                res.status(500).send("Error interno del servidor");
             }
+        });
 
-            // Pedirle a Gemini que resuma el texto
-            // Pedirle a Gemini que resuma el texto
-            const prompt = `Actúa como un asistente CRM. Resume la siguiente transcripción de llamada. 
-            ES OBLIGATORIO usar exactamente esta estructura con saltos de línea claros:
-            
-            ESTADO ACTUAL:
-            - (Escribe aquí el estado de forma concisa)
-            
-            ACUERDOS:
-            - (Escribe los acuerdos aquí)
-            
-            SIGUIENTES PASOS:
-            - (Escribe los próximos pasos)
-            
-            No uses asteriscos dobles ni negritas de Markdown. Transcripción: "${text}"`;
-            
-            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value()}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            
-            const geminiData = await geminiRes.json();
-
-            // --- NUEVO ESCUDO DE DEPURACIÓN ---
-            if (!geminiData.candidates) {
-                console.error(">>> ERROR DESDE GEMINI:", JSON.stringify(geminiData, null, 2));
-                return res.status(500).send("La IA de Gemini ha fallado. Mira los logs.");
-            }
-            // ----------------------------------
-
-            const summary = geminiData.candidates[0].content.parts[0].text;
-
-            // --- BLOQUE CORREGIDO PARA GUARDAR EN LA RUTA CORRECTA ---
-            const pathParts = targetClubRef.path.split('/');
-            const userId = pathParts[3]; // Extraemos tu ID (rKusHvnMN...) de la ruta
-            
-            const interactionId = Date.now().toString();
-            
-            // Accedemos a la colección 'interactions' del usuario, que es la que escucha el CRM
-            const userInteractionsRef = db.collection("artifacts").doc("fotoesport-crm")
-                                          .collection("users").doc(userId)
-                                          .collection("interactions");
-
-            await userInteractionsRef.doc(interactionId).set({
-                id: interactionId,
-                clubId: targetClubRef.id, // Guardamos el ID del club (ej: "1") para que el filtro funcione
-                type: "call",
-                user: "Tú (iPhone)",
-                note: summary,
-                date: new Date().toLocaleDateString('es-ES') // Usamos el formato de fecha de tu CRM
-            });
-
-            res.status(200).json({ success: true, message: `Llamada guardada en ${targetClubName}` });
-
-        } catch (error) {
-            console.error(">>> ERROR GRAVE:", error);
-            res.status(500).send("Error interno del servidor");
+        // Iniciar el procesado (Funciona tanto para emuladores como para producción en Firebase V2)
+        if (req.rawBody) {
+            busboy.end(req.rawBody);
+        } else {
+            req.pipe(busboy);
         }
     });
 });
