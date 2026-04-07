@@ -74,19 +74,34 @@ export const generateContractFile = (clubName, season) => {
 };
 
 export const exportToCSV = (clubs, seasonName) => {
-    const headers = ["ID", "Club", "Categoria", "Estado", "Ultima Interaccion", "Contacto Principal"];
+    // 1. Añadimos columnas más útiles para que la migración tenga toda la info de contacto
+    const headers = ["ID", "Club", "Categoría", "Estado", "Última Interacción", "Contacto Principal", "Rol", "Teléfono", "Email", "Fecha de Sesión", "Contrato Firmado"];
+    
     const rows = clubs.map(club => {
         const mainContact = club.contacts?.find(c => c.isDecisionMaker) || club.contacts?.[0] || {};
         return [
-            club.id, `"${club.name}"`, club.category, club.status, club.lastInteraction, `"${mainContact?.name || ''}"`
+            club.id, 
+            `"${club.name || ''}"`, 
+            `"${club.category || ''}"`, 
+            `"${club.status || ''}"`, 
+            `"${club.lastInteraction || ''}"`, 
+            `"${mainContact?.name || ''}"`,
+            `"${mainContact?.role || ''}"`,
+            `"${mainContact?.phone || ''}"`,
+            `"${mainContact?.email || ''}"`,
+            `"${club.sessionDate || 'Pendiente'}"`,
+            club.assets?.contractSigned ? "SÍ" : "NO"
         ];
     });
-    const csvContent = [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
+
+    // 2. MAGIA PARA EXCEL: Añadimos "\uFEFF" al principio. Esto se llama BOM (Byte Order Mark) y evita que se rompan las tildes/ñ en Excel.
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
+    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `FotoEsport_Export_${seasonName.replace(' ', '_')}.csv`);
+    link.setAttribute("download", `FotoEsport_Export_${seasonName.replace(/ /g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

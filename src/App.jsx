@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { auth, db } from './lib/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List } from 'lucide-react';
+import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown } from 'lucide-react';
 
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
@@ -146,18 +146,26 @@ export default function App() {
         setInteractions(data.sort((a, b) => b.createdAt - a.createdAt));
     });
 
-    // NUEVO: Suscripción a los Estados Personalizados
+    // NUEVO: Suscripción a los Estados Personalizados y Configuraciones Globales
     const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
     const unsubSettings = onSnapshot(settingsRef, (snapshot) => {
-        if (snapshot.exists() && snapshot.data().statuses) {
-            setStatuses(snapshot.data().statuses);
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.statuses) setStatuses(data.statuses);
+            
+            // Persistencia de Metas y Temporadas
+            if (data.targetClients) setTargetClients(data.targetClients);
+            if (data.seasons) setSeasons(data.seasons);
+            if (data.currentSeason) setSelectedSeason(data.currentSeason);
         } else {
             setStatuses(DEFAULT_STATUSES);
         }
     });
 
-    return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); }; // Añadir unsubSettings()
-  }, [user, isLocked]);
+    return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); };
+  }, [user, isLocked]); // <-- Esta es la línea que seguramente se había borrado
+
+  
 
   // --- LOGICA DE GOOGLE CALENDAR ---
   
@@ -432,21 +440,72 @@ export default function App() {
       showToast("Estados actualizados", "success");
   };
 
-  const handleSeasonRollover = async (nextSeasonName) => {
+
+  // NUEVA FUNCIÓN: Guardar la Meta en Firebase
+  const handleUpdateTargetClients = async (newTarget) => {
       if(!user) return;
-      exportToCSV(clubs, selectedSeason);
-      const batch = writeBatch(db);
-      clubs.forEach(club => {
-          let newStatus = club.status === 'signed' ? 'renewal_pending' : club.status === 'negotiation' ? 'lead' : 'lead';
-          batch.update(doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', club.id), {
-              status: newStatus, lastInteraction: 'Reset', nextContact: null, assets: { hasLogo: false, hasRoster: false, contractSigned: false }, sessionDate: null
-          });
-      });
-      await batch.commit();
-      setSeasons([...seasons, nextSeasonName]);
-      setSelectedSeason(nextSeasonName);
-      setShowSettings(false);
-      showToast(`¡Temporada ${nextSeasonName} iniciada!`);
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { targetClients: Number(newTarget) }, { merge: true });
+      showToast("Objetivos actualizados y guardados en la nube", "success");
+  };
+
+  const handleAddSeason = async (newSeasonName) => {
+      if (!newSeasonName || seasons.includes(newSeasonName)) {
+          showToast("Nombre inválido o la temporada ya existe", "error");
+          return;
+      }
+      const updatedSeasons = [...seasons, newSeasonName];
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { seasons: updatedSeasons }, { merge: true });
+      showToast("Temporada añadida", "success");
+  };
+
+  const handleEditSeason = async (oldName, newName) => {
+      if (!newName || (seasons.includes(newName) && oldName !== newName)) {
+          showToast("Nombre inválido o ya existe", "error");
+          return;
+      }
+      const updatedSeasons = seasons.map(s => s === oldName ? newName : s);
+      const updates = { seasons: updatedSeasons };
+      
+      // Si estamos editando la temporada activa actualmente, la actualizamos también
+      if (selectedSeason === oldName) {
+          updates.currentSeason = newName;
+          setSelectedSeason(newName);
+      }
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), updates, { merge: true });
+      showToast("Temporada actualizada", "success");
+  };
+
+  const handleDeleteSeason = async (seasonName) => {
+      // Advertencia de seguridad estricta
+      if (!window.confirm(`⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}". Si esta temporada tiene datos o resúmenes asociados, se perderán de la lista. Debes confirmar para proceder.`)) return;
+      
+      const updatedSeasons = seasons.filter(s => s !== seasonName);
+      if (updatedSeasons.length === 0) {
+          showToast("Debe quedar al menos una temporada en el CRM", "error");
+          return;
+      }
+      
+      const updates = { seasons: updatedSeasons };
+      if (selectedSeason === seasonName) {
+          updates.currentSeason = updatedSeasons[0];
+          setSelectedSeason(updatedSeasons[0]);
+      }
+      
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), updates, { merge: true });
+      showToast("Temporada eliminada", "success");
+  };
+
+  const handleExportSeason = (seasonName) => {
+      exportToCSV(clubs, seasonName);
+      showToast(`Resumen de ${seasonName} exportado con éxito`, "success");
+  };
+
+  // NUEVO: Cambiar la temporada activa desde el menú y guardarlo
+  const handleActiveSeasonChange = async (newSeason) => {
+      setSelectedSeason(newSeason);
+      if (user) {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { currentSeason: newSeason }, { merge: true });
+      }
   };
 
   // --- NUEVAS FUNCIONES DE GESTIÓN EN App.jsx ---
@@ -584,12 +643,11 @@ export default function App() {
                 {currentView === 'targets' && 'Cuadro de Mando'}
              </h1>
              <div className="h-4 w-[1px] bg-zinc-300 dark:bg-zinc-700"></div>
-             <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-1 pr-3 shadow-sm">
-                <span className="bg-white dark:bg-zinc-800 text-xs px-2 py-1 rounded text-zinc-600 dark:text-zinc-400 uppercase font-bold tracking-wider border border-zinc-200 dark:border-zinc-700">TEMP</span>
-                <select className="bg-transparent text-sm font-semibold outline-none text-zinc-900 dark:text-white cursor-pointer" value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)}>
-                  {seasons.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-             </div>
+             <SeasonSelector 
+                 seasons={seasons} 
+                 selectedSeason={selectedSeason} 
+                 onSelect={handleActiveSeasonChange} 
+             />
              <button onClick={() => setFilterNeedsAttention(!filterNeedsAttention)} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm", filterNeedsAttention ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500 dark:text-red-400" : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400")}>
                 <AlertTriangle className="w-3 h-3" />{filterNeedsAttention ? "Viendo Prioritarios" : "Filtrar Alertas"}
              </button>
@@ -642,12 +700,11 @@ export default function App() {
           />
       )}
 
-      {showSettings && (
+        {showSettings && (
           <SettingsModal 
               onClose={() => setShowSettings(false)} 
               targetClients={targetClients} 
-              setTargetClients={setTargetClients} 
-              onRollover={handleSeasonRollover} 
+              onUpdateTarget={handleUpdateTargetClients} 
               seasons={seasons} 
               currentSeason={selectedSeason} 
               showToast={showToast}
@@ -655,6 +712,12 @@ export default function App() {
               setGoogleToken={setGoogleToken}
               googleEmail={googleEmail}
               setGoogleEmail={setGoogleEmail}
+              
+              // Nuevas funciones del gestor
+              onAddSeason={handleAddSeason}
+              onEditSeason={handleEditSeason}
+              onDeleteSeason={handleDeleteSeason}
+              onExportSeason={handleExportSeason}
           />
       )}
       
@@ -702,4 +765,51 @@ function NavButton({ icon: Icon, isActive, onClick, title }) {
       <Icon size={20} />
     </button>
   );
+}
+
+// Subcomponente de Menú Desplegable para Temporadas
+function SeasonSelector({ seasons, selectedSeason, onSelect }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="relative group">
+            {/* Botón que ves por defecto */}
+            <div 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 shadow-sm hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all cursor-pointer"
+            >
+                <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400">
+                    <CalendarIcon className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold pl-2 pr-6 text-zinc-900 dark:text-white select-none">
+                    {selectedSeason}
+                </span>
+                <ChevronDown className={`w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-500' : 'group-hover:text-emerald-500'}`} />
+            </div>
+
+            {/* Menú Flotante que se despliega */}
+            {isOpen && (
+                <>
+                    {/* Esta capa invisible hace que el menú se cierre si haces clic fuera de él */}
+                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+                    
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                        {seasons.map(s => (
+                            <div 
+                                key={s} 
+                                onClick={() => { onSelect(s); setIsOpen(false); }}
+                                className={`px-4 py-3 text-sm font-bold cursor-pointer transition-colors border-b border-zinc-100 dark:border-zinc-800/50 last:border-0 
+                                ${selectedSeason === s 
+                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
+                                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                }`}
+                            >
+                                {s}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
