@@ -663,12 +663,41 @@ export default function App() {
   // 2. Filtramos sobre la lista ya "estacionalizada"
   const filteredClubs = useMemo(() => filterNeedsAttention ? clubsWithSeasonalStatus.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubsWithSeasonalStatus, [clubsWithSeasonalStatus, filterNeedsAttention]);
   
-  // 3. El cuadro de mando (Objetivos) también usará esta lista para contar solo los firmados de ESE año
-  const stats = useMemo(() => ({ 
-      total: clubsWithSeasonalStatus.length, 
-      signed: clubsWithSeasonalStatus.filter(c => c.status === 'signed').length, 
-      negotiation: clubsWithSeasonalStatus.filter(c => c.status === 'negotiation').length 
-  }), [clubsWithSeasonalStatus]);
+// 3. El cuadro de mando (Objetivos) con estadísticas ampliadas
+  const stats = useMemo(() => {
+      const total = clubsWithSeasonalStatus.length;
+      
+      // Contadores por estado (Soportando la nomenclatura antigua y la de DEFAULT_STATUSES)
+      const signed = clubsWithSeasonalStatus.filter(c => c.status === 'signed' || c.status === 'client').length;
+      const negotiation = clubsWithSeasonalStatus.filter(c => c.status === 'negotiation' || c.status === 'lead').length;
+      const prospect = clubsWithSeasonalStatus.filter(c => c.status === 'prospect').length;
+      const toContact = clubsWithSeasonalStatus.filter(c => c.status === 'to_contact').length;
+      const notInterested = clubsWithSeasonalStatus.filter(c => c.status === 'not_interested' || c.status === 'rejected').length;
+      
+      // Derivados
+      const contacted = total - toContact; // Todos los que no sean 'to_contact'
+      const activeOpportunities = negotiation + prospect; // Clubes en proceso
+      
+      // Distribución por categorías (Deportes)
+      const categories = clubsWithSeasonalStatus.reduce((acc, club) => {
+          const cat = club.category || 'General';
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+      }, {});
+
+      return { 
+          total, 
+          signed, 
+          negotiation, 
+          prospect,
+          toContact,
+          contacted,
+          notInterested,
+          activeOpportunities,
+          categories
+      };
+  }, [clubsWithSeasonalStatus]);
+
   const notifications = useMemo(() => {
       if (clearedNotifications) return [];
       const alerts = [];
