@@ -217,18 +217,22 @@ export default function ClubDetailPanel({
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                      {/* --- PEGAR AQUÍ ABAJO --- */}
-                      <div className="mt-3 flex items-center gap-2">
-                          <Users className="w-4 h-4 text-zinc-400" />
+                        {/* PANEL VISUAL DE JUGADORES */}
+                      <div className="mt-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-2">
+                              <div className="bg-blue-50 dark:bg-blue-500/10 p-1.5 rounded-md text-blue-600 dark:text-blue-400">
+                                  <Users className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Fichas / Jugadores</span>
+                          </div>
                           <input 
                              type="number"
                              value={club.estimatedPlayers || ''}
                              onChange={(e) => onUpdateClub({ ...club, estimatedPlayers: Number(e.target.value) })}
-                             placeholder="Nº Jugadores"
-                             className="text-xs bg-transparent border-b border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 outline-none text-zinc-600 dark:text-zinc-400 w-24 transition-colors"
+                             placeholder="Ej: 300"
+                             className="text-sm font-mono font-bold bg-transparent outline-none text-right text-zinc-900 dark:text-white w-20 border-b-2 border-transparent focus:border-emerald-500 transition-colors"
                           />
                       </div>
-                      {/* --- FIN DEL CÓDIGO PEGADO --- */}
 
                     </div>
                  </div>

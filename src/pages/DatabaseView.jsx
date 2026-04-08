@@ -45,7 +45,7 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
 
 
 export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onUpdateStatuses }) {
-  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'status', 'contact', 'next']);
+  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'status', 'contact', 'next']); 
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   // ESTADOS DE FILTRO Y ORDEN
@@ -62,6 +62,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
   const columns = [
     { id: 'club', label: 'Nombre del Club', flex: 3 },
     { id: 'category', label: 'Categoría', flex: 2 },
+    { id: 'players', label: 'Jugadores', flex: 1 },
     { id: 'status', label: 'Estado', flex: 2 },
     { id: 'contact', label: 'Contacto Principal', flex: 3 },
     { id: 'next', label: 'Prox. Contacto', flex: 2 },
@@ -71,6 +72,8 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
   const sortOptions = [
     { value: 'name-asc', label: 'Nombre (A-Z)' },
     { value: 'name-desc', label: 'Nombre (Z-A)' },
+    { value: 'players-desc', label: 'Jugadores (Mayor a Menor)' },
+    { value: 'players-asc', label: 'Jugadores (Menor a Mayor)' },
     { value: 'status-asc', label: 'Estado (A-Z)' },
     { value: 'status-desc', label: 'Estado (Z-A)' },
     { value: 'category-asc', label: 'Categoría (A-Z)' },
@@ -94,8 +97,13 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
 
       // 2. Ordenar
       filtered.sort((a, b) => {
+          if (sortConfig.key === 'players') {
+              const numA = a.estimatedPlayers || 0;
+              const numB = b.estimatedPlayers || 0;
+              return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+          }
+
           let aValue = '', bValue = '';
-          
           if (sortConfig.key === 'name') {
               aValue = a.name?.toLowerCase() || '';
               bValue = b.name?.toLowerCase() || '';
@@ -319,11 +327,10 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
              return (
                <div key={club.id} onClick={() => onSelect(club)} className="flex items-center p-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group">
                   
-                  {visibleCols.includes('club') && (
-                      <div style={{ flex: columns.find(c=>c.id==='club').flex }} className="flex items-center gap-2 pr-2">
-                         {needsAttention && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" title="Requiere Atención"></div>}
-                         <div className="font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-white transition-colors truncate">
-                             {club.name}
+                    {visibleCols.includes('players') && (
+                      <div style={{ flex: columns.find(c=>c.id==='players').flex }} className="pr-2">
+                         <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
+                             {club.estimatedPlayers || '-'}
                          </div>
                       </div>
                   )}
