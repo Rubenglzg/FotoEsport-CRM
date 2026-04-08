@@ -12,7 +12,8 @@ const fs = require("fs");
 admin.initializeApp();
 
 // 1. Definimos las credenciales
-const CLIENT_ID = "625949033296-4411im6ignisp9qo0mqp2orbovgnua2p.apps.googleusercontent.com";
+const { defineString } = require("firebase-functions/params");
+const CLIENT_ID = defineString("CLIENT_ID");
 const clientSecret = defineSecret("CLIENT_SECRET");
 // Definimos el secreto para Gemini
 const geminiApiKey = defineSecret("GEMINI_API_KEY"); 
@@ -26,7 +27,7 @@ exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) =
             if (!code || !userId) return res.status(400).send("Faltan datos");
 
             const secretValue = clientSecret.value();
-            const oauth2Client = new google.auth.OAuth2(CLIENT_ID, secretValue, REDIRECT_URI);
+            const oauth2Client = new google.auth.OAuth2(CLIENT_ID.value(), secretValue, REDIRECT_URI);
             const { tokens } = await oauth2Client.getToken(code);
 
             if (tokens.refresh_token) {
