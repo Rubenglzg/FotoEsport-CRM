@@ -11,9 +11,11 @@ export default function SettingsModal({
     googleToken, setGoogleToken, googleEmail, setGoogleEmail,
     onAddSeason, onEditSeason, onDeleteSeason, onExportSeason,
     checklistConfig = [],
-    onUpdateChecklist 
+    onUpdateChecklist,
+    ticketMedio, onUpdateTicketMedio
 }) {
     const [localTarget, setLocalTarget] = useState(targetClients);
+    const [localTicket, setLocalTicket] = useState(ticketMedio);
 
     // Estados para el creador de Checklist
     const [newChecklistLabel, setNewChecklistLabel] = useState('');
@@ -55,6 +57,7 @@ export default function SettingsModal({
 
     const handleSaveObjectives = () => { 
         onUpdateTarget(localTarget); 
+        onUpdateTicketMedio(localTicket);
     };
 
     const handleSaveEdit = (oldName) => {
@@ -128,13 +131,17 @@ export default function SettingsModal({
                  </div>
               </div>
 
-              {/* --- OBJETIVOS --- */}
+                {/* --- OBJETIVOS Y FINANZAS --- */}
               <div>
-                 <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">Objetivos</h3>
-                 <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex gap-2 items-end">
+                 <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">Objetivos y Finanzas</h3>
+                 <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex gap-4 items-end">
                     <div className="flex-1">
-                        <label className="text-xs text-zinc-500 block mb-1">Meta de Clubes (Clientes Cerrados)</label>
+                        <label className="text-xs text-zinc-500 block mb-1">Meta Clubes</label>
                         <input type="number" className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-zinc-900 dark:text-white outline-none focus:border-emerald-500" value={localTarget} onChange={(e) => setLocalTarget(e.target.value)}/>
+                    </div>
+                    <div className="flex-1">
+                        <label className="text-xs text-zinc-500 block mb-1">Ticket Medio (€)</label>
+                        <input type="number" className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-zinc-900 dark:text-white outline-none focus:border-emerald-500" value={localTicket} onChange={(e) => setLocalTicket(e.target.value)}/>
                     </div>
                     <Button variant="primary" onClick={handleSaveObjectives}><Save className="w-4 h-4 mr-2"/> Guardar</Button>
                  </div>

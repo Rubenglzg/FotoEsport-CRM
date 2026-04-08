@@ -159,6 +159,7 @@ export default function App() {
             const data = snapshot.data();
             if (data.statuses) setStatuses(data.statuses);
             if (data.targetClients) setTargetClients(data.targetClients);
+            if (data.ticketMedio) setTicketMedio(data.ticketMedio);
             if (data.seasons) setSeasons(data.seasons);
             if (data.checklistConfig) setChecklistConfig(data.checklistConfig);
             
@@ -478,6 +479,14 @@ export default function App() {
       showToast("Objetivos actualizados y guardados en la nube", "success");
   };
 
+  const handleUpdateTicketMedio = async (newTicket) => {
+      if(!user) return;
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { ticketMedio: Number(newTicket) }, { merge: true });
+      showToast("Ticket medio actualizado", "success");
+  };
+
+  const [ticketMedio, setTicketMedio] = useState(15);
+
   const handleAddSeason = async (newSeasonName) => {
       if (!newSeasonName || seasons.includes(newSeasonName)) {
           showToast("Nombre inválido o la temporada ya existe", "error");
@@ -663,40 +672,55 @@ export default function App() {
   // 2. Filtramos sobre la lista ya "estacionalizada"
   const filteredClubs = useMemo(() => filterNeedsAttention ? clubsWithSeasonalStatus.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubsWithSeasonalStatus, [clubsWithSeasonalStatus, filterNeedsAttention]);
   
-// 3. El cuadro de mando (Objetivos) con estadísticas ampliadas
+  // 3. Cuadro de mando con Valor Económico (Pipeline)
   const stats = useMemo(() => {
       const total = clubsWithSeasonalStatus.length;
       
-      // Contadores por estado (Soportando la nomenclatura antigua y la de DEFAULT_STATUSES)
-      const signed = clubsWithSeasonalStatus.filter(c => c.status === 'signed' || c.status === 'client').length;
-      const negotiation = clubsWithSeasonalStatus.filter(c => c.status === 'negotiation' || c.status === 'lead').length;
-      const prospect = clubsWithSeasonalStatus.filter(c => c.status === 'prospect').length;
-      const toContact = clubsWithSeasonalStatus.filter(c => c.status === 'to_contact').length;
-      const notInterested = clubsWithSeasonalStatus.filter(c => c.status === 'not_interested' || c.status === 'rejected').length;
+      // CONFIGURACIÓN: Beneficio medio estimado por cada ficha/jugador del club
+      const TICKET_MEDIO = ticketMedio;
       
-      // Derivados
-      const contacted = total - toContact; // Todos los que no sean 'to_contact'
-      const activeOpportunities = negotiation + prospect; // Clubes en proceso
+      let signed = 0, negotiation = 0, prospect = 0, toContact = 0, notInterested = 0;
+      let pipelineValue = 0, closedValue = 0;
       
-      // Distribución por categorías (Deportes)
-      const categories = clubsWithSeasonalStatus.reduce((acc, club) => {
+      const categories = {};
+
+      clubsWithSeasonalStatus.forEach(club => {
+          const status = club.status;
+          
+          // Si el club aún no tiene 'estimatedPlayers', usamos 0 por defecto
+          const players = club.estimatedPlayers || 0; 
+          const clubValue = players * TICKET_MEDIO;
+
+          // Contabilizamos estados y sumamos dinero
+          if (status === 'signed' || status === 'client') {
+              signed++;
+              closedValue += clubValue;
+          } else if (status === 'negotiation' || status === 'lead') {
+              negotiation++;
+              pipelineValue += clubValue; // Valor de oportunidades calientes
+          } else if (status === 'prospect') {
+              prospect++;
+              pipelineValue += (clubValue * 0.3); // Oportunidades frías ponderadas al 30%
+          } else if (status === 'to_contact') {
+              toContact++;
+          } else if (status === 'not_interested' || status === 'rejected') {
+              notInterested++;
+          }
+
+          // Agrupación por deporte
           const cat = club.category || 'General';
-          acc[cat] = (acc[cat] || 0) + 1;
-          return acc;
-      }, {});
+          categories[cat] = (categories[cat] || 0) + 1;
+      });
+
+      const contacted = total - toContact;
+      const activeOpportunities = negotiation + prospect;
 
       return { 
-          total, 
-          signed, 
-          negotiation, 
-          prospect,
-          toContact,
-          contacted,
-          notInterested,
-          activeOpportunities,
-          categories
+          total, signed, negotiation, prospect, toContact, contacted, notInterested, 
+          activeOpportunities, categories,
+          pipelineValue, closedValue // NUEVAS VARIABLES FINANCIERAS
       };
-  }, [clubsWithSeasonalStatus]);
+  }, [clubsWithSeasonalStatus, ticketMedio]);
 
   const notifications = useMemo(() => {
       if (clearedNotifications) return [];
@@ -756,7 +780,7 @@ export default function App() {
         />;
 
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
-      case 'targets': return <TargetsView stats={stats} targetClients={targetClients} />;
+      case 'targets': return <TargetsView stats={stats} targetClients={targetClients} ticketMedio={ticketMedio} />;
       default: return <MapView clubs={filteredClubs} />;
     }
   };
@@ -877,6 +901,8 @@ export default function App() {
         
               checklistConfig={checklistConfig}
               onUpdateChecklist={handleUpdateChecklist}
+              ticketMedio={ticketMedio}
+              onUpdateTicketMedio={handleUpdateTicketMedio}
           />
       )}
       

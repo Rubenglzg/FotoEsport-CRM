@@ -6,6 +6,7 @@ export default function NewClubModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: '',
     category: 'Fútbol',
+    estimatedPlayers: '',
     genericEmail: '',
     genericPhone: '',
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true }]
@@ -48,9 +49,9 @@ export default function NewClubModal({ onClose, onSave }) {
                      value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase">Email Genérico</label>
-              <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
-                     value={formData.genericEmail} onChange={e => setFormData({...formData, genericEmail: e.target.value})} />
+              <label className="text-xs font-bold text-zinc-500 uppercase">Fichas / Jugadores Aprox.</label>
+              <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
+                     value={formData.estimatedPlayers} onChange={e => setFormData({...formData, estimatedPlayers: Number(e.target.value)})} placeholder="Ej: 350" />
             </div>
             <div>
               <label className="text-xs font-bold text-zinc-500 uppercase">Teléfono Genérico</label>

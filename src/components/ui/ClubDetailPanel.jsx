@@ -194,7 +194,7 @@ export default function ClubDetailPanel({
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
-              {/* CABECERA (NOMBRE Y ESTADO) */}
+                {/* CABECERA (NOMBRE Y ESTADO) */}
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
                  <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
                  <div className="flex items-start gap-4 mb-2 pr-6">
@@ -216,6 +216,20 @@ export default function ClubDetailPanel({
                       >
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
+
+                      {/* --- PEGAR AQUÍ ABAJO --- */}
+                      <div className="mt-3 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-zinc-400" />
+                          <input 
+                             type="number"
+                             value={club.estimatedPlayers || ''}
+                             onChange={(e) => onUpdateClub({ ...club, estimatedPlayers: Number(e.target.value) })}
+                             placeholder="Nº Jugadores"
+                             className="text-xs bg-transparent border-b border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 outline-none text-zinc-600 dark:text-zinc-400 w-24 transition-colors"
+                          />
+                      </div>
+                      {/* --- FIN DEL CÓDIGO PEGADO --- */}
+
                     </div>
                  </div>
               </div>
