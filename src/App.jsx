@@ -160,10 +160,18 @@ export default function App() {
             if (data.statuses) setStatuses(data.statuses);
             if (data.targetClients) setTargetClients(data.targetClients);
             if (data.seasons) setSeasons(data.seasons);
-            if (data.currentSeason) setSelectedSeason(data.currentSeason);
-            
-            // NUEVO: Leer configuración del checklist
             if (data.checklistConfig) setChecklistConfig(data.checklistConfig);
+            
+            // Leemos la temporada activa oficial (con retrocompatibilidad)
+            const seasonOficial = data.activeSeason || data.currentSeason || '2024-2025';
+            setActiveSeason(seasonOficial);
+            
+            // TRUCO: Solo la primera vez que carga la app, forzamos que tu vista 
+            // sea la temporada oficial para que no salte el aviso naranja.
+            if (!window.hasLoadedInitialSeason) {
+                setSelectedSeason(seasonOficial);
+                window.hasLoadedInitialSeason = true;
+            }
         } else {
             setStatuses(DEFAULT_STATUSES);
         }
@@ -498,7 +506,6 @@ export default function App() {
   };
 
   const handleDeleteSeason = async (seasonName) => {
-      // Advertencia de seguridad estricta
       if (!window.confirm(`⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}". Si esta temporada tiene datos o resúmenes asociados, se perderán de la lista. Debes confirmar para proceder.`)) return;
       
       const updatedSeasons = seasons.filter(s => s !== seasonName);
@@ -508,8 +515,15 @@ export default function App() {
       }
       
       const updates = { seasons: updatedSeasons };
+      
+      // Si justo has borrado la temporada OFICIAL, nombramos oficial a la primera que quede
+      if (activeSeason === seasonName) {
+          updates.activeSeason = updatedSeasons[0];
+          setActiveSeason(updatedSeasons[0]);
+      }
+      
+      // Si estabas VIENDO la temporada que acabas de borrar, cambiamos tu vista
       if (selectedSeason === seasonName) {
-          updates.currentSeason = updatedSeasons[0];
           setSelectedSeason(updatedSeasons[0]);
       }
       
@@ -562,8 +576,25 @@ export default function App() {
     };
 
   // --- DATOS DERIVADOS ---
-  const filteredClubs = useMemo(() => filterNeedsAttention ? clubs.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubs, [clubs, filterNeedsAttention]);
-  const stats = useMemo(() => ({ total: clubs.length, signed: clubs.filter(c => c.status === 'signed').length, negotiation: clubs.filter(c => c.status === 'negotiation').length }), [clubs]);
+  
+  // 1. Inyectamos a cada club el estado correspondiente a la temporada seleccionada arriba
+  const clubsWithSeasonalStatus = useMemo(() => {
+      return clubs.map(club => ({
+          ...club,
+          // Si tiene un estado para esta temporada lo usa, si no, usa el antiguo global o 'to_contact'
+          status: club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact'
+      }));
+  }, [clubs, selectedSeason]);
+
+  // 2. Filtramos sobre la lista ya "estacionalizada"
+  const filteredClubs = useMemo(() => filterNeedsAttention ? clubsWithSeasonalStatus.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubsWithSeasonalStatus, [clubsWithSeasonalStatus, filterNeedsAttention]);
+  
+  // 3. El cuadro de mando (Objetivos) también usará esta lista para contar solo los firmados de ESE año
+  const stats = useMemo(() => ({ 
+      total: clubsWithSeasonalStatus.length, 
+      signed: clubsWithSeasonalStatus.filter(c => c.status === 'signed').length, 
+      negotiation: clubsWithSeasonalStatus.filter(c => c.status === 'negotiation').length 
+  }), [clubsWithSeasonalStatus]);
   const notifications = useMemo(() => {
       if (clearedNotifications) return [];
       const alerts = [];
@@ -709,6 +740,8 @@ export default function App() {
                 onUpdateInteraction={handleUpdateInteraction}
                 onDeleteInteraction={handleDeleteInteraction}
                 statuses={statuses}
+                // 👇 AÑADE ESTA LÍNEA 👇
+                checklistConfig={checklistConfig} 
             />
         }
       </aside>

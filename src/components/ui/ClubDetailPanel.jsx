@@ -3,7 +3,12 @@ import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Tr
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI } from '../../utils/helpers';
 
-export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, interactions, onAddInteraction, currentSeason, onDeleteClub, onUpdateInteraction, onDeleteInteraction, statuses }) {
+export default function ClubDetailPanel({ 
+    club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, 
+    interactions, onAddInteraction, currentSeason, onDeleteClub, 
+    onUpdateInteraction, onDeleteInteraction, statuses, 
+    checklistConfig = [] 
+    }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('call');
     const [nextDate, setNextDate] = useState("");
@@ -27,9 +32,43 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
 
     // Lógicas de Actualización del Club
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
-    const handleStatusChange = (e) => onUpdateClub({...club, status: e.target.value});
+    // Leemos el estado de la temporada actual
+    const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
+
+    // Guardamos el cambio dentro del registro de la temporada
+    const handleStatusChange = (e) => {
+        onUpdateClub({
+            ...club, 
+            seasonStatuses: {
+                ...club.seasonStatuses,
+                [currentSeason]: e.target.value
+            }
+        });
+    };
     const handleSaveContacts = () => onUpdateClub({...club, contacts});
-    const toggleAsset = (assetKey) => onUpdateClub({ ...club, assets: { ...club.assets, [assetKey]: !club.assets[assetKey] } });
+    const getAssetValue = (item) => {
+        // Si es por temporada, buscamos con el prefijo de la temporada actual
+        if (item.type === 'seasonal') return club.assets?.[`${currentSeason}_${item.id}`];
+        // Si es global o contrato, es para siempre (hasta que expire)
+        return club.assets?.[item.id];
+    };
+
+    const toggleDynamicAsset = (item) => {
+        const isChecked = getAssetValue(item);
+        let updates = { ...club.assets };
+        
+        if (item.type === 'seasonal') {
+            updates[`${currentSeason}_${item.id}`] = !isChecked;
+        } else {
+            updates[item.id] = !isChecked;
+        }
+        
+        onUpdateClub({ ...club, assets: updates });
+    };
+
+    const updateContractDuration = (itemId, years) => {
+        onUpdateClub({ ...club, assets: { ...club.assets, [`${itemId}_duration`]: years } });
+    };
 
     // Gestión de Contactos
     const handleAddContact = () => setContacts([...contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }]);
@@ -140,7 +179,7 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                          placeholder="Nombre del Club"
                       />
                       <select 
-                         value={club.status || 'to_contact'} 
+                         value={currentStatus}
                          onChange={handleStatusChange}
                          className="mt-1 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded py-1 px-2 outline-none text-zinc-700 dark:text-zinc-300 font-bold cursor-pointer shadow-sm"
                       >
@@ -194,25 +233,60 @@ export default function ClubDetailPanel({ club, onUpdateClub, onClose, activeTab
                           </div>
                       </div>
 
-                      {/* Assets y Contrato */}
+                      {/* Assets y Contrato DINÁMICO */}
                       <div>
-                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Requisitos y Contrato</h4>
+                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest flex justify-between">
+                              <span>Requisitos y Contrato</span>
+                              <span className="text-emerald-500">{currentSeason}</span>
+                          </h4>
                           <button onClick={() => generateContractFile(club.name, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-all mb-4">
                               <FileSignature className="w-4 h-4 text-blue-500" />
                               <span className="text-sm font-bold text-zinc-800 dark:text-white">Generar Contrato PDF</span>
                           </button>
                           
                           <div className="space-y-2">
-                              {['hasLogo', 'hasRoster', 'contractSigned'].map(key => (
-                                  <div key={key} onClick={() => toggleAsset(key)} className={cn("flex items-center gap-3 p-2 rounded cursor-pointer border transition-all", club.assets?.[key] ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30" : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800")}>
-                                      <div className={cn("w-4 h-4 rounded border flex items-center justify-center", club.assets?.[key] ? "bg-emerald-500 border-emerald-500 text-white dark:text-black" : "bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600")}>
-                                          {club.assets?.[key] && <CheckCircle2 className="w-3 h-3"/>}
+                              {checklistConfig.map(item => {
+                                  const isChecked = getAssetValue(item);
+                                  
+                                  return (
+                                      <div key={item.id} className={cn("flex flex-col gap-2 p-2.5 rounded border transition-all", isChecked ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30" : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800")}>
+                                          
+                                          {/* Check Principal */}
+                                          <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleDynamicAsset(item)}>
+                                              <div className={cn("w-4 h-4 rounded border flex items-center justify-center flex-shrink-0", isChecked ? "bg-emerald-500 border-emerald-500 text-white dark:text-black" : "bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600")}>
+                                                  {isChecked && <CheckCircle2 className="w-3 h-3"/>}
+                                              </div>
+                                              <div className="flex flex-col">
+                                                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                                                      {item.label}
+                                                  </span>
+                                                  <span className="text-[9px] uppercase tracking-wider text-zinc-500">
+                                                      {item.type === 'global' ? '🌍 Para siempre' : item.type === 'seasonal' ? '🔄 Renovación Anual' : '📜 Documento Legal'}
+                                                  </span>
+                                              </div>
+                                          </div>
+
+                                          {/* Selector de Duración (Solo si es Contrato y está marcado) */}
+                                          {item.type === 'contract' && isChecked && (
+                                              <div className="pl-7 pt-2 mt-1 border-t border-emerald-200/50 dark:border-emerald-500/20 flex items-center gap-2">
+                                                  <label className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Válido por:</label>
+                                                  <select 
+                                                      value={club.assets?.[`${item.id}_duration`] || 1}
+                                                      onChange={(e) => updateContractDuration(item.id, parseInt(e.target.value))}
+                                                      className="text-xs bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-500/30 rounded px-1.5 py-1 outline-none focus:border-emerald-500 text-zinc-800 dark:text-zinc-200 font-bold"
+                                                  >
+                                                      <option value={1}>1 Temporada (Solo {currentSeason})</option>
+                                                      <option value={2}>2 Temporadas</option>
+                                                      <option value={3}>3 Temporadas</option>
+                                                      <option value={4}>4 Temporadas</option>
+                                                      <option value={5}>5 Temporadas</option>
+                                                  </select>
+                                              </div>
+                                          )}
+                                          
                                       </div>
-                                      <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                          {key === 'hasLogo' ? 'Escudo Vectorial' : key === 'hasRoster' ? 'Listado Jugadores' : 'Contrato Firmado'}
-                                      </span>
-                                  </div>
-                              ))}
+                                  );
+                              })}
                           </div>
                       </div>
 
