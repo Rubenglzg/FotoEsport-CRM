@@ -814,8 +814,8 @@ export default function App() {
                 onUpdateInteraction={handleUpdateInteraction}
                 onDeleteInteraction={handleDeleteInteraction}
                 statuses={statuses}
-                // 👇 AÑADE ESTA LÍNEA 👇
-                checklistConfig={checklistConfig} 
+                checklistConfig={checklistConfig}
+                seasons={seasons} 
             />
         }
       </aside>

@@ -7,7 +7,8 @@ export default function ClubDetailPanel({
     club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, 
     interactions, onAddInteraction, currentSeason, onDeleteClub, 
     onUpdateInteraction, onDeleteInteraction, statuses, 
-    checklistConfig = [] 
+    checklistConfig = [],
+    seasons = []
     }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('call');
@@ -47,9 +48,31 @@ export default function ClubDetailPanel({
     };
     const handleSaveContacts = () => onUpdateClub({...club, contacts});
     const getAssetValue = (item) => {
-        // Si es por temporada, buscamos con el prefijo de la temporada actual
+        // 1. Requisitos anuales (Ej: Plantillas)
         if (item.type === 'seasonal') return club.assets?.[`${currentSeason}_${item.id}`];
-        // Si es global o contrato, es para siempre (hasta que expire)
+        
+        // 2. Requisitos de Contrato (El cálculo matemático)
+        if (item.type === 'contract') {
+            const isGloballyMarked = club.assets?.[item.id];
+            if (!isGloballyMarked) return false; // Si nunca se firmó, es false
+
+            const duration = club.assets?.[`${item.id}_duration`] || 1;
+            const startSeason = club.assets?.[`${item.id}_startSeason`] || currentSeason;
+
+            const startIndex = seasons.indexOf(startSeason);
+            const currentIndex = seasons.indexOf(currentSeason);
+
+            if (startIndex === -1 || currentIndex === -1) return false;
+
+            // Diferencia en años desde que se firmó hasta el año que estás mirando en la barra superior
+            const yearsPassed = currentIndex - startIndex;
+
+            // El contrato es válido SI: no estás mirando al pasado (antes de que se firmara) 
+            // Y SI los años pasados son menores a la duración del contrato.
+            return yearsPassed >= 0 && yearsPassed < duration;
+        }
+
+        // 3. Requisitos Globales para siempre (Ej: Logo)
         return club.assets?.[item.id];
     };
 
