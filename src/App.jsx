@@ -483,9 +483,83 @@ export default function App() {
           showToast("Nombre inválido o la temporada ya existe", "error");
           return;
       }
+
       const updatedSeasons = [...seasons, newSeasonName];
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { seasons: updatedSeasons }, { merge: true });
-      showToast("Temporada añadida", "success");
+      const previousSeason = activeSeason; // Usamos la que era oficial hasta ahora
+      
+      showToast("Creando temporada y calculando estados...", "info");
+
+      try {
+          // Usamos un Batch para actualizar todos los clubes a la vez sin saturar Firebase
+          const batch = writeBatch(db);
+
+          clubs.forEach(club => {
+              // 1. Vemos qué estado tenía el club en el año anterior
+              const prevStatus = club.seasonStatuses?.[previousSeason] || club.status || 'to_contact';
+              let newStatus = 'to_contact';
+
+              // 2. APLICAMOS TU LÓGICA DE DEGRADACIÓN
+              if (prevStatus === 'rejected') { 
+                  newStatus = 'rejected'; // No interesa -> No interesa
+                  
+              } else if (prevStatus === 'to_contact') {
+                  newStatus = 'to_contact'; // Por contactar -> Por contactar
+                  
+              } else if (prevStatus === 'prospect') {
+                  newStatus = 'to_contact'; // Posible cliente -> Por contactar (Se enfrió)
+                  
+              } else if (prevStatus === 'lead' || prevStatus === 'negotiation') {
+                  newStatus = 'prospect'; // Lead -> Posible cliente
+                  
+              } else if (prevStatus === 'signed') {
+                  // CLIENTE: Aquí viene la magia del contrato
+                  let isContractValid = false;
+                  
+                  // Buscamos si hay algún requisito tipo contrato en la config
+                  const contractItem = checklistConfig.find(item => item.type === 'contract');
+                  
+                  if (contractItem && club.assets?.[contractItem.id]) {
+                      const duration = club.assets[`${contractItem.id}_duration`] || 1;
+                      const startSeason = club.assets[`${contractItem.id}_startSeason`] || previousSeason;
+                      
+                      // Buscamos en qué posición están las temporadas en la lista
+                      const startIndex = updatedSeasons.indexOf(startSeason);
+                      const newSeasonIndex = updatedSeasons.indexOf(newSeasonName);
+                      
+                      // Si la diferencia de años es menor a lo que dura el contrato, sigue vigente
+                      if (startIndex !== -1 && newSeasonIndex !== -1 && (newSeasonIndex - startIndex) < duration) {
+                          isContractValid = true;
+                      }
+                  }
+
+                  // Si el contrato sigue vivo, se mantiene Cliente. Si caducó, baja a Lead.
+                  newStatus = isContractValid ? 'signed' : 'lead';
+              }
+
+              // 3. Preparamos la actualización del estado para este club en la nueva temporada
+              const clubRef = doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', club.id);
+              batch.update(clubRef, {
+                  [`seasonStatuses.${newSeasonName}`]: newStatus
+              });
+          });
+
+          // 4. Actualizamos la lista global de temporadas y pasamos a la nueva
+          const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
+          batch.update(settingsRef, { 
+              seasons: updatedSeasons,
+              activeSeason: newSeasonName // Opcional: auto-activa la nueva temporada
+          });
+
+          await batch.commit(); // Ejecutamos todas las escrituras a la vez
+          
+          setActiveSeason(newSeasonName);
+          setSelectedSeason(newSeasonName); // Cambiamos la vista automáticamente
+          showToast(`Temporada ${newSeasonName} lista. Estados actualizados.`, "success");
+
+      } catch (error) {
+          console.error("Error calculando nueva temporada:", error);
+          showToast("Error al procesar los clubes", "error");
+      }
   };
 
   const handleEditSeason = async (oldName, newName) => {

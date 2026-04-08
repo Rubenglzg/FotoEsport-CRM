@@ -53,7 +53,7 @@ export default function ClubDetailPanel({
         return club.assets?.[item.id];
     };
 
-    const toggleDynamicAsset = (item) => {
+   const toggleDynamicAsset = (item) => {
         const isChecked = getAssetValue(item);
         let updates = { ...club.assets };
         
@@ -61,6 +61,14 @@ export default function ClubDetailPanel({
             updates[`${currentSeason}_${item.id}`] = !isChecked;
         } else {
             updates[item.id] = !isChecked;
+            
+            // NUEVO: Si es un contrato y lo estás marcando como hecho, guarda la temporada inicial
+            if (item.type === 'contract' && !isChecked) {
+                updates[`${item.id}_startSeason`] = currentSeason;
+                if (!updates[`${item.id}_duration`]) {
+                    updates[`${item.id}_duration`] = 1; // Por defecto 1 año
+                }
+            }
         }
         
         onUpdateClub({ ...club, assets: updates });
