@@ -52,7 +52,7 @@ export default function NewClubModal({ onClose, onSave }) {
             </div>
             
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase">Fichas Aprox.</label>
+              <label className="text-xs font-bold text-zinc-500 uppercase">Jugadores Aprox.</label>
               <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
                      value={formData.estimatedPlayers} onChange={e => setFormData({...formData, estimatedPlayers: Number(e.target.value)})} placeholder="Ej: 350" />
             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { auth, db } from './lib/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles } from 'lucide-react';
+import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles, Kanban } from 'lucide-react'; // <-- Añade Kanban aquí
 
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
@@ -15,6 +15,7 @@ import DatabaseView from './pages/DatabaseView';
 import CalendarView from './pages/CalendarView';
 import TargetsView from './pages/TargetsView';
 import OverviewView from './pages/OverviewView';
+import PipelineView from './pages/PipelineView';
 
 // --- COMPONENTES UI ---
 import { Button } from './components/ui/Button';
@@ -833,6 +834,14 @@ export default function App() {
             onUpdateStatuses={handleUpdateStatuses} 
         />;
 
+        case 'pipeline': return <PipelineView 
+            clubs={filteredClubs} 
+            statuses={statuses} 
+            onUpdateClub={handleUpdateClub} 
+            onSelect={setSelectedClub} 
+            selectedSeason={selectedSeason} 
+        />;
+
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} ticketMedio={ticketMedio} clubs={clubs} />;
       default: return <MapView clubs={filteredClubs} />;
@@ -848,6 +857,7 @@ export default function App() {
         <nav className="flex flex-col gap-3 w-full px-2 mt-4">
             <NavButton icon={Sparkles} isActive={currentView === 'overview'} onClick={() => setCurrentView('overview')} title="Asistente IA" />
           <NavButton icon={Map} isActive={currentView === 'map'} onClick={() => setCurrentView('map')} title="Mapa" />
+          <NavButton icon={Kanban} isActive={currentView === 'pipeline'} onClick={() => setCurrentView('pipeline')} title="Pipeline Kanban" />
           <NavButton icon={List} isActive={currentView === 'database'} onClick={() => setCurrentView('database')} title="Base de Datos" />
           <NavButton icon={CalendarIcon} isActive={currentView === 'calendar'} onClick={() => setCurrentView('calendar')} title="Calendario" />
           <NavButton icon={Target} isActive={currentView === 'targets'} onClick={() => setCurrentView('targets')} title="Objetivos" />
@@ -873,6 +883,7 @@ export default function App() {
            <div className="flex items-center gap-4">
              <h1 className="text-lg font-bold uppercase tracking-wide text-zinc-800 dark:text-white">
                 {currentView === 'map' && 'Mapa Táctico'}
+                {currentView === 'pipeline' && 'Pipeline de Ventas'}
                 {currentView === 'database' && 'Directorio'}
                 {currentView === 'calendar' && 'Planificación'}
                 {currentView === 'targets' && 'Cuadro de Mando'}
