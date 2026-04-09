@@ -131,3 +131,50 @@ export const summarizeWithAI = async (text) => {
     throw error;
   }
 };
+
+export const predictDateWithAI = async (historyText) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Falta la API Key de Gemini");
+
+  const prompt = `
+  Eres un asistente de ventas experto en un CRM de fotografía deportiva.
+  Analiza el siguiente historial de interacciones con un club deportivo y decide en qué fecha exacta se debería volver a contactar con ellos para hacer seguimiento.
+  
+  Reglas estrictas:
+  - Si en la conversación dicen "hablamos en septiembre", calcula una fecha a principios de septiembre.
+  - Si dicen "están de vacaciones", dales 3 o 4 semanas.
+  - Si la conversación fue positiva pero sin cierre, dales 7-10 días.
+  - Fecha de HOY: ${new Date().toISOString().split('T')[0]}
+  
+  Historial del club:
+  ${historyText}
+  
+  IMPORTANTE: Tu respuesta debe ser ÚNICAMENTE la fecha en formato YYYY-MM-DD. No escribas nada más, ni texto introductorio, ni explicaciones. Solo la fecha (ejemplo: 2024-05-20).
+  `;
+
+  try {
+    // Usamos el mismo método fetch que en summarizeWithAI
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+    
+    const data = await response.json();
+    const responseText = data.candidates[0].content.parts[0].text.trim();
+    
+    // Validación básica para asegurarnos de que devolvió una fecha YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRegex.test(responseText)) {
+        return responseText;
+    } else {
+        // Si la IA falló y devolvió texto extra, intentamos extraer solo la fecha
+        const match = responseText.match(/\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : null;
+    }
+    
+  } catch (error) {
+    console.error("Error en la llamada a Gemini (Predicción):", error);
+    return null;
+  }
+};

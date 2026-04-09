@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles } from 'lucide-react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield } from 'lucide-react';
 import { Button } from './Button';
-import { cn, generateContractFile, summarizeWithAI } from '../../utils/helpers';
+import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
 export default function ClubDetailPanel({ 
     club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, 
@@ -17,6 +17,40 @@ export default function ClubDetailPanel({
     const [isRecording, setIsRecording] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [isSuggestingDate, setIsSuggestingDate] = useState(false);
+
+    const handleAIPredictDate = async () => {
+        setIsSuggestingDate(true);
+        try {
+            // 1. Recopilamos el historial de interacciones para darle contexto a Gemini
+            const historyText = interactions
+                .map(i => `Fecha: ${i.date} | Vía: ${i.type} | Nota: ${i.note}`)
+                .join('\n');
+
+            // 2. Si es un club nuevo sin interacciones, ponemos 14 días por defecto
+            if (!historyText.trim()) {
+                const newDate = new Date();
+                newDate.setDate(newDate.getDate() + 14); 
+                onUpdateClub({...club, recommendedContactDate: newDate.toISOString().split('T')[0]});
+                setIsSuggestingDate(false);
+                return;
+            }
+
+            // 3. LLAMADA REAL A LA API DE GEMINI
+            const predictedDate = await predictDateWithAI(historyText);
+            
+            // 4. Guardamos la fecha devuelta por la IA
+            if (predictedDate) {
+                onUpdateClub({...club, recommendedContactDate: predictedDate});
+            } else {
+                throw new Error("Formato de fecha devuelto incorrecto");
+            }
+        } catch (error) {
+            console.error("Error al predecir fecha:", error);
+            alert("Hubo un error al conectar con Gemini para la predicción.");
+        } finally {
+            setIsSuggestingDate(false);
+        }
+    };
     
     // Estados de Edición Local
     const [tempName, setTempName] = useState(club.name);
@@ -270,6 +304,18 @@ export default function ClubDetailPanel({
                               </div>
                           </div>
                       </div>
+                      {/* PANEL VISUAL DE EQUIPOS BASE */}
+                      <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
+                              <input type="number" value={club.totalTeams || ''} onChange={(e) => onUpdateClub({ ...club, totalTeams: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 15" />
+                          </div>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
+                              <input type="text" value={club.baseTeams || ''} onChange={(e) => onUpdateClub({ ...club, baseTeams: e.target.value })} className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white truncate" placeholder="Alevín, Juvenil..." title={club.baseTeams} />
+                          </div>
+                      </div>
+                      
                       {/* Contactos Editables */}
                       <div>
                         <div className="flex justify-between items-center mb-3">

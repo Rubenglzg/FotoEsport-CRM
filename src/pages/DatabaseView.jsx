@@ -358,6 +358,16 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
+                  {/* 4. Equipos (NUEVO) */}
+                  {visibleCols.includes('teams') && (
+                      <div style={{ flex: columns.find(c=>c.id==='teams').flex }} className="pr-2">
+                          <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200">{club.totalTeams || '0'}</span> Totales
+                              <div className="text-[10px] text-zinc-400 truncate w-[120px]" title={club.baseTeams}>{club.baseTeams || 'Sin base listada'}</div>
+                          </div>
+                      </div>
+                  )}
+
                   {/* 4. Estado */}
                   {visibleCols.includes('status') && (
                       <div style={{ flex: columns.find(c=>c.id==='status').flex }} className="pr-2">
@@ -373,10 +383,25 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 6. Próximo Contacto */}
-                  {visibleCols.includes('next') && (
-                      <div style={{ flex: columns.find(c=>c.id==='next').flex }} className="text-right text-xs font-mono text-zinc-400 pr-4">
-                          {club.nextContact || '-'}
+                    {/* 6. Último Contacto (NUEVO) */}
+                  {visibleCols.includes('lastContact') && (
+                      <div style={{ flex: columns.find(c=>c.id==='lastContact').flex }} className="pr-2">
+                         <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                             {club.lastContactDate || '-'}
+                         </div>
+                      </div>
+                  )}
+
+                  {/* 7. Fecha Recomendada IA (NUEVO) */}
+                  {visibleCols.includes('recommendedDate') && (
+                      <div style={{ flex: columns.find(c=>c.id==='recommendedDate').flex }} className="pr-4 text-right">
+                          {club.recommendedContactDate ? (
+                              <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-900/50">
+                                  <Sparkles className="w-3 h-3"/> {club.recommendedContactDate}
+                              </div>
+                          ) : (
+                              <span className="text-xs text-zinc-400">-</span>
+                          )}
                       </div>
                   )}
                </div>
