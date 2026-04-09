@@ -3,10 +3,12 @@ import { X, Save, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
 import { Button } from './Button';
 
 export default function NewClubModal({ onClose, onSave }) {
-  const [formData, setFormData] = useState({
+ const [formData, setFormData] = useState({
     name: '',
     category: 'Fútbol',
     estimatedPlayers: '',
+    totalTeams: '', // NUEVO
+    baseTeams: '',  // NUEVO
     genericEmail: '',
     genericPhone: '',
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true }]
@@ -48,12 +50,25 @@ export default function NewClubModal({ onClose, onSave }) {
               <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
                      value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
+            
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase">Fichas / Jugadores Aprox.</label>
+              <label className="text-xs font-bold text-zinc-500 uppercase">Fichas Aprox.</label>
               <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
                      value={formData.estimatedPlayers} onChange={e => setFormData({...formData, estimatedPlayers: Number(e.target.value)})} placeholder="Ej: 350" />
             </div>
             <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase">Total de Equipos</label>
+              <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
+                     value={formData.totalTeams} onChange={e => setFormData({...formData, totalTeams: Number(e.target.value)})} placeholder="Ej: 15" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase">Equipos Base (Detalle)</label>
+              <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
+                     value={formData.baseTeams} onChange={e => setFormData({...formData, baseTeams: e.target.value})} placeholder="Ej: 3 Alevines, 2 Infantiles, 1 Juvenil..." />
+            </div>
+
+            <div className="col-span-2">
               <label className="text-xs font-bold text-zinc-500 uppercase">Teléfono Genérico</label>
               <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
                      value={formData.genericPhone} onChange={e => setFormData({...formData, genericPhone: e.target.value})} />

@@ -670,14 +670,20 @@ export default function App() {
 
   // --- DATOS DERIVADOS ---
   
-  // 1. Inyectamos a cada club el estado correspondiente a la temporada seleccionada arriba
+  // 1. Inyectamos a cada club el estado correspondiente y la FECHA DEL ÚLTIMO CONTACTO
   const clubsWithSeasonalStatus = useMemo(() => {
-      return clubs.map(club => ({
-          ...club,
-          // Si tiene un estado para esta temporada lo usa, si no, usa el antiguo global o 'to_contact'
-          status: club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact'
-      }));
-  }, [clubs, selectedSeason]);
+      return clubs.map(club => {
+          // Filtramos las interacciones de este club (App.jsx ya las tiene ordenadas de más nuevas a más viejas)
+          const clubInteractions = interactions.filter(i => i.clubId === club.id);
+          const lastIntDate = clubInteractions.length > 0 ? clubInteractions[0].date : "Sin contacto";
+
+          return {
+              ...club,
+              lastContactDate: lastIntDate, // Inyección de la fecha automática
+              status: club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact'
+          };
+      });
+  }, [clubs, selectedSeason, interactions]);
 
   // 2. Filtramos sobre la lista ya "estacionalizada"
   const filteredClubs = useMemo(() => filterNeedsAttention ? clubsWithSeasonalStatus.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubsWithSeasonalStatus, [clubsWithSeasonalStatus, filterNeedsAttention]);

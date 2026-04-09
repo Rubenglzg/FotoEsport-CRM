@@ -16,6 +16,7 @@ export default function ClubDetailPanel({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
+    const [isSuggestingDate, setIsSuggestingDate] = useState(false);
     
     // Estados de Edición Local
     const [tempName, setTempName] = useState(club.name);
@@ -217,21 +218,20 @@ export default function ClubDetailPanel({
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                        {/* PANEL VISUAL DE JUGADORES */}
-                      <div className="mt-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 flex items-center justify-between shadow-sm">
-                          <div className="flex items-center gap-2">
-                              <div className="bg-blue-50 dark:bg-blue-500/10 p-1.5 rounded-md text-blue-600 dark:text-blue-400">
-                                  <Users className="w-4 h-4" />
-                              </div>
-                              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Fichas / Jugadores</span>
+                        {/* PANEL VISUAL DE JUGADORES Y EQUIPOS */}
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
+                              <input type="number" value={club.estimatedPlayers || ''} onChange={(e) => onUpdateClub({ ...club, estimatedPlayers: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 300" />
                           </div>
-                          <input 
-                             type="number"
-                             value={club.estimatedPlayers || ''}
-                             onChange={(e) => onUpdateClub({ ...club, estimatedPlayers: Number(e.target.value) })}
-                             placeholder="Ej: 300"
-                             className="text-sm font-mono font-bold bg-transparent outline-none text-right text-zinc-900 dark:text-white w-20 border-b-2 border-transparent focus:border-emerald-500 transition-colors"
-                          />
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
+                              <input type="number" value={club.totalTeams || ''} onChange={(e) => onUpdateClub({ ...club, totalTeams: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 15" />
+                          </div>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
+                              <input type="text" value={club.baseTeams || ''} onChange={(e) => onUpdateClub({ ...club, baseTeams: e.target.value })} className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white truncate" placeholder="Alevín, Juvenil..." title={club.baseTeams} />
+                          </div>
                       </div>
 
                     </div>
@@ -248,6 +248,28 @@ export default function ClubDetailPanel({
               <div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
+                    {/* FECHAS DE CONTACTO E INTELIGENCIA ARTIFICIAL */}
+                      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-16 h-16 text-blue-500"/></div>
+                          <h4 className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-3 tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3"/> Inteligencia y Actividad</h4>
+                          <div className="grid grid-cols-2 gap-4 relative z-10">
+                              <div>
+                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Último Contacto Registrado</label>
+                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-700 dark:text-zinc-300 font-medium shadow-sm">
+                                      {club.lastContactDate || "Sin historial"}
+                                  </div>
+                              </div>
+                              <div>
+                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Próximo Contacto Recomendado</label>
+                                  <div className="flex gap-1 shadow-sm">
+                                      <input type="date" value={club.recommendedContactDate || ''} onChange={(e) => onUpdateClub({...club, recommendedContactDate: e.target.value})} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-1.5 text-xs flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white" />
+                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-2">
+                                          <Sparkles className="w-4 h-4" />
+                                      </Button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
                       {/* Contactos Editables */}
                       <div>
                         <div className="flex justify-between items-center mb-3">

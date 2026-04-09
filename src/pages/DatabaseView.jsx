@@ -45,7 +45,7 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
 
 
 export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onUpdateStatuses }) {
-  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'status', 'contact', 'next']); 
+  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'teams', 'status', 'lastContact', 'recommendedDate']);
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   // ESTADOS DE FILTRO Y ORDEN
@@ -63,9 +63,10 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     { id: 'club', label: 'Nombre del Club', flex: 3 },
     { id: 'category', label: 'Categoría', flex: 2 },
     { id: 'players', label: 'Jugadores', flex: 1 },
+    { id: 'teams', label: 'Equipos (Tot/Base)', flex: 2 },
     { id: 'status', label: 'Estado', flex: 2 },
-    { id: 'contact', label: 'Contacto Principal', flex: 3 },
-    { id: 'next', label: 'Prox. Contacto', flex: 2 },
+    { id: 'lastContact', label: 'Último Contacto', flex: 2 },
+    { id: 'recommendedDate', label: 'Recomendado (IA)', flex: 2 },
   ];
 
   // Opciones de Ordenación
