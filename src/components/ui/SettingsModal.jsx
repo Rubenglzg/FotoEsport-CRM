@@ -187,7 +187,7 @@ export default function SettingsModal({
                                     <>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-bold text-zinc-900 dark:text-white">{season}</span>
-                                            {currentSeason === season && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Activa</span>}
+                                            {activeSeason === season && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Oficial</span>}
                                         </div>
                                         <div className="flex gap-1">
                                             <button onClick={() => onExportSeason(season)} title="Exportar Excel" className="p-1.5 text-zinc-500 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"><Download className="w-4 h-4"/></button>
