@@ -381,9 +381,9 @@ export default function ClubDetailPanel({
                         </div>
                      </div>
 
-                     <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
-                     {interactions.map(event => (
-                       <div key={event.id} className="relative group">
+                    <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
+                        {[...interactions].reverse().map(event => (
+                        <div key={event.id} className="relative group">
                           <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                           <div className="flex justify-between items-baseline mb-1">
                              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
