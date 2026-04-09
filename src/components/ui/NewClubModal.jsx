@@ -63,9 +63,9 @@ export default function NewClubModal({ onClose, onSave }) {
             </div>
 
             <div className="col-span-2">
-              <label className="text-xs font-bold text-zinc-500 uppercase">Equipos Base (Detalle)</label>
-              <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
-                     value={formData.baseTeams} onChange={e => setFormData({...formData, baseTeams: e.target.value})} placeholder="Ej: 3 Alevines, 2 Infantiles, 1 Juvenil..." />
+              <label className="text-xs font-bold text-zinc-500 uppercase">Fútbol Base (Cantidad de Equipos)</label>
+              <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
+                     value={formData.baseTeams} onChange={e => setFormData({...formData, baseTeams: Number(e.target.value)})} placeholder="Ej: 12" />
             </div>
 
             <div className="col-span-2">

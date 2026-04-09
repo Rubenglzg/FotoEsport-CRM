@@ -21,33 +21,17 @@ export default function ClubDetailPanel({
     const handleAIPredictDate = async () => {
         setIsSuggestingDate(true);
         try {
-            // 1. Recopilamos el historial de interacciones para darle contexto a Gemini
-            const historyText = interactions
-                .map(i => `Fecha: ${i.date} | Vía: ${i.type} | Nota: ${i.note}`)
-                .join('\n');
-
-            // 2. Si es un club nuevo sin interacciones, ponemos 14 días por defecto
-            if (!historyText.trim()) {
-                const newDate = new Date();
-                newDate.setDate(newDate.getDate() + 14); 
-                onUpdateClub({...club, recommendedContactDate: newDate.toISOString().split('T')[0]});
-                setIsSuggestingDate(false);
-                return;
-            }
-
-            // 3. LLAMADA REAL A LA API DE GEMINI
+            const historyText = interactions.map(i => `Fecha: ${i.date} | Vía: ${i.type} | Nota: ${i.note}`).join('\n');
             const predictedDate = await predictDateWithAI(historyText);
             
-            // 4. Guardamos la fecha devuelta por la IA
             if (predictedDate) {
-                onUpdateClub({ ...club, recommendedContactDate: predictedDate });
+                setTempRecDate(predictedDate); // Actualiza la interfaz sin lag
+                onUpdateClub({...club, recommendedContactDate: predictedDate}); // Guarda en base de datos
             } else {
-                // En lugar de lanzar un error que rompa la app, avisamos al usuario
-                alert("La IA no pudo determinar una fecha. Por favor, selecciónala manualmente.");
+                alert("Límite de peticiones alcanzado. Por favor, espera 1 minuto.");
             }
         } catch (error) {
-            console.error("Error al predecir fecha:", error);
-            alert("Hubo un error al conectar con Gemini para la predicción.");
+            console.error(error);
         } finally {
             setIsSuggestingDate(false);
         }
@@ -59,16 +43,30 @@ export default function ClubDetailPanel({
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
 
+    // NUEVO: Estados locales para inputs numéricos y fechas (evita el lag al escribir)
+    const [tempPlayers, setTempPlayers] = useState(club.estimatedPlayers || '');
+    const [tempTotalTeams, setTempTotalTeams] = useState(club.totalTeams || '');
+    const [tempBaseTeams, setTempBaseTeams] = useState(club.baseTeams || '');
+    const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
+
     const inputContainerRef = useRef(null);
 
     // Sincronizar al cambiar de club
     useEffect(() => {
         setTempName(club.name);
         setContacts(club.contacts || []);
-    }, [club.id, club.name, club.contacts]);
+        setTempPlayers(club.estimatedPlayers || '');
+        setTempTotalTeams(club.totalTeams || '');
+        setTempBaseTeams(club.baseTeams || '');
+        setTempRecDate(club.recommendedContactDate || '');
+    }, [club.id, club.name, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate]);
 
-    // Lógicas de Actualización del Club
+    // Lógicas de Actualización (Guardan en Firebase solo al quitar el foco del input)
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
+    const handleSavePlayers = () => { if (Number(tempPlayers) !== club.estimatedPlayers) onUpdateClub({...club, estimatedPlayers: Number(tempPlayers)}); };
+    const handleSaveTotalTeams = () => { if (Number(tempTotalTeams) !== club.totalTeams) onUpdateClub({...club, totalTeams: Number(tempTotalTeams)}); };
+    const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
+    const handleSaveRecDate = () => { if (tempRecDate !== club.recommendedContactDate) onUpdateClub({...club, recommendedContactDate: tempRecDate}); };
     // Leemos el estado de la temporada actual
     const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
 
@@ -257,7 +255,14 @@ export default function ClubDetailPanel({
                       <div className="mt-4 grid grid-cols-3 gap-2">
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
-                              <input type="number" value={club.estimatedPlayers || ''} onChange={(e) => onUpdateClub({ ...club, estimatedPlayers: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 300" />
+                              <input 
+                                    type="number"
+                                    value={tempPlayers}
+                                    onChange={(e) => setTempPlayers(e.target.value)}
+                                    onBlur={handleSavePlayers}
+                                    placeholder="Ej: 300"
+                                    className="text-sm font-mono font-bold bg-transparent outline-none text-right text-zinc-900 dark:text-white w-20 border-b-2 border-transparent focus:border-emerald-500 transition-colors"
+                                />
                           </div>
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
@@ -283,37 +288,62 @@ export default function ClubDetailPanel({
               <div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
-                    {/* FECHAS DE CONTACTO E INTELIGENCIA ARTIFICIAL */}
+                      {/* FECHAS DE CONTACTO E INTELIGENCIA ARTIFICIAL */}
                       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
                           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-16 h-16 text-blue-500"/></div>
                           <h4 className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-3 tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3"/> Inteligencia y Actividad</h4>
+                          
                           <div className="grid grid-cols-2 gap-4 relative z-10">
-                              <div>
-                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Último Contacto Registrado</label>
-                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-700 dark:text-zinc-300 font-medium shadow-sm">
+                              {/* Panel Izquierdo: Último Contacto */}
+                              <div className="flex flex-col justify-end">
+                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Último Contacto</label>
+                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-3 flex items-center h-[34px] text-xs text-zinc-700 dark:text-zinc-300 font-medium shadow-sm w-full">
                                       {club.lastContactDate || "Sin historial"}
                                   </div>
                               </div>
-                              <div>
-                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Próximo Contacto Recomendado</label>
-                                  <div className="flex gap-1 shadow-sm">
-                                      <input type="date" value={club.recommendedContactDate || ''} onChange={(e) => onUpdateClub({...club, recommendedContactDate: e.target.value})} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-1.5 text-xs flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white" />
-                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-2">
+                              
+                              {/* Panel Derecho: IA */}
+                              <div className="flex flex-col justify-end">
+                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Próximo Recomendado</label>
+                                  <div className="flex gap-1 shadow-sm h-[34px]">
+                                      <input 
+                                          type="date" 
+                                          value={tempRecDate} 
+                                          onChange={(e) => setTempRecDate(e.target.value)} 
+                                          onBlur={handleSaveRecDate}
+                                          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white h-full" 
+                                      />
+                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-2 h-full flex items-center justify-center">
                                           <Sparkles className="w-4 h-4" />
                                       </Button>
                                   </div>
                               </div>
                           </div>
                       </div>
+
                       {/* PANEL VISUAL DE EQUIPOS BASE */}
                       <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
-                              <input type="number" value={club.totalTeams || ''} onChange={(e) => onUpdateClub({ ...club, totalTeams: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 15" />
+                              <input 
+                                  type="number" 
+                                  value={tempTotalTeams} 
+                                  onChange={(e) => setTempTotalTeams(e.target.value)} 
+                                  onBlur={handleSaveTotalTeams}
+                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: 15" 
+                              />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
-                              <input type="text" value={club.baseTeams || ''} onChange={(e) => onUpdateClub({ ...club, baseTeams: e.target.value })} className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white truncate" placeholder="Alevín, Juvenil..." title={club.baseTeams} />
+                              <input 
+                                  type="number" 
+                                  value={tempBaseTeams} 
+                                  onChange={(e) => setTempBaseTeams(e.target.value)} 
+                                  onBlur={handleSaveBaseTeams}
+                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: 12" 
+                              />
                           </div>
                       </div>
                       

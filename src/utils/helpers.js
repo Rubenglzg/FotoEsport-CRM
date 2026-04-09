@@ -137,24 +137,13 @@ export const predictDateWithAI = async (historyText) => {
   if (!apiKey) throw new Error("Falta la API Key de Gemini");
 
   const prompt = `
-  Eres un asistente de ventas experto en un CRM de fotografía deportiva.
-  Analiza el siguiente historial de interacciones con un club deportivo y decide en qué fecha exacta se debería volver a contactar con ellos para hacer seguimiento.
-  
-  Reglas estrictas:
-  - Si en la conversación dicen "hablamos en septiembre", calcula una fecha a principios de septiembre.
-  - Si dicen "están de vacaciones", dales 3 o 4 semanas.
-  - Si la conversación fue positiva pero sin cierre, dales 7-10 días.
-  - Fecha de HOY: ${new Date().toISOString().split('T')[0]}
-  
-  Historial del club:
-  ${historyText}
-  
-  IMPORTANTE: Tu respuesta debe ser ÚNICAMENTE la fecha en formato YYYY-MM-DD. No escribas nada más. Solo la fecha (ejemplo: 2024-05-20).
-  `;
+  Eres un experto en ventas. Analiza este historial y devuelve SOLAMENTE una fecha en formato YYYY-MM-DD para el próximo contacto.
+  Fecha de hoy: ${new Date().toISOString().split('T')[0]}
+  Historial: ${historyText}`;
 
   try {
-    // CORRECCIÓN: URL ajustada v1beta
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // CORRECCIÓN: Actualizado a gemini-2.5-flash ya que la versión 1.5 fue descontinuada.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -165,26 +154,23 @@ export const predictDateWithAI = async (historyText) => {
     });
     
     if (!response.ok) {
-        const errorBody = await response.json();
-        console.error("Error detallado de API:", errorBody);
+        const errorData = await response.json();
+        console.error("Respuesta de error de Google:", errorData);
         return null;
     }
 
     const data = await response.json();
     
-    // Verificamos que la estructura de respuesta existe antes de leerla
     if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
         const responseText = data.candidates[0].content.parts[0].text.trim();
-        
-        // Extraer solo la fecha con Regex por si la IA añade texto extra por error
-        const match = responseText.match(/\d{4}-\d{2}-\d{2}/);
-        return match ? match[0] : null;
+        const dateMatch = responseText.match(/\d{4}-\d{2}-\d{2}/);
+        return dateMatch ? dateMatch[0] : null;
     }
     
     return null;
     
   } catch (error) {
-    console.error("Error en la llamada a Gemini (Predicción):", error);
+    console.error("Error técnico en predictDateWithAI:", error);
     return null;
   }
 };
