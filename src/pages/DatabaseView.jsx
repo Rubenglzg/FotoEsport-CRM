@@ -45,7 +45,7 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
 
 
 export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onUpdateStatuses }) {
-  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'teams', 'status', 'lastContact', 'recommendedDate']);
+  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'leadScore', 'teams', 'status', 'lastContact', 'recommendedDate']);
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   // ESTADOS DE FILTRO Y ORDEN
@@ -63,6 +63,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     { id: 'club', label: 'Nombre del Club', flex: 3 },
     { id: 'category', label: 'Categoría', flex: 2 },
     { id: 'players', label: 'Jugadores', flex: 1 },
+    { id: 'leadScore', label: 'Scoring', flex: 1 },
     { id: 'teams', label: 'Equipos (Tot/Base)', flex: 2 },
     { id: 'status', label: 'Estado', flex: 2 },
     { id: 'lastContact', label: 'Último Contacto', flex: 2 },
@@ -71,6 +72,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
 
   // Opciones de Ordenación
   const sortOptions = [
+    { value: 'leadScore-desc', label: 'Mejores Oportunidades (5 a 0 ⭐️)' },
     { value: 'name-asc', label: 'Nombre (A-Z)' },
     { value: 'name-desc', label: 'Nombre (Z-A)' },
     { value: 'players-desc', label: 'Jugadores (Mayor a Menor)' },
@@ -102,6 +104,12 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
               const numA = a.estimatedPlayers || 0;
               const numB = b.estimatedPlayers || 0;
               return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+          }
+
+          if (sortConfig.key === 'leadScore') {
+              const scoreA = a.leadScore || 0;
+              const scoreB = b.leadScore || 0;
+              return sortConfig.direction === 'asc' ? scoreA - scoreB : scoreB - scoreA;
           }
 
           let aValue = '', bValue = '';
@@ -355,6 +363,18 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                          <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
                              {club.estimatedPlayers || '-'}
                          </div>
+                      </div>
+                  )}
+
+                  {visibleCols.includes('leadScore') && (
+                      <div style={{ flex: columns.find(c=>c.id==='leadScore').flex }} className="pr-2">
+                          <div className="flex gap-0.5" title={`${club.leadScore || 0} de 5 estrellas`}>
+                              {[...Array(5)].map((_, i) => (
+                                  <svg key={i} className={cn("w-4 h-4", i < (club.leadScore || 0) ? "text-amber-400 fill-amber-400" : "text-zinc-300 dark:text-zinc-800 fill-transparent")} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                  </svg>
+                              ))}
+                          </div>
                       </div>
                   )}
 

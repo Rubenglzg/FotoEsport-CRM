@@ -670,17 +670,46 @@ export default function App() {
 
   // --- DATOS DERIVADOS ---
   
-  // 1. Inyectamos a cada club el estado correspondiente y la FECHA DEL ÚLTIMO CONTACTO
+  // 1. Inyectamos a cada club el estado correspondiente, la FECHA DEL ÚLTIMO CONTACTO y el LEAD SCORE
   const clubsWithSeasonalStatus = useMemo(() => {
       return clubs.map(club => {
-          // Filtramos las interacciones de este club (App.jsx ya las tiene ordenadas de más nuevas a más viejas)
           const clubInteractions = interactions.filter(i => i.clubId === club.id);
           const lastIntDate = clubInteractions.length > 0 ? clubInteractions[0].date : "Sin contacto";
+          const status = club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact';
+
+          // --- ALGORITMO DE LEAD SCORING (Max 5 estrellas) ---
+          let score = 0;
+
+          if (status === 'signed' || status === 'client') {
+              score = 5; // Clientes ganados tienen prioridad máxima (o puedes poner 0 si solo buscas nuevos)
+          } else if (status === 'rejected' || status === 'not_interested') {
+              score = 0; // Descartados
+          } else {
+              // 1. Tamaño del club (Hasta 2.5 puntos)
+              const players = Number(club.estimatedPlayers) || 0;
+              if (players >= 300) score += 2.5;
+              else if (players >= 150) score += 1.5;
+              else if (players > 50) score += 0.5;
+
+              // 2. Nivel de interés explícito o Estado (Hasta 1.5 puntos)
+              if (club.interestLevel === 'high') score += 1.5;
+              else if (club.interestLevel === 'medium') score += 0.5;
+              else if (status === 'negotiation') score += 1.5;
+              else if (status === 'lead' || status === 'prospect') score += 0.5;
+
+              // 3. Frescura del contacto (Hasta 1 punto)
+              if (lastIntDate !== "Sin contacto") {
+                  const daysSinceContact = (new Date() - new Date(lastIntDate)) / (1000 * 60 * 60 * 24);
+                  if (daysSinceContact <= 15) score += 1;
+                  else if (daysSinceContact <= 30) score += 0.5;
+              }
+          }
 
           return {
               ...club,
-              lastContactDate: lastIntDate, // Inyección de la fecha automática
-              status: club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact'
+              lastContactDate: lastIntDate,
+              status: status,
+              leadScore: Math.min(Math.round(score), 5) // Redondeamos y aseguramos máximo 5
           };
       });
   }, [clubs, selectedSeason, interactions]);
