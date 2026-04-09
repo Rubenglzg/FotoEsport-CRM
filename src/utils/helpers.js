@@ -149,29 +149,39 @@ export const predictDateWithAI = async (historyText) => {
   Historial del club:
   ${historyText}
   
-  IMPORTANTE: Tu respuesta debe ser ÚNICAMENTE la fecha en formato YYYY-MM-DD. No escribas nada más, ni texto introductorio, ni explicaciones. Solo la fecha (ejemplo: 2024-05-20).
+  IMPORTANTE: Tu respuesta debe ser ÚNICAMENTE la fecha en formato YYYY-MM-DD. No escribas nada más. Solo la fecha (ejemplo: 2024-05-20).
   `;
 
   try {
-    // Usamos el mismo método fetch que en summarizeWithAI
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // CORRECCIÓN: URL ajustada v1beta
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      }),
     });
     
+    if (!response.ok) {
+        const errorBody = await response.json();
+        console.error("Error detallado de API:", errorBody);
+        return null;
+    }
+
     const data = await response.json();
-    const responseText = data.candidates[0].content.parts[0].text.trim();
     
-    // Validación básica para asegurarnos de que devolvió una fecha YYYY-MM-DD
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (dateRegex.test(responseText)) {
-        return responseText;
-    } else {
-        // Si la IA falló y devolvió texto extra, intentamos extraer solo la fecha
+    // Verificamos que la estructura de respuesta existe antes de leerla
+    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+        const responseText = data.candidates[0].content.parts[0].text.trim();
+        
+        // Extraer solo la fecha con Regex por si la IA añade texto extra por error
         const match = responseText.match(/\d{4}-\d{2}-\d{2}/);
         return match ? match[0] : null;
     }
+    
+    return null;
     
   } catch (error) {
     console.error("Error en la llamada a Gemini (Predicción):", error);

@@ -40,9 +40,10 @@ export default function ClubDetailPanel({
             
             // 4. Guardamos la fecha devuelta por la IA
             if (predictedDate) {
-                onUpdateClub({...club, recommendedContactDate: predictedDate});
+                onUpdateClub({ ...club, recommendedContactDate: predictedDate });
             } else {
-                throw new Error("Formato de fecha devuelto incorrecto");
+                // En lugar de lanzar un error que rompa la app, avisamos al usuario
+                alert("La IA no pudo determinar una fecha. Por favor, selecciónala manualmente.");
             }
         } catch (error) {
             console.error("Error al predecir fecha:", error);

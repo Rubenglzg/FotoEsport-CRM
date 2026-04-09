@@ -1,6 +1,6 @@
 // src/pages/DatabaseView.jsx
 import React, { useState, useMemo } from 'react';
-import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ArrowUpDown, ChevronDown, Check } from 'lucide-react';
+import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ArrowUpDown, ChevronDown, Check, Sparkles } from 'lucide-react'; 
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/helpers';
 
@@ -392,18 +392,19 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 7. Fecha Recomendada IA (NUEVO) */}
-                  {visibleCols.includes('recommendedDate') && (
-                      <div style={{ flex: columns.find(c=>c.id==='recommendedDate').flex }} className="pr-4 text-right">
-                          {club.recommendedContactDate ? (
-                              <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-900/50">
-                                  <Sparkles className="w-3 h-3"/> {club.recommendedContactDate}
-                              </div>
-                          ) : (
-                              <span className="text-xs text-zinc-400">-</span>
-                          )}
-                      </div>
-                  )}
+                    {/* 7. Fecha Recomendada IA */}
+                    {visibleCols.includes('recommendedDate') && (
+                        <div style={{ flex: columns.find(c=>c.id==='recommendedDate').flex }} className="pr-4 text-right">
+                            {club.recommendedContactDate ? (
+                                <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-900/50">
+                                    <Sparkles className="w-3 h-3"/> {/* Este es el componente que causaba el error */}
+                                    {club.recommendedContactDate}
+                                </div>
+                            ) : (
+                                <span className="text-xs text-zinc-400">-</span>
+                            )}
+                        </div>
+                    )}
                </div>
              );
            })}
