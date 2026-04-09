@@ -805,7 +805,7 @@ export default function App() {
         />;
 
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
-      case 'targets': return <TargetsView stats={stats} targetClients={targetClients} ticketMedio={ticketMedio} />;
+      case 'targets': return <TargetsView stats={stats} targetClients={targetClients} ticketMedio={ticketMedio} clubs={clubs} />;
       default: return <MapView clubs={filteredClubs} />;
     }
   };

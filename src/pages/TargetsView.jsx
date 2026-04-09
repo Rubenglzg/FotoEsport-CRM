@@ -1,14 +1,35 @@
 import React from 'react';
-import { CheckCircle2, Zap, Users, BarChart3, PieChart, Euro, TableProperties } from 'lucide-react';
+import { CheckCircle2, Zap, Users, BarChart3, PieChart, Euro, TableProperties, TrendingUp, CalendarDays } from 'lucide-react';
 import { cn } from '../utils/helpers';
 
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
 };
 
-export default function TargetsView({ stats, targetClients, ticketMedio }) {
+export default function TargetsView({ stats, targetClients, ticketMedio, clubs = [] }) {
   const conversionRate = stats.total > 0 ? ((stats.signed / stats.total) * 100).toFixed(0) : 0;
   const targetProgress = targetClients > 0 ? ((stats.signed / targetClients) * 100).toFixed(1) : 0;
+
+  // --- NUEVAS MÉTRICAS DE ANALÍTICA B2B ---
+  const totalLeads = clubs.length;
+  
+  // Consideramos "Reunión/Interés" cuando avanzan a prospect, lead o client
+  const reuniones = clubs.filter(c => ['prospect', 'lead', 'client'].includes(c.status)).length;
+  const cierres = clubs.filter(c => c.status === 'client').length;
+
+  const pctReuniones = totalLeads > 0 ? Math.round((reuniones / totalLeads) * 100) : 0;
+  const pctCierres = reuniones > 0 ? Math.round((cierres / reuniones) * 100) : 0;
+
+  // Calculadora de Velocidad de Ventas
+  const clubesCerrados = clubs.filter(c => c.status === 'client');
+  const velocidadMedia = clubesCerrados.length > 0
+    ? Math.round(clubesCerrados.reduce((acc, c) => {
+        const creacion = c.createdAt ? new Date(c.createdAt) : new Date(); 
+        const cierre = new Date(c.updatedAt || c.lastContactDate || c.lastInteraction || Date.now());
+        const dias = Math.abs(cierre - creacion) / (1000 * 60 * 60 * 24);
+        return acc + dias;
+      }, 0) / clubesCerrados.length)
+    : 0;
 
   return (
     <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950 p-8 overflow-y-auto">
@@ -49,7 +70,55 @@ export default function TargetsView({ stats, targetClients, ticketMedio }) {
           />
        </div>
 
-       {/* NUEVA TABLA DE PROYECCIÓN FINANCIERA */}
+       {/* --- NUEVA SECCIÓN DE ANALÍTICA B2B --- */}
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Tarjeta 1: Embudo de Conversión */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-5 flex items-center gap-2">
+              <TrendingUp size={18} className="text-emerald-500" />
+              Tasa de Conversión y Reuniones
+            </h4>
+            <div className="space-y-5">
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">De Contactos a Reuniones / Interés</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{pctReuniones}% ({reuniones}/{totalLeads})</span>
+                </div>
+                <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2.5">
+                  <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${pctReuniones}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">De Reuniones a Contratos Firmados</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{pctCierres}% ({cierres}/{reuniones})</span>
+                </div>
+                <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2.5">
+                  <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${pctCierres}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tarjeta 2: Velocidad de Ciclo de Ventas */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm flex flex-col justify-center items-center text-center">
+            <div className="w-14 h-14 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 flex items-center justify-center mb-4">
+              <CalendarDays size={28} />
+            </div>
+            <h4 className="font-bold text-slate-800 dark:text-white mb-1">Velocidad del Ciclo de Ventas</h4>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-5xl font-black text-slate-900 dark:text-white">
+                {velocidadMedia > 0 ? velocidadMedia : '-'}
+              </span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium ml-1">días de media</span>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 max-w-[250px] leading-relaxed">
+              Tiempo promedio desde que se prospecta al club hasta que se cierra el acuerdo.
+            </p>
+          </div>
+       </div>
+
+       {/* TABLA DE PROYECCIÓN FINANCIERA */}
        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm mb-8 overflow-hidden">
            <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
                <TableProperties className="w-5 h-5 text-zinc-400" /> Proyección de Facturación
