@@ -358,12 +358,18 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 4. Equipos (NUEVO) */}
+                  {/* 4. Equipos */}
                   {visibleCols.includes('teams') && (
                       <div style={{ flex: columns.find(c=>c.id==='teams').flex }} className="pr-2">
                           <div className="text-xs text-zinc-600 dark:text-zinc-400">
                               <span className="font-bold text-zinc-800 dark:text-zinc-200">{club.totalTeams || '0'}</span> Totales
-                              <div className="text-[10px] text-zinc-400 truncate w-[120px]" title={club.baseTeams}>{club.baseTeams || 'Sin base listada'}</div>
+                              <div className="text-[10px] text-zinc-400 mt-0.5">
+                                  {club.baseTeams ? (
+                                      <><span className="font-medium text-zinc-500 dark:text-zinc-400">{club.baseTeams}</span> Base</>
+                                  ) : (
+                                      'Sin base listada'
+                                  )}
+                              </div>
                           </div>
                       </div>
                   )}

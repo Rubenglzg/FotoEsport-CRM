@@ -251,26 +251,40 @@ export default function ClubDetailPanel({
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                        {/* PANEL VISUAL DE JUGADORES Y EQUIPOS */}
+                      {/* PANEL VISUAL DE JUGADORES Y EQUIPOS (CABECERA) */}
                       <div className="mt-4 grid grid-cols-3 gap-2">
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
                               <input 
-                                    type="number"
-                                    value={tempPlayers}
-                                    onChange={(e) => setTempPlayers(e.target.value)}
-                                    onBlur={handleSavePlayers}
-                                    placeholder="Ej: 300"
-                                    className="text-sm font-mono font-bold bg-transparent outline-none text-right text-zinc-900 dark:text-white w-20 border-b-2 border-transparent focus:border-emerald-500 transition-colors"
-                                />
+                                  type="number" 
+                                  value={tempPlayers} 
+                                  onChange={(e) => setTempPlayers(e.target.value)} 
+                                  onBlur={handleSavePlayers}
+                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: 300" 
+                              />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
-                              <input type="number" value={club.totalTeams || ''} onChange={(e) => onUpdateClub({ ...club, totalTeams: Number(e.target.value) })} className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" placeholder="Ej: 15" />
+                              <input 
+                                  type="number" 
+                                  value={tempTotalTeams} 
+                                  onChange={(e) => setTempTotalTeams(e.target.value)} 
+                                  onBlur={handleSaveTotalTeams}
+                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: 15" 
+                              />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
-                              <input type="text" value={club.baseTeams || ''} onChange={(e) => onUpdateClub({ ...club, baseTeams: e.target.value })} className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white truncate" placeholder="Alevín, Juvenil..." title={club.baseTeams} />
+                              <input 
+                                  type="number" 
+                                  value={tempBaseTeams} 
+                                  onChange={(e) => setTempBaseTeams(e.target.value)} 
+                                  onBlur={handleSaveBaseTeams}
+                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: 12" 
+                              />
                           </div>
                       </div>
 
