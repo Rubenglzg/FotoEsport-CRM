@@ -12,7 +12,8 @@ export default function SettingsModal({
     onAddSeason, onEditSeason, onDeleteSeason, onExportSeason,
     checklistConfig = [],
     onUpdateChecklist,
-    ticketMedio, onUpdateTicketMedio
+    ticketMedio, onUpdateTicketMedio,
+    activeSeason, onSetActiveSeason // <--- AÑADIDO AQUÍ
 }) {
     const [localTarget, setLocalTarget] = useState(targetClients);
     const [localTicket, setLocalTicket] = useState(ticketMedio);
@@ -150,6 +151,27 @@ export default function SettingsModal({
               {/* --- GESTOR DE TEMPORADAS Y EXPORTACIÓN --- */}
               <div>
                  <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">Gestor de Temporadas y Datos</h3>
+                 
+                 {/* --- NUEVO: SELECTOR DE TEMPORADA OFICIAL --- */}
+                 <div className="mb-6 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-4 rounded-xl">
+                     <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-1">
+                         Temporada Activa (Oficial)
+                     </h4>
+                     <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mb-3">
+                         Esta temporada es la que se usa para calcular la vigencia de los contratos y las estadísticas principales.
+                     </p>
+                     <select 
+                         value={activeSeason} 
+                         onChange={(e) => onSetActiveSeason(e.target.value)}
+                         className="w-full bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-500/50 rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                     >
+                         {seasons.map(s => (
+                             <option key={s} value={s}>{s}</option>
+                         ))}
+                     </select>
+                 </div>
+                 {/* ------------------------------------------- */}
+
                  <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm overflow-hidden flex flex-col">
                     
                     <div className="max-h-48 overflow-y-auto">

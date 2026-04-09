@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { auth, db } from './lib/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown } from 'lucide-react';
+import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles } from 'lucide-react';
 
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
-import { INITIAL_SEASONS, SEED_CLUBS, INITIAL_TASKS, INITIAL_TIMELINE, DEFAULT_STATUSES } from './utils/constants';
+import { DEFAULT_STATUSES } from './utils/constants';
 
 // --- PÁGINAS Y VISTAS ---
 import LoginScreen from './pages/LoginScreen';
@@ -14,6 +14,7 @@ import MapView from './pages/MapView';
 import DatabaseView from './pages/DatabaseView';
 import CalendarView from './pages/CalendarView';
 import TargetsView from './pages/TargetsView';
+import OverviewView from './pages/OverviewView';
 
 // --- COMPONENTES UI ---
 import { Button } from './components/ui/Button';
@@ -32,11 +33,12 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(true);
   
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  const [currentView, setCurrentView] = useState('map');
+  const [currentView, setCurrentView] = useState('overview');
   
   // --- DATOS FIRESTORE ---
-  const [seasons, setSeasons] = useState(INITIAL_SEASONS);
+  const [seasons, setSeasons] = useState(['2024-2025']);
   const [selectedSeason, setSelectedSeason] = useState('2024-2025');
+  const [activeSeason, setActiveSeason] = useState('2024-2025');
   const [clubs, setClubs] = useState([]); 
   const [tasks, setTasks] = useState([]);
   const [interactions, setInteractions] = useState([]);
@@ -588,6 +590,14 @@ export default function App() {
       showToast("Temporada actualizada", "success");
   };
 
+  const handleSetOfficialActiveSeason = async (seasonName) => {
+      if(!user) return;
+      setActiveSeason(seasonName);
+      // Lo guardamos en Firebase explícitamente como "activeSeason"
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { activeSeason: seasonName }, { merge: true });
+      showToast(`Temporada ${seasonName} establecida como Oficial`, "success");
+  };
+
   const handleDeleteSeason = async (seasonName) => {
       if (!window.confirm(`⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}". Si esta temporada tiene datos o resúmenes asociados, se perderán de la lista. Debes confirmar para proceder.`)) return;
       
@@ -748,6 +758,15 @@ export default function App() {
         );
     }
     switch (currentView) {
+
+        case 'overview': return <OverviewView  
+            clubs={filteredClubs} 
+            tasks={tasks} 
+            interactions={interactions}
+            onNavigate={setCurrentView}
+            onSelectClub={setSelectedClub}
+        />;
+
       case 'map': return <MapView 
             clubs={filteredClubs} 
             selectedId={selectedClub?.id} 
@@ -792,6 +811,7 @@ export default function App() {
       <aside className="w-16 h-full border-r border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 flex flex-col items-center py-6 gap-6 z-50 shadow-lg">
         <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md cursor-pointer" onClick={() => setCurrentView('map')}>S</div>
         <nav className="flex flex-col gap-3 w-full px-2 mt-4">
+            <NavButton icon={Sparkles} isActive={currentView === 'overview'} onClick={() => setCurrentView('overview')} title="Asistente IA" />
           <NavButton icon={Map} isActive={currentView === 'map'} onClick={() => setCurrentView('map')} title="Mapa" />
           <NavButton icon={List} isActive={currentView === 'database'} onClick={() => setCurrentView('database')} title="Base de Datos" />
           <NavButton icon={CalendarIcon} isActive={currentView === 'calendar'} onClick={() => setCurrentView('calendar')} title="Calendario" />
@@ -885,6 +905,8 @@ export default function App() {
         {showSettings && (
           <SettingsModal 
               onClose={() => setShowSettings(false)} 
+              activeSeason={activeSeason}
+              onSetActiveSeason={handleSetOfficialActiveSeason}
               targetClients={targetClients} 
               onUpdateTarget={handleUpdateTargetClients} 
               seasons={seasons} 

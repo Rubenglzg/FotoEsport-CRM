@@ -324,17 +324,21 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
              const phoneToShow = mainContact.phone || club.genericPhone || '-';
              const needsAttention = club.lastInteraction === "Never" || club.lastInteraction === "30d";
              
-             return (
+            return (
                <div key={club.id} onClick={() => onSelect(club)} className="flex items-center p-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group">
                   
-                    {visibleCols.includes('players') && (
-                      <div style={{ flex: columns.find(c=>c.id==='players').flex }} className="pr-2">
-                         <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
-                             {club.estimatedPlayers || '-'}
-                         </div>
+                  {/* 1. Nombre del Club (Añadido) */}
+                  {visibleCols.includes('club') && (
+                      <div style={{ flex: columns.find(c=>c.id==='club').flex }} className="pr-2 truncate">
+                          <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">
+                              {club.name}
+                              {needsAttention && <span className="ml-2 w-2 h-2 rounded-full bg-red-500 inline-block" title="Requiere atención"></span>}
+                          </div>
+                          <div className="text-xs text-zinc-500 truncate">{club.address || 'Sin ubicación registrada'}</div>
                       </div>
                   )}
 
+                  {/* 2. Categoría */}
                   {visibleCols.includes('category') && (
                       <div style={{ flex: columns.find(c=>c.id==='category').flex }} className="pr-2 truncate">
                          <div className="text-sm text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 truncate">
@@ -344,12 +348,23 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
+                  {/* 3. Jugadores (Ahora en el orden correcto) */}
+                  {visibleCols.includes('players') && (
+                      <div style={{ flex: columns.find(c=>c.id==='players').flex }} className="pr-2">
+                         <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
+                             {club.estimatedPlayers || '-'}
+                         </div>
+                      </div>
+                  )}
+
+                  {/* 4. Estado */}
                   {visibleCols.includes('status') && (
                       <div style={{ flex: columns.find(c=>c.id==='status').flex }} className="pr-2">
                           {getStatusBadge(club.status)}
                       </div>
                   )}
 
+                  {/* 5. Contacto Principal */}
                   {visibleCols.includes('contact') && (
                       <div style={{ flex: columns.find(c=>c.id==='contact').flex }} className="pr-2 truncate">
                          <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate">{mainContact.name}</div>
@@ -357,6 +372,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
+                  {/* 6. Próximo Contacto */}
                   {visibleCols.includes('next') && (
                       <div style={{ flex: columns.find(c=>c.id==='next').flex }} className="text-right text-xs font-mono text-zinc-400 pr-4">
                           {club.nextContact || '-'}
