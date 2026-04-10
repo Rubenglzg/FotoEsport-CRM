@@ -17,6 +17,7 @@ const CLIENT_ID = defineString("CLIENT_ID");
 const clientSecret = defineSecret("CLIENT_SECRET");
 // Definimos el secreto para Gemini
 const geminiApiKey = defineSecret("GEMINI_API_KEY"); 
+const webhookToken = defineSecret("WEBHOOK_TOKEN");
 const REDIRECT_URI = "postmessage";
 
 // --- FUNCIÓN ANTERIOR (Calendario) ---
@@ -45,26 +46,26 @@ exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) =
     });
 });
 
-// --- NUEVA FUNCIÓN (Atajo de iOS con Audio / Script de Windows) ---
-exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) => {
+// --- NUEVA FUNCIÓN SEGURA ---
+exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] }, (req, res) => {
     cors(req, res, () => {
         if (req.method !== 'POST') return res.status(405).send('Solo POST');
 
         const busboy = Busboy({ headers: req.headers });
         let clubName = "";
         let token = "";
-        let tipoInteraccion = "call"; // <-- NUEVA VARIABLE: Valor por defecto
+        let tipoInteraccion = "call"; 
+        let userId = ""; // <-- NUEVO: Identificador del usuario
         let audioBuffer = null;
-        let mimeType = "audio/m4a"; // Tipo por defecto para grabaciones de iOS
+        let mimeType = "audio/m4a"; 
 
-        // 1. Leer los campos de texto (club, token y tipo)
         busboy.on("field", (fieldname, val) => {
             if (fieldname === "club") clubName = val;
             if (fieldname === "token") token = val;
-            if (fieldname === "tipo") tipoInteraccion = val; // <-- NUEVA LÍNEA PARA DIFERENCIAR LLAMADA O WHATSAPP
+            if (fieldname === "tipo") tipoInteraccion = val; 
+            if (fieldname === "userId") userId = val; // <-- Recibimos tu ID
         });
 
-        // 2. Leer el archivo de audio
         busboy.on("file", (fieldname, file, info) => {
             if (fieldname === "audio") {
                 mimeType = info.mimeType || mimeType;
@@ -76,15 +77,23 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
             }
         });
 
-        // 3. Cuando termina de recibir todo el formulario...
         busboy.on("finish", async () => {
             try {
-                // Verificaciones de seguridad
-                if (token !== "FOTOESPORT_SECRETO") return res.status(401).send("No autorizado");
-                if (!clubName || !audioBuffer) return res.status(400).send("Faltan datos o el archivo de audio");
+                // 1. VERIFICACIÓN DEL TOKEN SECRETO
+                if (token !== webhookToken.value()) {
+                    console.warn("Intento de acceso denegado por token inválido.");
+                    return res.status(401).send("No autorizado");
+                }
+                
+                if (!userId || !clubName || !audioBuffer) {
+                    return res.status(400).send("Faltan datos (userId, club, o audio)");
+                }
 
                 const db = admin.firestore();
-                const clubsSnapshot = await db.collectionGroup("clubs").get(); 
+                
+                // 2. BÚSQUEDA AISLADA (Solo en los clubes de ESTE usuario)
+                const userClubsRef = db.collection("artifacts").doc("fotoesport-crm").collection("users").doc(userId).collection("clubs");
+                const clubsSnapshot = await userClubsRef.get(); 
                 
                 let targetClubRef = null;
                 let targetClubName = "";
@@ -111,11 +120,8 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
                     return res.status(404).send(`No se encontró el club "${clubName}". Revisa el texto.`);
                 }
 
-                // 4. Enviar el audio a Gemini 
-                // Convertimos el audio a base64 para enviarlo junto con el prompt
+                // 3. ENVÍO DEL AUDIO A GEMINI
                 const base64Audio = audioBuffer.toString("base64");
-                
-                // <-- PROMPT ACTUALIZADO SEGÚN EL TIPO ELEGIDO -->
                 const tipoTexto = tipoInteraccion === 'whatsapp' ? 'conversación de WhatsApp' : 'llamada telefónica';
                 const prompt = `Actúa como un asistente CRM. Escucha el audio adjunto que resume una ${tipoTexto} y escribe un resumen. 
                 ES OBLIGATORIO usar exactamente esta estructura con saltos de línea claros:
@@ -132,49 +138,29 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
                 No uses asteriscos dobles ni negritas de Markdown.`;
                 
                 const payload = {
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inlineData: { mimeType: mimeType, data: base64Audio } }
-                        ]
-                    }]
+                    contents: [{ parts: [ { text: prompt }, { inlineData: { mimeType: mimeType, data: base64Audio } } ] }]
                 };
 
                 const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value()}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
                 });
                 
                 const geminiData = await geminiRes.json();
-
-                if (!geminiData.candidates) {
-                    console.error(">>> ERROR DESDE GEMINI:", JSON.stringify(geminiData, null, 2));
-                    return res.status(500).send("La IA de Gemini ha fallado. Mira los logs.");
-                }
-
+                if (!geminiData.candidates) return res.status(500).send("Fallo en Gemini");
                 const summary = geminiData.candidates[0].content.parts[0].text;
 
-                // 5. Guardar el resumen en Firebase
-                const pathParts = targetClubRef.path.split('/');
-                const userId = pathParts[3]; 
-                
+                // 4. GUARDADO EN FIREBASE
                 const interactionId = Date.now().toString();
-                const userInteractionsRef = db.collection("artifacts").doc("fotoesport-crm")
-                                              .collection("users").doc(userId)
-                                              .collection("interactions");
-
-                // <-- GUARDAMOS EN FIREBASE CON EL TIPO CORRECTO -->
-                await userInteractionsRef.doc(interactionId).set({
+                await userClubsRef.parent.collection("interactions").doc(interactionId).set({
                     id: interactionId,
                     clubId: targetClubRef.id,
-                    type: tipoInteraccion, // Guarda "call" o "whatsapp" dinámicamente
-                    user: "Tú (Audio)", // Adaptado para que sirva tanto a teléfono como a iPhone
+                    type: tipoInteraccion, 
+                    user: "Asistente IA", 
                     note: summary,
                     date: new Date().toLocaleDateString('es-ES')
                 });
 
-                res.status(200).json({ success: true, message: `Resumen de audio guardado en ${targetClubName}` });
+                res.status(200).json({ success: true, message: `Resumen guardado en ${targetClubName}` });
 
             } catch (error) {
                 console.error(">>> ERROR GRAVE:", error);
@@ -182,11 +168,6 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey] }, (req, res) =>
             }
         });
 
-        // Iniciar el procesado (Funciona tanto para emuladores como para producción en Firebase V2)
-        if (req.rawBody) {
-            busboy.end(req.rawBody);
-        } else {
-            req.pipe(busboy);
-        }
+        if (req.rawBody) busboy.end(req.rawBody); else req.pipe(busboy);
     });
 });
