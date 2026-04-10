@@ -157,7 +157,7 @@ export default function MapView({
                <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block mb-1">1. Punto de Salida</label>
                <div className="flex gap-2">
                  <select 
-                   className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-2 py-1.5 text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                   className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-2 py-1.5 text-zinc-900 dark:text-white outline-none focus:border-emerald-500 cursor-pointer"
                    value={activeOrigin?.id || ''}
                    onChange={(e) => setActiveOrigin(savedLocations.find(l => l.id === e.target.value))}
                  >
@@ -165,16 +165,15 @@ export default function MapView({
                      <option key={loc.id} value={loc.id}>{loc.label}</option>
                    ))}
                  </select>
+                 
+                 {/* BOTÓN DE GESTIÓN (Único botón al lado del select) */}
                  <button 
                       onClick={() => setShowLocationManager(true)} 
-                      className="p-1 text-zinc-400 hover:text-emerald-500 bg-zinc-100 dark:bg-zinc-800 rounded-md transition-colors"
+                      className="p-1.5 text-zinc-400 hover:text-emerald-500 bg-zinc-100 dark:bg-zinc-800 rounded-lg transition-colors"
                       title="Gestionar Oficinas"
                   >
                       <Settings size={14} />
                   </button>
-                 <button onClick={addNewLocation} className="px-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="Añadir nueva ubicación">
-                     <Plus className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-                 </button>
                </div>
              </div>
 
