@@ -14,6 +14,7 @@ import Header from './components/layout/Header';
 // --- HOOKS ---
 import { useCRMData } from './hooks/useCRMData';
 import { useRouting } from './hooks/useRouting';
+import { useCRMStats } from './hooks/useCRMStats';
 
 // --- UTILS ---
 import { cn, exportToCSV } from './utils/helpers';
@@ -421,114 +422,10 @@ export default function App() {
         } catch (e) { console.error(e); }
     };
 
-  // --- DATOS DERIVADOS ---
-  
-  // 1. Inyectamos a cada club el estado correspondiente, la FECHA DEL ÚLTIMO CONTACTO y el LEAD SCORE
-  const clubsWithSeasonalStatus = useMemo(() => {
-      return clubs.map(club => {
-          const clubInteractions = interactions.filter(i => i.clubId === club.id);
-          const lastIntDate = clubInteractions.length > 0 ? clubInteractions[0].date : "Sin contacto";
-          const status = club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact';
-
-          // --- ALGORITMO DE LEAD SCORING (Max 5 estrellas) ---
-          let score = 0;
-
-          if (status === 'signed' || status === 'client') {
-              score = 5; // Clientes ganados tienen prioridad máxima (o puedes poner 0 si solo buscas nuevos)
-          } else if (status === 'rejected' || status === 'not_interested') {
-              score = 0; // Descartados
-          } else {
-              // 1. Tamaño del club (Hasta 2.5 puntos)
-              const players = Number(club.estimatedPlayers) || 0;
-              if (players >= 300) score += 2.5;
-              else if (players >= 150) score += 1.5;
-              else if (players > 50) score += 0.5;
-
-              // 2. Nivel de interés explícito o Estado (Hasta 1.5 puntos)
-              if (club.interestLevel === 'high') score += 1.5;
-              else if (club.interestLevel === 'medium') score += 0.5;
-              else if (status === 'negotiation') score += 1.5;
-              else if (status === 'lead' || status === 'prospect') score += 0.5;
-
-              // 3. Frescura del contacto (Hasta 1 punto)
-              if (lastIntDate !== "Sin contacto") {
-                  const daysSinceContact = (new Date() - new Date(lastIntDate)) / (1000 * 60 * 60 * 24);
-                  if (daysSinceContact <= 15) score += 1;
-                  else if (daysSinceContact <= 30) score += 0.5;
-              }
-          }
-
-          return {
-              ...club,
-              lastContactDate: lastIntDate,
-              status: status,
-              leadScore: Math.min(Math.round(score), 5) // Redondeamos y aseguramos máximo 5
-          };
-      });
-  }, [clubs, selectedSeason, interactions]);
-
-  // 2. Filtramos sobre la lista ya "estacionalizada"
-  const filteredClubs = useMemo(() => filterNeedsAttention ? clubsWithSeasonalStatus.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d") : clubsWithSeasonalStatus, [clubsWithSeasonalStatus, filterNeedsAttention]);
-  
-  // 3. Cuadro de mando con Valor Económico (Pipeline)
-  const stats = useMemo(() => {
-      const total = clubsWithSeasonalStatus.length;
-      
-      // CONFIGURACIÓN: Beneficio medio estimado por cada ficha/jugador del club
-      const TICKET_MEDIO = ticketMedio;
-      
-      let signed = 0, negotiation = 0, prospect = 0, toContact = 0, notInterested = 0;
-      let pipelineValue = 0, closedValue = 0;
-      
-      const categories = {};
-
-      clubsWithSeasonalStatus.forEach(club => {
-          const status = club.status;
-          
-          // Si el club aún no tiene 'estimatedPlayers', usamos 0 por defecto
-          const players = club.estimatedPlayers || 0; 
-          const clubValue = players * TICKET_MEDIO;
-
-          // Contabilizamos estados y sumamos dinero
-          if (status === 'signed' || status === 'client') {
-              signed++;
-              closedValue += clubValue;
-          } else if (status === 'negotiation' || status === 'lead') {
-              negotiation++;
-              pipelineValue += clubValue; // Valor de oportunidades calientes
-          } else if (status === 'prospect') {
-              prospect++;
-              pipelineValue += (clubValue * 0.3); // Oportunidades frías ponderadas al 30%
-          } else if (status === 'to_contact') {
-              toContact++;
-          } else if (status === 'not_interested' || status === 'rejected') {
-              notInterested++;
-          }
-
-          // Agrupación por deporte
-          const cat = club.category || 'General';
-          categories[cat] = (categories[cat] || 0) + 1;
-      });
-
-      const contacted = total - toContact;
-      const activeOpportunities = negotiation + prospect;
-
-      return { 
-          total, signed, negotiation, prospect, toContact, contacted, notInterested, 
-          activeOpportunities, categories,
-          pipelineValue, closedValue // NUEVAS VARIABLES FINANCIERAS
-      };
-  }, [clubsWithSeasonalStatus, ticketMedio]);
-
-  const notifications = useMemo(() => {
-      if (clearedNotifications) return [];
-      const alerts = [];
-      const staleClubs = clubs.filter(c => c.lastInteraction === "Never" || c.lastInteraction === "30d");
-      if (staleClubs.length > 0) alerts.push({ type: 'alert', title: 'Leads en Enfriamiento', message: `Hay ${staleClubs.length} clubes sin contacto reciente.` });
-      const highPriorityTasks = tasks.filter(t => t.priority === 'high');
-      if (highPriorityTasks.length > 0) alerts.push({ type: 'info', title: 'Agenda Prioritaria', message: `Tienes ${highPriorityTasks.length} tareas de Alta Prioridad hoy.` });
-      return alerts;
-  }, [clubs, tasks, clearedNotifications]);
+    // --- DATOS DERIVADOS (ESTADÍSTICAS Y CÁLCULOS) ---
+    const { filteredClubs, stats, notifications } = useCRMStats(
+        clubs, interactions, selectedSeason, filterNeedsAttention, ticketMedio, tasks, clearedNotifications
+    );
 
   // --- RENDERIZADOS CONDICIONALES PANTALLAS PRINCIPALES ---
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>;
