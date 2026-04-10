@@ -7,6 +7,13 @@ import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Sear
 // --- LOGICA DE GOOGLE CALENDAR ---
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from './services/googleCalendar';
 
+// --- LAYOUT ---
+import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
+
+// --- HOOKS ---
+import { useCRMData } from './hooks/useCRMData';
+
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
 import { DEFAULT_STATUSES } from './utils/constants';
@@ -31,6 +38,7 @@ import NewClubModal from './components/ui/NewClubModal';
 const appId = 'fotoesport-crm';
 
 export default function App() {
+    
   // --- AUTH & ESTADO GLOBAL ---
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -38,15 +46,13 @@ export default function App() {
   
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [currentView, setCurrentView] = useState('overview');
-  
-  // --- DATOS FIRESTORE ---
-  const [seasons, setSeasons] = useState(['2024-2025']);
-  const [selectedSeason, setSelectedSeason] = useState('2024-2025');
-  const [activeSeason, setActiveSeason] = useState('2024-2025');
-  const [clubs, setClubs] = useState([]); 
-  const [tasks, setTasks] = useState([]);
-  const [interactions, setInteractions] = useState([]);
-  const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
+
+  // --- DATOS FIRESTORE DESDE EL HOOK ---
+  const {
+      seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
+      clubs, tasks, interactions, statuses, setStatuses, targetClients, setTargetClients,
+      ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig
+  } = useCRMData(user, isLocked, appId);
 
     // --- ESTADOS DE GOOGLE CON PERSISTENCIA (src/App.jsx) ---
 
@@ -77,19 +83,12 @@ export default function App() {
     }, [googleEmail]);
   
   // --- UI STATE ---
-  const [targetClients, setTargetClients] = useState(50);
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
   const [showRadius, setShowRadius] = useState(false);
   const [showRoute, setShowRoute] = useState(false); 
   const [routeStops, setRouteStops] = useState([]); 
-  // NUEVO: Estado para guardar la configuración del Checklist
-  const [checklistConfig, setChecklistConfig] = useState([
-        { id: 'logo', label: 'Escudo Vectorial', type: 'global' },
-        { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
-        { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
-]);
 
   // --- GESTOR DE UBICACIONES Y RUTAS ---
   const [savedLocations, setSavedLocations] = useState(() => {
@@ -137,55 +136,6 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  // --- SUSCRIPCIONES A FIRESTORE ---
-  useEffect(() => {
-    if (!user || isLocked) return;
-    
-    const clubsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'clubs');
-    const unsubClubs = onSnapshot(clubsRef, (snapshot) => {
-        setClubs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const tasksRef = collection(db, 'artifacts', appId, 'users', user.uid, 'tasks');
-    const unsubTasks = onSnapshot(tasksRef, (snapshot) => {
-        setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const intRef = collection(db, 'artifacts', appId, 'users', user.uid, 'interactions');
-    const unsubInt = onSnapshot(intRef, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setInteractions(data.sort((a, b) => b.createdAt - a.createdAt));
-    });
-
-    // NUEVO: Suscripción a los Estados Personalizados y Configuraciones Globales
-    const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
-    const unsubSettings = onSnapshot(settingsRef, (snapshot) => {
-        if (snapshot.exists()) {
-            const data = snapshot.data();
-            if (data.statuses) setStatuses(data.statuses);
-            if (data.targetClients) setTargetClients(data.targetClients);
-            if (data.ticketMedio) setTicketMedio(data.ticketMedio);
-            if (data.seasons) setSeasons(data.seasons);
-            if (data.checklistConfig) setChecklistConfig(data.checklistConfig);
-            
-            // Leemos la temporada activa oficial (con retrocompatibilidad)
-            const seasonOficial = data.activeSeason || data.currentSeason || '2024-2025';
-            setActiveSeason(seasonOficial);
-            
-            // TRUCO: Solo la primera vez que carga la app, forzamos que tu vista 
-            // sea la temporada oficial para que no salte el aviso naranja.
-            if (!window.hasLoadedInitialSeason) {
-                setSelectedSeason(seasonOficial);
-                window.hasLoadedInitialSeason = true;
-            }
-        } else {
-            setStatuses(DEFAULT_STATUSES);
-        }
-    });
-
-    return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); };
-  }, [user, isLocked]); // <-- Esta es la línea que seguramente se había borrado
 
   // --- GESTOR DE RUTAS POR CARRETERA (OSRM API Gratuita) ---
   const handleOptimizeRoute = async () => {
@@ -402,8 +352,6 @@ export default function App() {
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), { ticketMedio: Number(newTicket) }, { merge: true });
       showToast("Ticket medio actualizado", "success");
   };
-
-  const [ticketMedio, setTicketMedio] = useState(15);
 
   const handleAddSeason = async (newSeasonName) => {
       if (!newSeasonName || seasons.includes(newSeasonName)) {
@@ -767,65 +715,29 @@ export default function App() {
     <div className="flex h-screen w-full bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden transition-colors duration-300">
       
       {/* SIDEBAR LADO IZQUIERDO */}
-      <aside className="w-16 h-full border-r border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 flex flex-col items-center py-6 gap-6 z-50 shadow-lg">
-        <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md cursor-pointer" onClick={() => setCurrentView('map')}>S</div>
-        <nav className="flex flex-col gap-3 w-full px-2 mt-4">
-            <NavButton icon={Sparkles} isActive={currentView === 'overview'} onClick={() => setCurrentView('overview')} title="Asistente IA" />
-          <NavButton icon={Map} isActive={currentView === 'map'} onClick={() => setCurrentView('map')} title="Mapa" />
-          <NavButton icon={Kanban} isActive={currentView === 'pipeline'} onClick={() => setCurrentView('pipeline')} title="Pipeline Kanban" />
-          <NavButton icon={List} isActive={currentView === 'database'} onClick={() => setCurrentView('database')} title="Base de Datos" />
-          <NavButton icon={CalendarIcon} isActive={currentView === 'calendar'} onClick={() => setCurrentView('calendar')} title="Calendario" />
-          <NavButton icon={Target} isActive={currentView === 'targets'} onClick={() => setCurrentView('targets')} title="Objetivos" />
-        </nav>
-        <div className="mt-auto flex flex-col gap-4 mb-4">
-           <button onClick={toggleTheme} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 transition-colors">
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-           </button>
-           <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 transition-colors">
-              <Settings size={20} />
-           </button>
-           <button onClick={() => auth.signOut()} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors">
-              <LogOut size={20} />
-           </button>
-        </div>
-      </aside>
+      <Sidebar 
+          currentView={currentView} 
+          setCurrentView={setCurrentView} 
+          theme={theme} 
+          toggleTheme={toggleTheme} 
+          setShowSettings={setShowSettings} 
+      />
 
       {/* ÁREA PRINCIPAL */}
       <main className="flex-1 relative bg-white dark:bg-zinc-900 flex flex-col transition-colors duration-300 shadow-inner rounded-l-2xl overflow-hidden my-2 mr-2 border border-zinc-200 dark:border-zinc-800">
         
         {/* HEADER SUPERIOR */}
-        <header className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm flex items-center justify-between px-6 z-40">
-           <div className="flex items-center gap-4">
-             <h1 className="text-lg font-bold uppercase tracking-wide text-zinc-800 dark:text-white">
-                {currentView === 'map' && 'Mapa Táctico'}
-                {currentView === 'pipeline' && 'Pipeline de Ventas'}
-                {currentView === 'database' && 'Directorio'}
-                {currentView === 'calendar' && 'Planificación'}
-                {currentView === 'targets' && 'Cuadro de Mando'}
-             </h1>
-             <div className="h-4 w-[1px] bg-zinc-300 dark:bg-zinc-700"></div>
-             <SeasonSelector 
-                 seasons={seasons} 
-                 selectedSeason={selectedSeason} 
-                 onSelect={handleActiveSeasonChange} 
-             />
-             <button onClick={() => setFilterNeedsAttention(!filterNeedsAttention)} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm", filterNeedsAttention ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500 dark:text-red-400" : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400")}>
-                <AlertTriangle className="w-3 h-3" />{filterNeedsAttention ? "Viendo Prioritarios" : "Filtrar Alertas"}
-             </button>
-           </div>
-           
-           <div className="flex items-center gap-4">
-                {(currentView === 'map' || currentView === 'database') && (
-                    <div className="relative">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-                        <input type="text" placeholder="Buscar Club..." className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 w-64 transition-all text-zinc-900 dark:text-white" />
-                    </div>
-                )}
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white shadow-sm transition-colors">
-                    <Bell className="w-4 h-4" />{notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>}
-                </button>
-           </div>
-        </header>
+        <Header 
+            currentView={currentView}
+            seasons={seasons}
+            selectedSeason={selectedSeason}
+            onActiveSeasonChange={handleActiveSeasonChange}
+            filterNeedsAttention={filterNeedsAttention}
+            setFilterNeedsAttention={setFilterNeedsAttention}
+            notifications={notifications}
+            showNotifications={showNotifications}
+            setShowNotifications={setShowNotifications}
+        />
 
         {renderMainContent()}
         {showNotifications && <NotificationCenter notifications={notifications} onClose={() => setShowNotifications(false)} onClearAll={() => setClearedNotifications(true)} />}
