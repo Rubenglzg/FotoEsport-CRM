@@ -102,6 +102,13 @@ export default function App() {
       setTimeout(() => setToast(null), 3500);
   };
 
+  // --- RUTAS Y MAPA DESDE EL HOOK ---
+  const {
+      showRadius, setShowRadius, showRoute, setShowRoute, routeStops, setRouteStops,
+      savedLocations, activeOrigin, setActiveOrigin, handleOptimizeRoute,
+      handleOpenGoogleMapsNav, toggleRouteStop, addNewLocation
+  } = useRouting(appId, showToast);
+
   // --- MODO CLARO / OSCURO ---
   useEffect(() => {
     const root = document.documentElement;
