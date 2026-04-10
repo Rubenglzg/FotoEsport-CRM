@@ -108,7 +108,8 @@ export default function App() {
   const {
       showRadius, setShowRadius, showRoute, setShowRoute, routeStops, setRouteStops,
       savedLocations, activeOrigin, setActiveOrigin, handleOptimizeRoute,
-      handleOpenGoogleMapsNav, toggleRouteStop, addNewLocation
+      handleOpenGoogleMapsNav, toggleRouteStop, 
+      addSavedLocation, updateSavedLocation, deleteSavedLocation // <-- Las 3 funciones nuevas
   } = useRouting(appId, showToast);
 
   // --- MODO CLARO / OSCURO ---
@@ -173,27 +174,23 @@ export default function App() {
             onSelectClub={setSelectedClub}
         />;
 
-      case 'map': return <MapView 
-            clubs={filteredClubs} 
-            selectedId={selectedClub?.id} 
-            onSelect={setSelectedClub} 
-            showRadius={showRadius} 
-            setShowRadius={setShowRadius} 
-            showRoute={showRoute} 
-            setShowRoute={setShowRoute} 
-            tasks={tasks} 
-            
-            // --- NUEVAS PROPS DEL GESTOR ---
+        case 'map': return <MapView 
+            clubs={filteredClubs} selectedId={selectedClub?.id} onSelect={setSelectedClub} 
+            showRadius={showRadius} setShowRadius={setShowRadius} showRoute={showRoute} 
+            setShowRoute={setShowRoute} tasks={tasks} 
+
             savedLocations={savedLocations}
             activeOrigin={activeOrigin}
             setActiveOrigin={setActiveOrigin}
-            addNewLocation={addNewLocation}
-            routeStops={routeStops} 
-            setRouteStops={setRouteStops} 
-            toggleRouteStop={toggleRouteStop}
-            onOptimizeRoute={handleOptimizeRoute} 
-            onExportRoute={handleOpenGoogleMapsNav}
-            statuses={statuses}
+
+            // --- LAS NUEVAS PROPS DE OFICINAS ---
+            addSavedLocation={addSavedLocation}
+            updateSavedLocation={updateSavedLocation}
+            deleteSavedLocation={deleteSavedLocation}
+            // ------------------------------------
+
+            routeStops={routeStops} setRouteStops={setRouteStops} toggleRouteStop={toggleRouteStop}
+            onOptimizeRoute={handleOptimizeRoute} onExportRoute={handleOpenGoogleMapsNav} statuses={statuses}
         />;
 
       case 'database': return <DatabaseView 

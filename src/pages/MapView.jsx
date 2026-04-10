@@ -1,14 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, Target, MapPin, Plus, X, Car, ChevronDown, Filter } from 'lucide-react';
+import { Navigation, Target, MapPin, Plus, X, Car, ChevronDown, Filter, Settings } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { Button } from '../components/ui/Button';
+
+import LocationManagerModal from '../components/ui/LocationManagerModal';
 
 export default function MapView({ 
     clubs, selectedId, onSelect, showRadius, setShowRadius, 
     showRoute, setShowRoute, tasks, savedLocations, activeOrigin, 
-    setActiveOrigin, addNewLocation, routeStops, setRouteStops, 
+    setActiveOrigin, addSavedLocation, updateSavedLocation, deleteSavedLocation, 
+    addNewLocation, routeStops, setRouteStops, 
     toggleRouteStop, onOptimizeRoute, onExportRoute, statuses
 }) {
 
@@ -23,6 +26,8 @@ export default function MapView({
   
   const mapCenter = [40.4168, -3.7038]; 
   const defaultZoom = 6;
+
+  const [showLocationManager, setShowLocationManager] = useState(false);
 
   // Calculamos la línea de la ruta dibujada en el mapa
   const routeLine = useMemo(() => {
@@ -160,6 +165,13 @@ export default function MapView({
                      <option key={loc.id} value={loc.id}>{loc.label}</option>
                    ))}
                  </select>
+                 <button 
+                      onClick={() => setShowLocationManager(true)} 
+                      className="p-1 text-zinc-400 hover:text-emerald-500 bg-zinc-100 dark:bg-zinc-800 rounded-md transition-colors"
+                      title="Gestionar Oficinas"
+                  >
+                      <Settings size={14} />
+                  </button>
                  <button onClick={addNewLocation} className="px-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="Añadir nueva ubicación">
                      <Plus className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                  </button>
@@ -285,6 +297,18 @@ export default function MapView({
             {showRoute ? "CERRAR RUTA" : "CREAR RUTA"}
          </button>
       </div>
+
+      {/* MODAL GESTOR DE OFICINAS */}
+        {showLocationManager && (
+            <LocationManagerModal
+                savedLocations={savedLocations}
+                onClose={() => setShowLocationManager(false)}
+                onAdd={addSavedLocation}
+                onUpdate={updateSavedLocation}
+                onDelete={deleteSavedLocation}
+            />
+        )}
+
     </div>
   );
 }
