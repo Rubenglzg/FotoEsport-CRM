@@ -30,7 +30,17 @@ export default function Sidebar({ currentView, setCurrentView, theme, toggleThem
          <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 transition-colors">
             <Settings size={20} />
          </button>
-         <button onClick={() => auth.signOut()} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors">
+          <button 
+            onClick={() => {
+                // 1. Borramos los tokens sensibles de la memoria del navegador
+                localStorage.removeItem('fotoesport-crm_gtoken');
+                localStorage.removeItem('fotoesport-crm_gemail');
+                
+                // 2. Cerramos la sesión en Firebase
+                auth.signOut();
+            }} 
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+         >
             <LogOut size={20} />
          </button>
       </div>
