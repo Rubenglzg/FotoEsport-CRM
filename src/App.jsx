@@ -4,6 +4,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles, Kanban } from 'lucide-react'; // <-- Añade Kanban aquí
 
+// --- LOGICA DE GOOGLE CALENDAR ---
+import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from './services/googleCalendar';
+
 // --- UTILIDADES ---
 import { cn, exportToCSV } from './utils/helpers';
 import { DEFAULT_STATUSES } from './utils/constants';
@@ -184,97 +187,6 @@ export default function App() {
     return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); };
   }, [user, isLocked]); // <-- Esta es la línea que seguramente se había borrado
 
-  
-
-  // --- LOGICA DE GOOGLE CALENDAR ---
-  
-  // Función para construir la carga útil (payload) del evento con los datos correctos
-  const buildGoogleEventPayload = (taskDetails) => {
-      let start, end;
-
-      if (taskDetails.isAllDay) {
-          start = { date: taskDetails.due };
-          const endDate = new Date(taskDetails.due);
-          endDate.setDate(endDate.getDate() + 1);
-          end = { date: endDate.toISOString().split('T')[0] };
-      } else {
-          const timeStr = taskDetails.time || '09:00';
-          const endTimeStr = taskDetails.endTime || '10:00';
-          const startDateTime = new Date(`${taskDetails.due}T${timeStr}:00`).toISOString();
-          const endDateTime = new Date(`${taskDetails.due}T${endTimeStr}:00`).toISOString();
-          
-          start = { dateTime: startDateTime, timeZone: 'Europe/Madrid' };
-          end = { dateTime: endDateTime, timeZone: 'Europe/Madrid' };
-      }
-
-      // Buscamos el club en el array de clubs para extraer su nombre y ubicación real
-      const associatedClub = clubs.find(c => c.id === taskDetails.clubId);
-      const clubName = associatedClub ? associatedClub.name : 'Ninguno';
-      const eventLocation = associatedClub?.address || taskDetails.location || '';
-
-      return {
-        summary: taskDetails.task,
-        location: eventLocation, // Esto hace que aparezca la ubicación nativa en Google Maps/Calendar
-        description: `Generado desde CRM Sooner.\nClub: ${clubName}\nDetalles: ${taskDetails.description || ''}`,
-        start: start,
-        end: end,
-        colorId: taskDetails.priority === 'high' ? '11' : '9',
-      };
-  };
-
-  const createGoogleCalendarEvent = async (taskDetails, token) => {
-      if (!token) return;
-      const event = buildGoogleEventPayload(taskDetails);
-      try {
-        const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
-          method: "POST",
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(event)
-        });
-        if (!response.ok) throw new Error("Error creando evento");
-        const data = await response.json();
-        return data.id; 
-      } catch (error) {
-        console.error("Error API Google Calendar Create:", error);
-      }
-  };
-
-  const updateGoogleCalendarEvent = async (taskDetails, token) => {
-      if (!token || !taskDetails.googleEventId) return;
-      const event = buildGoogleEventPayload(taskDetails);
-      try {
-        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${taskDetails.googleEventId}`, {
-          method: "PUT",
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(event)
-        });
-        if (!response.ok) throw new Error("Error actualizando evento");
-      } catch (error) {
-        console.error("Error API Google Calendar Update:", error);
-      }
-  };
-
-  const deleteGoogleCalendarEvent = async (eventId, token) => {
-      if (!token || !eventId) return;
-      try {
-        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
-          method: "DELETE",
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        // Detectar si la llave del servidor ha caducado
-        if (response.status === 401) {
-            setGoogleToken(null); 
-            showToast("La sesión del Calendario ha caducado. Vuelve a autorizar en Ajustes.", "error");
-            return;
-        }
-
-        if (!response.ok) throw new Error("Error eliminando evento en Google");
-      } catch (error) {
-        console.error("Error API Google Calendar Delete:", error);
-      }
-  };
-
   // --- GESTOR DE RUTAS POR CARRETERA (OSRM API Gratuita) ---
   const handleOptimizeRoute = async () => {
       const validStops = routeStops.filter(s => (s.lat || s.coordinates?.lat) && (s.lng || s.coordinates?.lng));
@@ -416,11 +328,11 @@ export default function App() {
     }
 };
 
-  const addTask = async (newTask) => {
+    const addTask = async (newTask) => {
       if(!user) return;
       let googleEventId = null;
       if (googleToken) {
-         googleEventId = await createGoogleCalendarEvent(newTask, googleToken);
+         googleEventId = await createGoogleCalendarEvent(newTask, googleToken, clubs); // <-- Añadido clubs
       }
       const taskToSave = { ...newTask, googleEventId: googleEventId || null };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', newTask.id.toString()), taskToSave);
@@ -434,9 +346,12 @@ export default function App() {
               const taskToDelete = tasks.find(t => t.id.toString() === taskId.toString());
               
               // 2. Si tiene ID y tenemos token, mandamos la orden de borrar a tu móvil
-              if (taskToDelete && taskToDelete.googleEventId && googleToken) {
-                  await deleteGoogleCalendarEvent(taskToDelete.googleEventId, googleToken);
-              }
+                if (taskToDelete && taskToDelete.googleEventId && googleToken) {
+                    await deleteGoogleCalendarEvent(taskToDelete.googleEventId, googleToken, () => {
+                        setGoogleToken(null); 
+                        showToast("La sesión del Calendario ha caducado. Vuelve a autorizar en Ajustes.", "error");
+                    });
+                }
 
               // 3. Borramos definitivamente de la base de datos de Firebase
               await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', taskId.toString()));
@@ -983,7 +898,7 @@ export default function App() {
                   if (taskToEdit) {
                       // 1. Actualizamos el evento en el Calendario de Google (si hay token y tiene evento previo)
                       if (googleToken && t.googleEventId) {
-                          await updateGoogleCalendarEvent(t, googleToken);
+                          await updateGoogleCalendarEvent(t, googleToken, clubs);
                       }
                       
                       // 2. Actualizamos en Firebase
