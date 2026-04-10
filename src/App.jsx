@@ -4,7 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles, Kanban } from 'lucide-react'; // <-- Añade Kanban aquí
 
-// --- LOGICA DE GOOGLE CALENDAR ---
+// --- SERVICES ---
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from './services/googleCalendar';
 
 // --- LAYOUT ---
@@ -13,8 +13,9 @@ import Header from './components/layout/Header';
 
 // --- HOOKS ---
 import { useCRMData } from './hooks/useCRMData';
+import { useRouting } from './hooks/useRouting';
 
-// --- UTILIDADES ---
+// --- UTILS ---
 import { cn, exportToCSV } from './utils/helpers';
 import { DEFAULT_STATUSES } from './utils/constants';
 
@@ -38,7 +39,7 @@ import NewClubModal from './components/ui/NewClubModal';
 const appId = 'fotoesport-crm';
 
 export default function App() {
-    
+
   // --- AUTH & ESTADO GLOBAL ---
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -86,24 +87,6 @@ export default function App() {
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
-  const [showRadius, setShowRadius] = useState(false);
-  const [showRoute, setShowRoute] = useState(false); 
-  const [routeStops, setRouteStops] = useState([]); 
-
-  // --- GESTOR DE UBICACIONES Y RUTAS ---
-  const [savedLocations, setSavedLocations] = useState(() => {
-      const saved = localStorage.getItem(`${appId}_locations`);
-      // Si no hay guardadas, ponemos tu oficina por defecto
-      return saved ? JSON.parse(saved) : [
-          { id: '1', label: "Oficina Principal", lat: 39.9864, lng: -0.0513 }
-      ];
-  });
-  const [activeOrigin, setActiveOrigin] = useState(savedLocations[0]);
-
-  // Guardar automáticamente cualquier nueva ubicación que añadas
-  useEffect(() => {
-      localStorage.setItem(`${appId}_locations`, JSON.stringify(savedLocations));
-  }, [savedLocations]);
   
   // --- MODALES Y TOASTS ---
   const [showSettings, setShowSettings] = useState(false);
@@ -136,107 +119,6 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  // --- GESTOR DE RUTAS POR CARRETERA (OSRM API Gratuita) ---
-  const handleOptimizeRoute = async () => {
-      const validStops = routeStops.filter(s => (s.lat || s.coordinates?.lat) && (s.lng || s.coordinates?.lng));
-      
-      if (validStops.length === 0) {
-          showToast("Añade clubes con ubicación válida a la ruta.", "info");
-          return;
-      }
-
-      showToast("Calculando ruta por carretera (coche)...", "info");
-
-      try {
-          // 2. Preparamos coordenadas (El index 0 siempre es el Origen)
-          const coordinatesStr = [
-              `${activeOrigin.lng},${activeOrigin.lat}`,
-              ...validStops.map(stop => {
-                  const lat = stop.lat || stop.coordinates?.lat;
-                  const lng = stop.lng || stop.coordinates?.lng;
-                  return `${lng},${lat}`;
-              })
-          ].join(';');
-
-          // 3. Llamada a la API
-          const response = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordinatesStr}?source=first&roundtrip=false`);
-          
-          if (!response.ok) throw new Error("Error en servidor de rutas");
-          const data = await response.json();
-
-          // 4. NUEVO: Reconstrucción perfecta del orden
-          // OSRM nos devuelve 'waypoints' en el mismo orden que los enviamos.
-          const optimizedRoute = [];
-          
-          data.waypoints.forEach((wp, requestIndex) => {
-              // Saltamos el índice 0 porque es nuestra oficina/casa (no es un club a visitar)
-              if (requestIndex === 0) return; 
-              
-              // El waypoint_index es la posición en la que debe ir ese club para hacer la ruta más corta
-              optimizedRoute[wp.waypoint_index] = validStops[requestIndex - 1];
-          });
-
-          // Filtramos cualquier espacio vacío (Boolean) y guardamos la ruta final
-          setRouteStops(optimizedRoute.filter(Boolean)); 
-
-          // 5. Extraer la distancia
-          if (data.trips && data.trips.length > 0) {
-              const durationMin = Math.round(data.trips[0].duration / 60);
-              const distanceKm = (data.trips[0].distance / 1000).toFixed(1);
-              showToast(`Ruta lista: ${distanceKm} km en coche (Aprox. ${durationMin} min)`, "success");
-          } else {
-              showToast("Ruta optimizada correctamente.", "success");
-          }
-
-      } catch (error) {
-          console.error("Error API Rutas:", error);
-          showToast("Error al calcular ruta por carretera. Revisa la conexión.", "error");
-      }
-  };
-
-  // --- FUNCIÓN DE NAVEGACIÓN GPS ---
-  const handleOpenGoogleMapsNav = () => {
-      if (routeStops.length === 0) {
-          showToast("No hay ruta que exportar.", "info");
-          return;
-      }
-      
-      const originStr = `${activeOrigin.lat},${activeOrigin.lng}`;
-      const stopsStr = routeStops.map(stop => {
-          const lat = stop.lat || stop.coordinates?.lat;
-          const lng = stop.lng || stop.coordinates?.lng;
-          return `${lat},${lng}`;
-      }).join('/');
-      
-      // Abre la app de Google Maps forzando el modo de transporte a Coche (!3e0)
-      window.open(`https://www.google.com/maps/dir/${originStr}/${stopsStr}/data=!4m2!4m1!3e0`, '_blank');
-  };
-
-  // Función para añadir/quitar un club específico de la ruta
-  const toggleRouteStop = (club) => {
-      const exists = routeStops.find(s => s.id === club.id);
-      if (exists) {
-          setRouteStops(routeStops.filter(s => s.id !== club.id));
-      } else {
-          setRouteStops([...routeStops, club]);
-      }
-  };
-
-  // Función para añadir una nueva base de salida
-  const addNewLocation = () => {
-      const label = window.prompt("Nombre de la ubicación (ej: Mi Casa, Hotel Madrid):");
-      if (!label) return;
-      const lat = window.prompt("Latitud (ej: 39.4699):");
-      const lng = window.prompt("Longitud (ej: -0.3774):");
-      
-      if (lat && lng) {
-          const newLoc = { id: Math.random().toString(), label, lat: parseFloat(lat), lng: parseFloat(lng) };
-          setSavedLocations([...savedLocations, newLoc]);
-          setActiveOrigin(newLoc);
-          showToast("Ubicación guardada", "success");
-      }
-  };
 
   // --- LOGICA DE NEGOCIO ---
   const handleSeedDatabase = async () => {
