@@ -25,8 +25,8 @@ export default function ClubDetailPanel({
             const predictedDate = await predictDateWithAI(historyText);
             
             if (predictedDate) {
-                setTempRecDate(predictedDate); // Actualiza la interfaz sin lag
-                onUpdateClub({...club, recommendedContactDate: predictedDate}); // Guarda en base de datos
+                setTempRecDate(predictedDate);
+                onUpdateClub({...club, recommendedContactDate: predictedDate});
             } else {
                 alert("Límite de peticiones alcanzado. Por favor, espera 1 minuto.");
             }
@@ -43,13 +43,13 @@ export default function ClubDetailPanel({
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
 
-    // NUEVO: Estados locales para inputs numéricos y fechas (evita el lag al escribir)
     const [tempPlayers, setTempPlayers] = useState(club.estimatedPlayers || '');
     const [tempTotalTeams, setTempTotalTeams] = useState(club.totalTeams || '');
     const [tempBaseTeams, setTempBaseTeams] = useState(club.baseTeams || '');
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
 
-    const inputContainerRef = useRef(null);
+    // Referencia para el input de texto clásico
+    const inputRef = useRef(null);
 
     // Sincronizar al cambiar de club
     useEffect(() => {
@@ -61,16 +61,15 @@ export default function ClubDetailPanel({
         setTempRecDate(club.recommendedContactDate || '');
     }, [club.id, club.name, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate]);
 
-    // Lógicas de Actualización (Guardan en Firebase solo al quitar el foco del input)
+    // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
     const handleSavePlayers = () => { if (Number(tempPlayers) !== club.estimatedPlayers) onUpdateClub({...club, estimatedPlayers: Number(tempPlayers)}); };
     const handleSaveTotalTeams = () => { if (Number(tempTotalTeams) !== club.totalTeams) onUpdateClub({...club, totalTeams: Number(tempTotalTeams)}); };
     const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
     const handleSaveRecDate = () => { if (tempRecDate !== club.recommendedContactDate) onUpdateClub({...club, recommendedContactDate: tempRecDate}); };
-    // Leemos el estado de la temporada actual
+    
     const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
 
-    // Guardamos el cambio dentro del registro de la temporada
     const handleStatusChange = (e) => {
         onUpdateClub({
             ...club, 
@@ -81,14 +80,13 @@ export default function ClubDetailPanel({
         });
     };
     const handleSaveContacts = () => onUpdateClub({...club, contacts});
+    
     const getAssetValue = (item) => {
-        // 1. Requisitos anuales (Ej: Plantillas)
         if (item.type === 'seasonal') return club.assets?.[`${currentSeason}_${item.id}`];
         
-        // 2. Requisitos de Contrato (El cálculo matemático)
         if (item.type === 'contract') {
             const isGloballyMarked = club.assets?.[item.id];
-            if (!isGloballyMarked) return false; // Si nunca se firmó, es false
+            if (!isGloballyMarked) return false; 
 
             const duration = club.assets?.[`${item.id}_duration`] || 1;
             const startSeason = club.assets?.[`${item.id}_startSeason`] || currentSeason;
@@ -98,15 +96,10 @@ export default function ClubDetailPanel({
 
             if (startIndex === -1 || currentIndex === -1) return false;
 
-            // Diferencia en años desde que se firmó hasta el año que estás mirando en la barra superior
             const yearsPassed = currentIndex - startIndex;
-
-            // El contrato es válido SI: no estás mirando al pasado (antes de que se firmara) 
-            // Y SI los años pasados son menores a la duración del contrato.
             return yearsPassed >= 0 && yearsPassed < duration;
         }
 
-        // 3. Requisitos Globales para siempre (Ej: Logo)
         return club.assets?.[item.id];
     };
 
@@ -119,11 +112,10 @@ export default function ClubDetailPanel({
         } else {
             updates[item.id] = !isChecked;
             
-            // NUEVO: Si es un contrato y lo estás marcando como hecho, guarda la temporada inicial
             if (item.type === 'contract' && !isChecked) {
                 updates[`${item.id}_startSeason`] = currentSeason;
                 if (!updates[`${item.id}_duration`]) {
-                    updates[`${item.id}_duration`] = 1; // Por defecto 1 año
+                    updates[`${item.id}_duration`] = 1; 
                 }
             }
         }
@@ -168,7 +160,7 @@ export default function ClubDetailPanel({
         setEditNote("");
     };
 
-    // --- NUEVAS FUNCIONES PARA IA Y VOZ ---
+    // Funciones para IA y Voz
     const startDictation = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -206,29 +198,77 @@ export default function ClubDetailPanel({
         }
     };
 
-    // Autocompletado de Google Places
+    // Autocompletado CLÁSICO de Google Places
     useEffect(() => {
-        const setupModernAutocomplete = async () => {
-            if (!inputContainerRef.current || !window.google) return;
-            try {
-                const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
-                inputContainerRef.current.innerHTML = '';
-                const autocomplete = new PlaceAutocompleteElement({ componentRestrictions: { country: ['es'] } });
-                autocomplete.style.width = '100%'; autocomplete.style.boxSizing = 'border-box';
-                autocomplete.addEventListener('gmp-placeselect', async (e) => {
-                    const place = e.place;
-                    await place.fetchFields({ fields: ['location', 'formattedAddress'] });
-                    if (place.location) onUpdateClub({ ...club, address: place.formattedAddress, lat: place.location.lat(), lng: place.location.lng() });
-                });
-                inputContainerRef.current.appendChild(autocomplete);
-            } catch (error) { console.error("Error Google Places:", error); }
+        // Silenciamos el aviso publicitario de Google de la consola
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+            if (typeof args[0] === 'string' && args[0].includes('google.maps.places.Autocomplete is not available to new customers')) return;
+            originalWarn.apply(console, args);
         };
-        setupModernAutocomplete();
-    }, [club.id]);
+
+        let autocomplete = null;
+        let listener = null;
+
+        const setupClassicAutocomplete = () => {
+            if (!inputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
+
+            autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+                componentRestrictions: { country: 'es' },
+                fields: ['formatted_address', 'geometry', 'name']
+            });
+
+            listener = autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                
+                if (place.geometry && place.geometry.location) {
+                    onUpdateClub({ 
+                        ...club, 
+                        address: place.formatted_address || place.name, 
+                        lat: place.geometry.location.lat(), 
+                        lng: place.geometry.location.lng() 
+                    });
+                }
+            });
+
+            inputRef.current.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+        };
+
+        setTimeout(setupClassicAutocomplete, 100);
+
+        return () => {
+            console.warn = originalWarn;
+            if (listener) {
+                window.google.maps.event.removeListener(listener);
+            }
+        };
+    }, [club.id]); // Aseguramos que se reinicie si cambiamos de club
+
+    // Variable para saber si el club tiene dirección guardada (Para el Check Verde)
+    const isAddressSelected = club.address && club.lat !== undefined && club.lat !== '';
 
     return (
         <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
-                {/* CABECERA (NOMBRE Y ESTADO) */}
+              {/* Estilos para que la lista clásica de Google se vea perfecta por encima del panel */}
+              <style>{`
+                  .pac-container {
+                      z-index: 99999 !important;
+                      font-family: inherit;
+                      border-radius: 0.5rem;
+                      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+                      border: 1px solid #e4e4e7;
+                      margin-top: 4px;
+                  }
+                  .pac-item { padding: 8px 12px; cursor: pointer; }
+                  .pac-item:hover { background-color: #f4f4f5; }
+                  .dark .pac-container { background-color: #18181b; border-color: #27272a; }
+                  .dark .pac-item { color: #a1a1aa; border-top-color: #27272a; }
+                  .dark .pac-item:hover { background-color: #27272a; }
+                  .dark .pac-item-query { color: #fff; }
+              `}</style>
+
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
                  <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
                  <div className="flex items-start gap-4 mb-2 pr-6">
@@ -251,7 +291,6 @@ export default function ClubDetailPanel({
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                      {/* PANEL VISUAL DE JUGADORES Y EQUIPOS (CABECERA) */}
                       <div className="mt-4 grid grid-cols-3 gap-2">
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
@@ -292,23 +331,19 @@ export default function ClubDetailPanel({
                  </div>
               </div>
 
-              {/* PESTAÑAS */}
               <div className="flex border-b border-zinc-200 dark:border-zinc-800">
                  <button onClick={() => setActiveTab('details')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'details' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Gestión</button>
                  <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
               </div>
 
-              {/* CONTENIDO DEL PANEL */}
               <div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
-                      {/* FECHAS DE CONTACTO E INTELIGENCIA ARTIFICIAL */}
                       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
                           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-16 h-16 text-blue-500"/></div>
                           <h4 className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-3 tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3"/> Inteligencia y Actividad</h4>
                           
                           <div className="grid grid-cols-2 gap-4 relative z-10">
-                              {/* Panel Izquierdo: Último Contacto */}
                               <div className="flex flex-col justify-end">
                                   <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Último Contacto</label>
                                   <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-3 flex items-center h-[34px] text-xs text-zinc-700 dark:text-zinc-300 font-medium shadow-sm w-full">
@@ -316,7 +351,6 @@ export default function ClubDetailPanel({
                                   </div>
                               </div>
                               
-                              {/* Panel Derecho: IA */}
                               <div className="flex flex-col justify-end">
                                   <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Próximo Recomendado</label>
                                   <div className="flex gap-1 shadow-sm h-[34px]">
@@ -335,7 +369,6 @@ export default function ClubDetailPanel({
                           </div>
                       </div>
 
-                      {/* PANEL VISUAL DE EQUIPOS BASE */}
                       <div className="grid grid-cols-2 gap-2">
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
@@ -361,7 +394,6 @@ export default function ClubDetailPanel({
                           </div>
                       </div>
                       
-                      {/* Contactos Editables */}
                       <div>
                         <div className="flex justify-between items-center mb-3">
                             <h4 className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contactos</h4>
@@ -380,22 +412,29 @@ export default function ClubDetailPanel({
                         ))}
                       </div>
 
-                      {/* Ubicación Mapa */}
+                      {/* NUEVA UBICACIÓN MAPA (Sencillo y sin Latitud/Longitud visibles) */}
                       <div className="relative z-50">
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
                           <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
                               <div className="w-full relative z-50">
-                                  <div ref={inputContainerRef} className="w-full rounded"></div>
-                                  <div className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded break-words leading-relaxed" title={club.address}><span className="font-bold text-zinc-600 dark:text-zinc-400">Actual:</span> {club.address || "Ninguna"}</div>
-                              </div>
-                              <div className="flex gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                                  <div className="flex-1 min-w-0"><label className="text-[9px] text-zinc-500 block mb-1">LATITUD</label><input type="number" step="any" className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono" value={club.lat || ''} onChange={(e) => onUpdateClub({ ...club, lat: parseFloat(e.target.value) || 0 })} /></div>
-                                  <div className="flex-1 min-w-0"><label className="text-[9px] text-zinc-500 block mb-1">LONGITUD</label><input type="number" step="any" className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded p-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 font-mono" value={club.lng || ''} onChange={(e) => onUpdateClub({ ...club, lng: parseFloat(e.target.value) || 0 })} /></div>
+                                  <input 
+                                      ref={inputRef}
+                                      type="text" 
+                                      defaultValue={club.address}
+                                      placeholder="Escribe la dirección del club..."
+                                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                  />
+                                  
+                                  <div className={`mt-3 p-2.5 rounded-lg flex items-center gap-2 text-xs break-words leading-relaxed transition-colors duration-300 ${isAddressSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent'}`}>
+                                      {isAddressSelected && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+                                      <span>
+                                          <span className="font-bold">Dirección Guardada:</span> {club.address || "Ninguna seleccionada de la lista"}
+                                      </span>
+                                  </div>
                               </div>
                           </div>
                       </div>
 
-                      {/* Assets y Contrato DINÁMICO */}
                       <div>
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest flex justify-between">
                               <span>Requisitos y Contrato</span>
@@ -413,7 +452,6 @@ export default function ClubDetailPanel({
                                   return (
                                       <div key={item.id} className={cn("flex flex-col gap-2 p-2.5 rounded border transition-all", isChecked ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30" : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800")}>
                                           
-                                          {/* Check Principal */}
                                           <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleDynamicAsset(item)}>
                                               <div className={cn("w-4 h-4 rounded border flex items-center justify-center flex-shrink-0", isChecked ? "bg-emerald-500 border-emerald-500 text-white dark:text-black" : "bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600")}>
                                                   {isChecked && <CheckCircle2 className="w-3 h-3"/>}
@@ -428,7 +466,6 @@ export default function ClubDetailPanel({
                                               </div>
                                           </div>
 
-                                          {/* Selector de Duración (Solo si es Contrato y está marcado) */}
                                           {item.type === 'contract' && isChecked && (
                                               <div className="pl-7 pt-2 mt-1 border-t border-emerald-200/50 dark:border-emerald-500/20 flex items-center gap-2">
                                                   <label className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Válido por:</label>
@@ -452,7 +489,6 @@ export default function ClubDetailPanel({
                           </div>
                       </div>
 
-                      {/* Botón Peligro: Eliminar Club */}
                       <div className="pt-6 mt-6 border-t border-red-100 dark:border-red-500/10">
                           <button onClick={onDeleteClub} className="w-full py-2.5 flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 rounded-lg transition-colors text-sm font-bold">
                               <Trash2 className="w-4 h-4" /> Eliminar Club Permanentemente
@@ -466,7 +502,6 @@ export default function ClubDetailPanel({
                         <div className="flex justify-between items-center">
                             <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Registrar Interacción</label>
                             
-                            {/* NUEVOS BOTONES DE HERRAMIENTAS */}
                             <div className="flex gap-2">
                                 <button 
                                     onClick={startDictation} 

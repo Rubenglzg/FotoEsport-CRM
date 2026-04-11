@@ -1,63 +1,76 @@
-// src/components/ui/LocationManagerModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, X, Edit2, Trash2, Plus } from 'lucide-react';
+import { MapPin, X, Edit2, Trash2, Plus, CheckCircle2 } from 'lucide-react';
 import { Button } from './Button';
 
 export default function LocationManagerModal({ savedLocations, onClose, onAdd, onUpdate, onDelete }) {
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({ label: '', address: '', lat: '', lng: '' });
     
-    // Referencia para el contenedor de Google (Igual que en tus clubes)
-    const inputContainerRef = useRef(null);
+    // Referencia para el input de texto clásico
+    const inputRef = useRef(null);
 
+    // API CLÁSICA DE GOOGLE MAPS CON FILTRO DE CONSOLA
     useEffect(() => {
-        const setupAutocomplete = async () => {
-            // Solo actuamos si el contenedor existe y Google está cargado
-            if (!inputContainerRef.current || !window.google) return;
-
-            try {
-                // Usamos la librería moderna que usa tu CRM
-                const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
-                
-                // Limpiamos el contenedor antes de inyectar
-                inputContainerRef.current.innerHTML = '';
-                
-                // Creamos el elemento con restricción a España
-                const autocomplete = new PlaceAutocompleteElement({ 
-                    componentRestrictions: { country: ['es'] } 
-                });
-                
-                autocomplete.style.width = '100%';
-                
-                // Escuchamos la selección
-                autocomplete.addEventListener('gmp-placeselect', async (e) => {
-                    const place = e.place;
-                    await place.fetchFields({ fields: ['location', 'formattedAddress'] });
-                    
-                    if (place.location) {
-                        setFormData(prev => ({
-                            ...prev,
-                            address: place.formattedAddress,
-                            lat: place.location.lat(),
-                            lng: place.location.lng()
-                        }));
-                    }
-                });
-
-                inputContainerRef.current.appendChild(autocomplete);
-            } catch (error) { 
-                console.error("Error Google Places:", error); 
+        // --- 1. MAGIA AQUÍ: Silenciamos SOLO el aviso de Google ---
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+            if (typeof args[0] === 'string' && args[0].includes('google.maps.places.Autocomplete is not available to new customers')) {
+                return; // Si es el aviso de Google, lo ignoramos y no lo imprimimos
             }
+            originalWarn.apply(console, args); // Si es otra cosa, lo mostramos normal
+        };
+        // ---------------------------------------------------------
+
+        let autocomplete = null;
+        let listener = null;
+
+        const setupClassicAutocomplete = () => {
+            if (!inputRef.current || !window.google || !window.google.maps || !window.google.maps.places) {
+                return;
+            }
+
+            // Usamos la versión clásica ligada a un <input>
+            autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+                componentRestrictions: { country: 'es' },
+                fields: ['formatted_address', 'geometry', 'name']
+            });
+
+            // Escuchamos el evento clásico
+            listener = autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                
+                if (place.geometry && place.geometry.location) {
+                    setFormData(prev => ({
+                        ...prev,
+                        address: place.formatted_address || place.name,
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    }));
+                }
+            });
+
+            // Prevenir que al pulsar "Enter" en la lista de Google se envíe un formulario
+            inputRef.current.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
         };
 
         if (editingId) {
-            setupAutocomplete();
+            // Pequeño retraso para asegurar que el <input> existe en el HTML antes de inyectar Google
+            setTimeout(setupClassicAutocomplete, 100);
         }
+
+        return () => {
+            // --- 2. Restauramos la consola original al cerrar para ser limpios ---
+            console.warn = originalWarn;
+            if (listener) {
+                window.google.maps.event.removeListener(listener);
+            }
+        };
     }, [editingId]);
 
     const handleEdit = (loc) => {
         setEditingId(loc.id);
-        // CORREGIDO: Ahora usamos loc.lng correctamente
         setFormData({ 
             label: loc.label || '', 
             address: loc.address || '', 
@@ -67,10 +80,16 @@ export default function LocationManagerModal({ savedLocations, onClose, onAdd, o
     };
 
     const handleSave = () => {
-        if (!formData.label || !formData.address || !formData.lat) {
-            alert("Debes indicar un nombre y seleccionar una dirección válida de la lista.");
+        if (!formData.label || formData.label.trim() === '') {
+            alert("❌ Faltan datos: Debes escribir el nombre de la oficina.");
             return;
         }
+        
+        if (!formData.lat || formData.lat === '') {
+            alert("❌ Faltan datos: Debes seleccionar una dirección de la lista desplegable de Google.");
+            return;
+        }
+
         if (editingId === 'new') {
             onAdd(formData);
         } else {
@@ -79,18 +98,31 @@ export default function LocationManagerModal({ savedLocations, onClose, onAdd, o
         setEditingId(null);
     };
 
+    const isAddressSelected = formData.address && formData.lat !== '';
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            {/* ESTILO CSS PARA FORZAR LA LISTA DE GOOGLE ENCIMA DEL MODAL */}
+            {/* ESTO ES CRUCIAL PARA LA VERSIÓN CLÁSICA: Obliga a la lista a salir por encima del modal */}
             <style>{`
-                .pac-container, gmp-place-autocomplete, [part="pnl"] {
-                    z-index: 10001 !important;
+                .pac-container {
+                    z-index: 99999 !important;
+                    font-family: inherit;
+                    border-radius: 0.5rem;
+                    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+                    border: 1px solid #e4e4e7;
+                    margin-top: 4px;
                 }
+                .pac-item { padding: 8px 12px; cursor: pointer; }
+                .pac-item:hover { background-color: #f4f4f5; }
+                .dark .pac-container { background-color: #18181b; border-color: #27272a; }
+                .dark .pac-item { color: #a1a1aa; border-top-color: #27272a; }
+                .dark .pac-item:hover { background-color: #27272a; }
+                .dark .pac-item-query { color: #fff; }
             `}</style>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]">
                 
-                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/50">
+                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/50 rounded-t-2xl">
                     <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-white">
                         <MapPin className="text-emerald-500" /> Gestionar Oficinas
                     </h2>
@@ -99,7 +131,9 @@ export default function LocationManagerModal({ savedLocations, onClose, onAdd, o
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto flex-1 bg-white dark:bg-zinc-900">
+                {/* Quitamos overflow para que la lista no se recorte */}
+                <div className={`p-6 flex-1 bg-white dark:bg-zinc-900 rounded-b-2xl ${editingId ? 'overflow-visible' : 'overflow-y-auto'}`}>
+                    
                     {!editingId ? (
                         <>
                             <div className="space-y-3 mb-6">
@@ -125,32 +159,43 @@ export default function LocationManagerModal({ savedLocations, onClose, onAdd, o
                             </Button>
                         </>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-5 flex flex-col">
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Nombre de la Oficina</label>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                    Nombre de la Oficina <span className="text-red-500">*</span>
+                                </label>
                                 <input 
                                     type="text" 
                                     value={formData.label} 
-                                    onChange={e => setFormData({...formData, label: e.target.value})} 
+                                    onChange={e => setFormData(prev => ({...prev, label: e.target.value}))} 
                                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" 
                                     placeholder="Ej: Sede Central"
                                 />
                             </div>
                             
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Dirección Completa (Google Maps)</label>
+                            <div className="flex-1 relative z-50">
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                    Buscador de Dirección <span className="text-red-500">*</span>
+                                </label>
                                 
-                                {/* Contenedor de Google */}
-                                <div className="relative">
-                                    <div ref={inputContainerRef} className="w-full rounded min-h-[40px]"></div>
+                                {/* INPUT CLÁSICO DE GOOGLE */}
+                                <input 
+                                    ref={inputRef}
+                                    type="text" 
+                                    defaultValue={formData.address}
+                                    placeholder="Empieza a escribir una calle, ciudad..."
+                                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                />
+                                
+                                <div className={`mt-3 p-2.5 rounded-lg flex items-center gap-2 text-xs break-words leading-relaxed transition-colors duration-300 ${isAddressSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent'}`}>
+                                    {isAddressSelected && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+                                    <span>
+                                        <span className="font-bold">Dirección Guardada:</span> {formData.address || "Ninguna seleccionada de la lista"}
+                                    </span>
                                 </div>
-                                
-                                <p className="text-[10px] text-zinc-500 mt-2 bg-zinc-100 dark:bg-zinc-800 p-2 rounded break-words leading-relaxed">
-                                    <span className="font-bold">Actual:</span> {formData.address || "Ninguna seleccionada"}
-                                </p>
                             </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                            <div className="flex gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-2">
                                 <Button variant="outline" className="flex-1" onClick={() => setEditingId(null)}>Cancelar</Button>
                                 <Button className="flex-1" onClick={handleSave}>Guardar Oficina</Button>
                             </div>
