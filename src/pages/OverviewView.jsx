@@ -16,6 +16,8 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
   const fetchAIRecommendation = useCallback(async (forceRefresh = false) => {
     try {
       const today = new Date().toLocaleDateString(); 
+      const todayDateStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      
       const cachedRec = localStorage.getItem('ai_rec_data');
       const cachedDate = localStorage.getItem('ai_rec_date');
       
@@ -34,9 +36,12 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           .filter(c => c.status !== 'rejected')
           .map(c => ({ id: c.id, nombre: c.name, estado: c.status, interaccion: c.lastInteraction }));
           
+      // CAMBIO 1: Añadimos la fecha de creación a la nota
       const recentInteractions = interactions.slice(0, 8).map(i => {
           const clubInfo = clubs.find(c => c.id === i.clubId);
-          return `Club: ${clubInfo?.name || 'Desconocido'} | Nota: ${i.note}`;
+          // Extraemos la fecha de la interacción (asegúrate de que el campo en tu BD se llama 'date' o cámbialo si usas 'createdAt', etc.)
+          const noteDate = i.date ? new Date(i.date).toLocaleDateString('es-ES') : 'Fecha desconocida';
+          return `[Nota escrita el: ${noteDate}] Club: ${clubInfo?.name || 'Desconocido'} | Nota: ${i.note}`;
       });
       
       const prompt = `
@@ -44,23 +49,25 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
         Tu objetivo es analizar la agenda y el historial para crear el "Plan de Vuelo" del día para el vendedor.
         
         Datos actuales:
+        - FECHA DE HOY: ${todayDateStr} (Usa esto como tu ancla temporal absoluta).
         - Tareas pendientes: ${JSON.stringify(tasks.slice(0, 8))}
-        - HISTORIAL RECIENTE (¡CLAVE PARA SABER EL CONTEXTO!): ${JSON.stringify(recentInteractions)}
+        - HISTORIAL RECIENTE: ${JSON.stringify(recentInteractions)}
         - Estado de clubes: ${JSON.stringify(activeClubs.slice(0, 15))}
         
         Instrucciones:
         1. Actúa como un jefe/consejero: directo, claro, motivador y enfocado a facturar y no olvidar deadlines.
-        2. Analiza las tareas y notas, y ordénalas según: 1º Cierres de venta (dinero rápido), 2º Deadlines urgentes, 3º Seguimientos importantes.
-        3. Genera un breve resumen ejecutivo y un plan de acción con las 3 o 4 tareas más críticas que NO se le pueden olvidar hoy.
+        2. ANÁLISIS TEMPORAL (CRÍTICO): Revisa cuidadosamente cuándo fue escrita cada nota ("[Nota escrita el: ...]"). Si una nota antigua dice "llama el martes", comprueba si ese martes ya pasó respecto a la FECHA DE HOY. Si ya pasó, la tarea es reclamar porque van tarde, no "prepararse" para un día futuro.
+        3. Genera un breve resumen ejecutivo y un plan de acción con las 3 o 4 tareas más críticas de hoy. Considera si es fin de semana para adaptar las tareas.
+        4. REGLA ESTRICTA DE DISEÑO: El campo "action" se mostrará dentro de un botón pequeño en la interfaz. DEBE TENER MÁXIMO 2 O 3 PALABRAS.
         
         Devuelve estrictamente un JSON con esta estructura (nada de markdown, solo JSON):
         {
-          "executiveSummary": "Mensaje motivacional o de advertencia de 1-2 líneas (ej: 'Hoy es día de cierres, el presupuesto del club X está caliente. Estas son tus prioridades:')",
+          "executiveSummary": "Mensaje de 1-2 líneas (ej: 'Es sábado, planifica la semana' o 'Día de cierres')",
           "actionPlan": [
             {
-              "title": "Título de la misión (Ej: Enviar Presupuesto a C.D. Castellón)",
-              "reason": "Por qué va primero (Ej: Prometiste enviarlo hoy y están a punto de firmar)",
-              "action": "Texto del botón (Ej: Redactar ahora, Ver Ficha, Llamar)",
+              "title": "Título de la misión (Ej: Reclamar cierre a C.D. Castellón)",
+              "reason": "Por qué va primero (Ej: Quedaron en llamar el martes pasado y aún no lo han hecho)",
+              "action": "TEXTO CORTO MÁXIMO 3 PALABRAS (Ej: Llamar, Ver Ficha)",
               "clubId": "ID del club afectado o null"
             }
           ]
@@ -79,7 +86,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
       setAiRecommendation(parsedRecommendation);
     } catch (error) {
       console.error("Error al consultar a Gemini:", error);
-      // Fallback en caso de error 503
       setAiRecommendation({
         executiveSummary: "Servidores de IA ocupados ahora mismo. Aquí tienes tu respaldo manual:",
         actionPlan: [
