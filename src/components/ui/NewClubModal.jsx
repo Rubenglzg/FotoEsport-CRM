@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { X, Save, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
+import { X, Save, Plus, Trash2, MapPin } from 'lucide-react';
 import { Button } from './Button';
 
 export default function NewClubModal({ onClose, onSave }) {
  const [formData, setFormData] = useState({
     name: '',
     category: 'Fútbol',
+    provincia: '', // <-- NUEVO CAMPO
     estimatedPlayers: '',
-    totalTeams: '', // NUEVO
-    baseTeams: '',  // NUEVO
+    totalTeams: '',
+    baseTeams: '',
     genericEmail: '',
     genericPhone: '',
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true }]
@@ -45,12 +46,21 @@ export default function NewClubModal({ onClose, onSave }) {
         <div className="p-6 overflow-y-auto space-y-6">
           {/* Datos Generales */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div className="col-span-2 md:col-span-1">
               <label className="text-xs font-bold text-zinc-500 uppercase">Nombre del Club</label>
               <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 
-                     value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                     value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej: CD Ejemplo" />
             </div>
             
+            <div className="col-span-2 md:col-span-1">
+              <label className="text-xs font-bold text-zinc-500 uppercase">Provincia / Zona</label>
+              <div className="relative mt-1">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2" 
+                         value={formData.provincia} onChange={e => setFormData({...formData, provincia: e.target.value})} placeholder="Ej: Tarragona" />
+              </div>
+            </div>
+
             <div>
               <label className="text-xs font-bold text-zinc-500 uppercase">Jugadores Aprox.</label>
               <input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" 

@@ -1,5 +1,5 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https"); // <-- Añadido onCall y HttpsError
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { google } = require("googleapis");
 const cors = require("cors")({ origin: true });
@@ -9,13 +9,13 @@ const os = require("os");
 const path = require("path");
 const fs = require("fs");
 
-admin.initializeApp();
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 
 // 1. Definimos las credenciales
-const { defineString } = require("firebase-functions/params");
 const CLIENT_ID = defineString("CLIENT_ID");
 const clientSecret = defineSecret("CLIENT_SECRET");
-// Definimos el secreto para Gemini
 const geminiApiKey = defineSecret("GEMINI_API_KEY"); 
 const webhookToken = defineSecret("WEBHOOK_TOKEN");
 const REDIRECT_URI = "postmessage";
@@ -46,7 +46,7 @@ exports.conectarCalendario = onRequest({ secrets: [clientSecret] }, (req, res) =
     });
 });
 
-// --- NUEVA FUNCIÓN SEGURA ---
+// --- FUNCIÓN ANTERIOR (Atajos de iOS) ---
 exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] }, (req, res) => {
     cors(req, res, () => {
         if (req.method !== 'POST') return res.status(405).send('Solo POST');
@@ -55,7 +55,7 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
         let clubName = "";
         let token = "";
         let tipoInteraccion = "call"; 
-        let userId = ""; // <-- NUEVO: Identificador del usuario
+        let userId = ""; 
         let audioBuffer = null;
         let mimeType = "audio/m4a"; 
 
@@ -63,7 +63,7 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
             if (fieldname === "club") clubName = val;
             if (fieldname === "token") token = val;
             if (fieldname === "tipo") tipoInteraccion = val; 
-            if (fieldname === "userId") userId = val; // <-- Recibimos tu ID
+            if (fieldname === "userId") userId = val; 
         });
 
         busboy.on("file", (fieldname, file, info) => {
@@ -79,7 +79,6 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
 
         busboy.on("finish", async () => {
             try {
-                // 1. VERIFICACIÓN DEL TOKEN SECRETO
                 if (token !== webhookToken.value()) {
                     console.warn("Intento de acceso denegado por token inválido.");
                     return res.status(401).send("No autorizado");
@@ -91,7 +90,6 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
 
                 const db = admin.firestore();
                 
-                // 2. BÚSQUEDA AISLADA (Solo en los clubes de ESTE usuario)
                 const userClubsRef = db.collection("artifacts").doc("fotoesport-crm").collection("users").doc(userId).collection("clubs");
                 const clubsSnapshot = await userClubsRef.get(); 
                 
@@ -120,7 +118,6 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
                     return res.status(404).send(`No se encontró el club "${clubName}". Revisa el texto.`);
                 }
 
-                // 3. ENVÍO DEL AUDIO A GEMINI
                 const base64Audio = audioBuffer.toString("base64");
                 const tipoTexto = tipoInteraccion === 'whatsapp' ? 'conversación de WhatsApp' : 'llamada telefónica';
                 const prompt = `Actúa como un asistente CRM. Escucha el audio adjunto que resume una ${tipoTexto} y escribe un resumen. 
@@ -149,7 +146,6 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
                 if (!geminiData.candidates) return res.status(500).send("Fallo en Gemini");
                 const summary = geminiData.candidates[0].content.parts[0].text;
 
-                // 4. GUARDADO EN FIREBASE
                 const interactionId = Date.now().toString();
                 await userClubsRef.parent.collection("interactions").doc(interactionId).set({
                     id: interactionId,
@@ -170,4 +166,42 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
 
         if (req.rawBody) busboy.end(req.rawBody); else req.pipe(busboy);
     });
+});
+
+// --- NUEVA FUNCIÓN: Crear Comercial ---
+exports.createComercialUser = onCall(async (request) => {
+    // Extraemos la autenticación y los datos enviados desde React
+    const { auth, data } = request;
+
+    if (!auth) {
+        throw new HttpsError('unauthenticated', 'Debes iniciar sesión para realizar esta acción.');
+    }
+
+    const callerDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Solo los administradores pueden crear nuevos comerciales.');
+    }
+
+    const { email, password, allowedZones } = data;
+
+    try {
+        const userRecord = await admin.auth().createUser({
+            email: email,
+            password: password,
+        });
+
+        await admin.firestore().collection('users').doc(userRecord.uid).set({
+            email: email,
+            role: 'comercial',
+            adminUid: auth.uid, 
+            allowedZones: allowedZones || [], 
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { success: true, uid: userRecord.uid, message: "Comercial creado con éxito." };
+        
+    } catch (error) {
+        console.error("Error al crear el comercial:", error);
+        throw new HttpsError('internal', error.message);
+    }
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { auth, db } from './lib/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, updateDoc, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 import { Map, Users, Calendar as CalendarIcon, Sun, Moon, Settings, LogOut, Search, Bell, AlertTriangle, CheckCircle2, Target, List, ChevronDown, Sparkles, Kanban } from 'lucide-react'; // <-- Añade Kanban aquí
 
 // --- SERVICES ---
@@ -44,6 +44,7 @@ export default function App() {
 
   // --- AUTH & ESTADO GLOBAL ---
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isLocked, setIsLocked] = useState(true);
   
@@ -55,7 +56,7 @@ export default function App() {
       seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
       clubs, tasks, interactions, statuses, setStatuses, targetClients, setTargetClients,
       ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig
-  } = useCRMData(user, isLocked, appId);
+  } = useCRMData(user, userProfile, isLocked, appId);
 
     // --- ESTADOS DE GOOGLE CON PERSISTENCIA (src/App.jsx) ---
 
@@ -120,11 +121,34 @@ export default function App() {
   }, [theme]);
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
-  // --- AUTENTICACIÓN FIREBASE ---
+  // --- AUTENTICACIÓN FIREBASE Y PERFILES ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) setIsLocked(false);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        
+        // Vamos a buscar el perfil del usuario a Firestore
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            setUserProfile(userDoc.data());
+          } else {
+            console.warn("Perfil de usuario no encontrado en Firestore.");
+            // Opcional: Para evitar bloqueos si olvidas crearlo, lo tratamos como admin temporal
+            setUserProfile({ role: 'admin', allowedZones: [] }); 
+          }
+        } catch (error) {
+          console.error("Error al obtener el perfil:", error);
+        }
+
+        setIsLocked(false);
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setIsLocked(true); // Bloqueamos si no hay usuario
+      }
       setAuthLoading(false);
     });
     return () => unsubscribe();

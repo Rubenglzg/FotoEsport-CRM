@@ -39,6 +39,7 @@ export default function ClubDetailPanel({
     
     // Estados de Edición Local
     const [tempName, setTempName] = useState(club.name);
+    const [tempProvincia, setTempProvincia] = useState(club.provincia || '');
     const [contacts, setContacts] = useState(club.contacts || []);
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
@@ -54,6 +55,7 @@ export default function ClubDetailPanel({
     // Sincronizar al cambiar de club
     useEffect(() => {
         setTempName(club.name);
+        setTempProvincia(club.provincia || '');
         setContacts(club.contacts || []);
         setTempPlayers(club.estimatedPlayers || '');
         setTempTotalTeams(club.totalTeams || '');
@@ -63,6 +65,7 @@ export default function ClubDetailPanel({
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
+    const handleSaveProvincia = () => { if (tempProvincia !== club.provincia) onUpdateClub({...club, provincia: tempProvincia}); };
     const handleSavePlayers = () => { if (Number(tempPlayers) !== club.estimatedPlayers) onUpdateClub({...club, estimatedPlayers: Number(tempPlayers)}); };
     const handleSaveTotalTeams = () => { if (Number(tempTotalTeams) !== club.totalTeams) onUpdateClub({...club, totalTeams: Number(tempTotalTeams)}); };
     const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
@@ -291,7 +294,7 @@ export default function ClubDetailPanel({
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        <div className="mt-4 grid grid-cols-2 gap-2">
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
                               <input 
@@ -323,6 +326,17 @@ export default function ClubDetailPanel({
                                   onBlur={handleSaveBaseTeams}
                                   className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                   placeholder="Ej: 12" 
+                              />
+                          </div>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><MapPin className="w-3 h-3"/> Provincia</span>
+                              <input 
+                                  type="text" 
+                                  value={tempProvincia} 
+                                  onChange={(e) => setTempProvincia(e.target.value)} 
+                                  onBlur={handleSaveProvincia}
+                                  className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  placeholder="Ej: Tarragona" 
                               />
                           </div>
                       </div>
