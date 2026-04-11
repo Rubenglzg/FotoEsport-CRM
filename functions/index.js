@@ -168,21 +168,19 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
     });
 });
 
-// --- NUEVA FUNCIÓN: Crear Comercial ---
+// --- NUEVA FUNCIÓN: Crear Comercial (CON PERMISOS) ---
 exports.createComercialUser = onCall(async (request) => {
-    // Extraemos la autenticación y los datos enviados desde React
     const { auth, data } = request;
 
-    if (!auth) {
-        throw new HttpsError('unauthenticated', 'Debes iniciar sesión para realizar esta acción.');
-    }
+    if (!auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
 
     const callerDoc = await admin.firestore().collection('users').doc(auth.uid).get();
     if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
-        throw new HttpsError('permission-denied', 'Solo los administradores pueden crear nuevos comerciales.');
+        throw new HttpsError('permission-denied', 'Solo administradores.');
     }
 
-    const { email, password, allowedZones } = data;
+    // Recibimos también los 'permissions'
+    const { email, password, allowedZones, permissions } = data;
 
     try {
         const userRecord = await admin.auth().createUser({
@@ -195,18 +193,22 @@ exports.createComercialUser = onCall(async (request) => {
             role: 'comercial',
             adminUid: auth.uid, 
             allowedZones: allowedZones || [], 
+            // Guardamos los permisos (si no vienen, todos en false por defecto)
+            permissions: permissions || {
+                canEditSeasons: false,
+                canEditChecklist: false,
+                canEditObjectives: false
+            },
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         return { success: true, uid: userRecord.uid, message: "Comercial creado con éxito." };
-        
     } catch (error) {
-        console.error("Error al crear el comercial:", error);
         throw new HttpsError('internal', error.message);
     }
 });
 
-// --- NUEVA FUNCIÓN: Editar Comercial ---
+// --- NUEVA FUNCIÓN: Editar Comercial (CON PERMISOS) ---
 exports.updateComercialUser = onCall(async (request) => {
     const { auth, data } = request;
     if (!auth) throw new HttpsError('unauthenticated', 'Sin autorización.');
@@ -216,21 +218,20 @@ exports.updateComercialUser = onCall(async (request) => {
         throw new HttpsError('permission-denied', 'Solo administradores.');
     }
 
-    const { targetUid, newPassword, allowedZones } = data;
+    const { targetUid, newPassword, allowedZones, permissions } = data;
 
     try {
-        // 1. Actualizamos zonas en Firestore
-        if (allowedZones) {
-            await admin.firestore().collection('users').doc(targetUid).update({
-                allowedZones: allowedZones
-            });
+        const updateData = {};
+        
+        if (allowedZones) updateData.allowedZones = allowedZones;
+        if (permissions) updateData.permissions = permissions; // Actualizamos permisos
+
+        if (Object.keys(updateData).length > 0) {
+            await admin.firestore().collection('users').doc(targetUid).update(updateData);
         }
         
-        // 2. Si se escribió una nueva contraseña, la actualizamos en Auth
         if (newPassword && newPassword.length >= 6) {
-            await admin.auth().updateUser(targetUid, {
-                password: newPassword
-            });
+            await admin.auth().updateUser(targetUid, { password: newPassword });
         }
 
         return { success: true, message: "Usuario actualizado." };
