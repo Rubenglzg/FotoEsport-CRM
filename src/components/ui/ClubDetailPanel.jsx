@@ -49,8 +49,41 @@ export default function ClubDetailPanel({
     const [tempBaseTeams, setTempBaseTeams] = useState(club.baseTeams || '');
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
 
-    // Referencia para el input de texto clásico
+    // Referencias para inputs de texto y mapas
     const inputRef = useRef(null);
+    const provinciaRef = useRef(null);
+
+    // Conectar Google Maps al campo Provincia
+    useEffect(() => {
+        const initGoogle = () => {
+            if (window.google && window.google.maps && window.google.maps.places && provinciaRef.current) {
+                if (provinciaRef.current.hasAttribute('data-google-ready')) return;
+                provinciaRef.current.setAttribute('data-google-ready', 'true');
+
+                const autocomplete = new window.google.maps.places.Autocomplete(provinciaRef.current, { 
+                    types: ['(regions)'], 
+                    componentRestrictions: { country: 'es' } 
+                });
+                
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    if (place && place.name) {
+                        setTempProvincia(place.name);
+                        // Guarda automáticamente al seleccionar
+                        setTimeout(() => { 
+                            if (provinciaRef.current) {
+                                provinciaRef.current.value = place.name;
+                                provinciaRef.current.blur(); 
+                            }
+                        }, 10);
+                    }
+                });
+            } else {
+                setTimeout(initGoogle, 500);
+            }
+        };
+        initGoogle();
+    }, []);
 
     // Sincronizar al cambiar de club
     useEffect(() => {
@@ -61,7 +94,7 @@ export default function ClubDetailPanel({
         setTempTotalTeams(club.totalTeams || '');
         setTempBaseTeams(club.baseTeams || '');
         setTempRecDate(club.recommendedContactDate || '');
-    }, [club.id, club.name, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate]);
+    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -331,6 +364,7 @@ export default function ClubDetailPanel({
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><MapPin className="w-3 h-3"/> Provincia</span>
                               <input 
+                                  ref={provinciaRef}
                                   type="text" 
                                   value={tempProvincia} 
                                   onChange={(e) => setTempProvincia(e.target.value)} 

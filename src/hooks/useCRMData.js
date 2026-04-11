@@ -1,10 +1,9 @@
 // src/hooks/useCRMData.js
 import { useState, useEffect } from 'react';
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'; // <-- AÑADIDO: query y where
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'; 
 import { db } from '../lib/firebase';
 import { DEFAULT_STATUSES } from '../utils/constants';
 
-// <-- AÑADIDO: userProfile en los parámetros
 export const useCRMData = (user, userProfile, isLocked, appId) => { 
     // --- DATOS FIRESTORE ---
     const [seasons, setSeasons] = useState(['2024-2025']);
@@ -24,29 +23,26 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
 
     // --- SUSCRIPCIONES A FIRESTORE ---
     useEffect(() => {
-        // <-- AÑADIDO: Esperamos a tener userProfile también
         if (!user || isLocked || !userProfile) return; 
         
-        // <-- NUEVA LÓGICA: ¿De quién es la base de datos que vamos a leer?
-        // Si eres admin, lees tu propia base de datos (user.uid).
-        // Si es un comercial, debe leer la base de datos del admin (userProfile.adminUid).
         const dataUid = userProfile.role === 'admin' ? user.uid : (userProfile.adminUid || user.uid);
         
-        // 1. CLUBS (CON FILTRO DE ZONAS)
+        // 1. CLUBS (CON FILTRO DE ZONAS Y SOPORTE "Toda España")
         const clubsRef = collection(db, 'artifacts', appId, 'users', dataUid, 'clubs');
-        let clubsQuery = clubsRef; // Por defecto (admin), traemos todos
+        let clubsQuery = clubsRef; 
         
-        // Si es comercial y tiene zonas asignadas, filtramos la consulta
         if (userProfile.role === 'comercial' && userProfile.allowedZones?.length > 0) {
-            // ATENCIÓN: Asumimos que en tus clubes tienes un campo llamado 'provincia' o 'zona'
-            clubsQuery = query(clubsRef, where('provincia', 'in', userProfile.allowedZones));
+            // Si NO tiene Toda España, filtramos. Si la tiene, dejamos que descargue todo.
+            if (!userProfile.allowedZones.includes('Toda España')) {
+                clubsQuery = query(clubsRef, where('provincia', 'in', userProfile.allowedZones));
+            }
         }
 
         const unsubClubs = onSnapshot(clubsQuery, (snapshot) => {
             setClubs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
 
-        // 2. TAREAS (Leen de la misma base de datos central)
+        // 2. TAREAS
         const tasksRef = collection(db, 'artifacts', appId, 'users', dataUid, 'tasks');
         const unsubTasks = onSnapshot(tasksRef, (snapshot) => {
             setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -83,7 +79,7 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         });
 
         return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); };
-    }, [user, userProfile, isLocked, appId]); // <-- AÑADIDO: userProfile en las dependencias
+    }, [user, userProfile, isLocked, appId]); 
 
     return {
         seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,

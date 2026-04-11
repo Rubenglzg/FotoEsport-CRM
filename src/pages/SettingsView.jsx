@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus, ListChecks, UserPlus, Users, Loader2, Shield, MapPin, X as XIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus, ListChecks, UserPlus, Users, Loader2, Shield, MapPin, X as XIcon, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { auth, functions, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -7,6 +7,7 @@ import { httpsCallable } from 'firebase/functions';
 import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { cn } from '../utils/helpers';
 
 export default function SettingsView({ 
     userProfile, 
@@ -25,7 +26,6 @@ export default function SettingsView({
     const [editingSeason, setEditingSeason] = useState(null);
     const [editInput, setEditInput] = useState('');
 
-    // --- ESTADOS: CREADOR DE COMERCIALES ---
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [zoneInput, setZoneInput] = useState('');
     const [comercialData, setComercialData] = useState({ 
@@ -35,7 +35,6 @@ export default function SettingsView({
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false }
     });
 
-    // --- ESTADOS: EDICIÓN DE EQUIPO ---
     const [team, setTeam] = useState([]);
     const [editingUser, setEditingUser] = useState(null);
     const [editZoneInput, setEditZoneInput] = useState('');
@@ -45,105 +44,109 @@ export default function SettingsView({
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } 
     });
 
-    React.useEffect(() => {
+    const createZoneRef = useRef(null);
+    const editZoneRef = useRef(null);
+
+    useEffect(() => {
+        const initGoogle = () => {
+            if (window.google && window.google.maps && window.google.maps.places && createZoneRef.current) {
+                if (createZoneRef.current.hasAttribute('data-google-ready')) return;
+                createZoneRef.current.setAttribute('data-google-ready', 'true');
+
+                const autocomplete = new window.google.maps.places.Autocomplete(createZoneRef.current, { types: ['(regions)'], componentRestrictions: { country: 'es' } });
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    if (place && place.name) {
+                        setComercialData(prev => ({ ...prev, zones: prev.zones.includes(place.name) ? prev.zones : [...prev.zones, place.name] }));
+                        setZoneInput(''); 
+                        setTimeout(() => { if(createZoneRef.current) createZoneRef.current.value = ''; }, 10);
+                    }
+                });
+            } else { setTimeout(initGoogle, 500); }
+        };
+        if (userProfile?.role === 'admin') initGoogle();
+    }, [userProfile]);
+
+    useEffect(() => {
+        const initEditGoogle = () => {
+            if (window.google && window.google.maps && window.google.maps.places && editZoneRef.current) {
+                if (editZoneRef.current.hasAttribute('data-google-ready')) return;
+                editZoneRef.current.setAttribute('data-google-ready', 'true');
+
+                const autocomplete = new window.google.maps.places.Autocomplete(editZoneRef.current, { types: ['(regions)'], componentRestrictions: { country: 'es' } });
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    if (place && place.name) {
+                        setEditUserData(prev => ({ ...prev, zones: prev.zones.includes(place.name) ? prev.zones : [...prev.zones, place.name] }));
+                        setEditZoneInput(''); 
+                        setTimeout(() => { if(editZoneRef.current) editZoneRef.current.value = ''; }, 10);
+                    }
+                });
+            } else if (editingUser) { setTimeout(initEditGoogle, 500); }
+        };
+        if (editingUser) initEditGoogle();
+    }, [editingUser]);
+
+    useEffect(() => {
         if (userProfile?.role === 'admin' && auth.currentUser) {
             const q = query(collection(db, 'users'), where('adminUid', '==', auth.currentUser.uid));
-            const unsub = onSnapshot(q, (snapshot) => {
-                setTeam(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
+            const unsub = onSnapshot(q, (snapshot) => setTeam(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
             return () => unsub();
         }
     }, [userProfile]);
 
-    const handleCalendarConnect = useGoogleLogin({
-        flow: 'auth-code', ux_mode: 'popup', scope: 'https://www.googleapis.com/auth/calendar',
-        onSuccess: async (codeResponse) => {
-            showToast("Procesando seguridad...", "info");
-            try {
-                const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: codeResponse.code, userId: auth.currentUser.uid })
-                });
-                if(!res.ok) throw new Error("Error del servidor");
-                const data = await res.json();
-                setGoogleToken(data.accessToken);
-                showToast("¡Calendario vinculado!", "success");
-            } catch (error) { showToast("Fallo al autorizar.", "error"); }
-        },
-        onError: () => showToast("Error de Google.", 'error'),
-    });
-
+    const handleCalendarConnect = useGoogleLogin({ flow: 'auth-code', ux_mode: 'popup', scope: 'https://www.googleapis.com/auth/calendar', onSuccess: async (codeResponse) => { showToast("Procesando...", "info"); try { const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: codeResponse.code, userId: auth.currentUser.uid }) }); if(!res.ok) throw new Error("Error del servidor"); setGoogleToken((await res.json()).accessToken); showToast("¡Calendario vinculado!", "success"); } catch (error) { showToast("Fallo al autorizar.", "error"); } }, onError: () => showToast("Error de Google.", 'error') });
     const handleSaveObjectives = () => { onUpdateTarget(localTarget); onUpdateTicketMedio(localTicket); showToast("Objetivos guardados", "success"); };
     const handleSaveEdit = (oldName) => { onEditSeason(oldName, editInput); setEditingSeason(null); };
     const handleLogout = () => { if(window.confirm('¿Seguro que deseas cerrar sesión?')) signOut(auth); };
+    const handleAddChecklistItem = () => { if (!newChecklistLabel) return; onUpdateChecklist([...checklistConfig, { id: newChecklistLabel.toLowerCase().replace(/\s+/g, '_'), label: newChecklistLabel, type: newChecklistType }]); setNewChecklistLabel(''); };
+    const handleDeleteChecklistItem = (id) => { if(window.confirm("¿Seguro que deseas eliminar este requisito?")) onUpdateChecklist(checklistConfig.filter(item => item.id !== id)); };
 
-    const handleAddChecklistItem = () => {
-        if (!newChecklistLabel) return;
-        onUpdateChecklist([...checklistConfig, { id: newChecklistLabel.toLowerCase().replace(/\s+/g, '_'), label: newChecklistLabel, type: newChecklistType }]);
-        setNewChecklistLabel('');
-    };
-
-    const handleDeleteChecklistItem = (id) => {
-        if(window.confirm("¿Seguro que deseas eliminar este requisito?")) onUpdateChecklist(checklistConfig.filter(item => item.id !== id));
-    };
-
-    // --- MANEJO DE ETIQUETAS DE ZONAS (NUEVO) ---
     const handleAddZone = (e, isEdit = false) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             const val = isEdit ? editZoneInput.trim() : zoneInput.trim();
             if (val) {
-                if (isEdit) {
-                    if (!editUserData.zones.includes(val)) setEditUserData({...editUserData, zones: [...editUserData.zones, val]});
-                    setEditZoneInput('');
-                } else {
-                    if (!comercialData.zones.includes(val)) setComercialData({...comercialData, zones: [...comercialData.zones, val]});
-                    setZoneInput('');
-                }
+                if (isEdit) { if (!editUserData.zones.includes(val)) setEditUserData({...editUserData, zones: [...editUserData.zones, val]}); setEditZoneInput(''); } 
+                else { if (!comercialData.zones.includes(val)) setComercialData({...comercialData, zones: [...comercialData.zones, val]}); setZoneInput(''); }
             }
         }
     };
-
     const handleRemoveZone = (zoneToRemove, isEdit = false) => {
         if (isEdit) setEditUserData({...editUserData, zones: editUserData.zones.filter(z => z !== zoneToRemove)});
         else setComercialData({...comercialData, zones: comercialData.zones.filter(z => z !== zoneToRemove)});
     };
 
-    // --- CREAR Y EDITAR COMERCIALES ---
+    // --- MAGIA: BOTÓN DE TODA ESPAÑA ---
+    const handleAssignAllSpain = (isEdit = false) => {
+        if (isEdit) {
+            setEditUserData({...editUserData, zones: ['Toda España']});
+            setEditZoneInput('');
+        } else {
+            setComercialData({...comercialData, zones: ['Toda España']});
+            setZoneInput('');
+        }
+    };
+
     const handleCreateComercial = async (e) => {
-        e.preventDefault();
-        setIsCreatingUser(true);
+        e.preventDefault(); setIsCreatingUser(true);
         try {
-            const createComercialFn = httpsCallable(functions, 'createComercialUser');
-            await createComercialFn({
-                email: comercialData.email,
-                password: comercialData.password,
-                allowedZones: comercialData.zones,
-                permissions: comercialData.permissions
-            });
-            showToast("Comercial creado exitosamente", "success");
+            await httpsCallable(functions, 'createComercialUser')({ email: comercialData.email, password: comercialData.password, allowedZones: comercialData.zones, permissions: comercialData.permissions });
+            showToast("Comercial creado", "success");
             setComercialData({ email: '', password: '', zones: [], permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } });
-        } catch (error) { showToast(error.message, "error"); } 
-        finally { setIsCreatingUser(false); }
+        } catch (error) { showToast(error.message, "error"); } finally { setIsCreatingUser(false); }
     };
 
     const handleUpdateUser = async (e, targetUid) => {
         e.preventDefault();
         try {
-            const updateFn = httpsCallable(functions, 'updateComercialUser');
-            await updateFn({ targetUid, newPassword: editUserData.password, allowedZones: editUserData.zones, permissions: editUserData.permissions });
-            showToast("Usuario actualizado", "success");
-            setEditingUser(null);
+            await httpsCallable(functions, 'updateComercialUser')({ targetUid, newPassword: editUserData.password, allowedZones: editUserData.zones, permissions: editUserData.permissions });
+            showToast("Actualizado", "success"); setEditingUser(null);
         } catch (error) { showToast(error.message, "error"); }
     };
-
     const handleDeleteUser = async (targetUid) => {
-        if (!window.confirm("¿Eliminar acceso a este comercial?")) return;
-        try {
-            const deleteFn = httpsCallable(functions, 'deleteComercialUser');
-            await deleteFn({ targetUid });
-            showToast("Comercial eliminado", "success");
-        } catch (error) { showToast(error.message, "error"); }
+        if (!window.confirm("¿Eliminar acceso?")) return;
+        try { await httpsCallable(functions, 'deleteComercialUser')({ targetUid }); showToast("Eliminado", "success"); } catch (error) { showToast(error.message, "error"); }
     };
 
     return (
@@ -165,7 +168,7 @@ export default function SettingsView({
                 {/* COLUMNA IZQUIERDA */}
                 <div className="space-y-8">
                     
-                    {/* GESTIÓN DE COMERCIALES (NUEVO UI) */}
+                    {/* GESTIÓN DE COMERCIALES */}
                     {userProfile?.role === 'admin' && (
                     <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-900/20 p-6 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-900/50">
                         <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -185,20 +188,25 @@ export default function SettingsView({
 
                             {/* SISTEMA DE ETIQUETAS DE ZONAS */}
                             <div>
-                                <label className="text-xs text-indigo-900/70 dark:text-indigo-300 block mb-1 font-bold flex items-center gap-1"><MapPin className="w-3 h-3"/> Zonas Permitidas</label>
+                                <div className="flex justify-between items-end mb-1">
+                                    <label className="text-xs text-indigo-900/70 dark:text-indigo-300 font-bold flex items-center gap-1"><MapPin className="w-3 h-3"/> Zonas Permitidas</label>
+                                    <button type="button" onClick={() => handleAssignAllSpain(false)} className="text-[10px] flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded shadow-sm transition-colors"><Globe className="w-3 h-3"/> Dar Todo España</button>
+                                </div>
                                 <div className="p-2 bg-zinc-50 dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800/50 rounded-lg min-h-[42px] flex flex-wrap gap-2 items-center focus-within:border-indigo-500 transition-colors">
                                     {comercialData.zones.map(zone => (
                                         <span key={zone} className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs px-2 py-1 rounded-md flex items-center gap-1 font-medium">
-                                            {zone} <button type="button" onClick={() => handleRemoveZone(zone)} className="hover:text-red-500"><XIcon className="w-3 h-3"/></button>
+                                            {zone === 'Toda España' && <Globe className="w-3 h-3"/>} {zone} 
+                                            <button type="button" onClick={() => handleRemoveZone(zone)} className="hover:text-red-500 ml-1"><XIcon className="w-3 h-3"/></button>
                                         </span>
                                     ))}
                                     <input 
+                                        ref={createZoneRef}
                                         type="text" 
                                         value={zoneInput} 
                                         onChange={e => setZoneInput(e.target.value)} 
                                         onKeyDown={e => handleAddZone(e, false)}
                                         className="flex-1 bg-transparent min-w-[120px] text-sm outline-none dark:text-white" 
-                                        placeholder="Escribe y pulsa Enter..."
+                                        placeholder="Buscar zona con Google..."
                                     />
                                 </div>
                             </div>
@@ -240,13 +248,18 @@ export default function SettingsView({
                                                 </div>
                                                 <input type="password" placeholder="Nueva contraseña (opcional)" value={editUserData.password} onChange={e => setEditUserData({...editUserData, password: e.target.value})} className="w-full text-sm px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
                                                 
+                                                <div className="flex justify-between items-end mb-1 mt-2">
+                                                    <label className="text-xs text-indigo-900/70 dark:text-indigo-300 font-bold flex items-center gap-1"><MapPin className="w-3 h-3"/> Zonas Permitidas</label>
+                                                    <button type="button" onClick={() => handleAssignAllSpain(true)} className="text-[10px] flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded shadow-sm transition-colors"><Globe className="w-3 h-3"/> Dar Todo España</button>
+                                                </div>
                                                 <div className="p-2 bg-zinc-50 dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800/50 rounded-lg min-h-[42px] flex flex-wrap gap-2 items-center">
                                                     {editUserData.zones.map(zone => (
                                                         <span key={zone} className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs px-2 py-1 rounded-md flex items-center gap-1 font-medium">
-                                                            {zone} <button type="button" onClick={() => handleRemoveZone(zone, true)} className="hover:text-red-500"><XIcon className="w-3 h-3"/></button>
+                                                            {zone === 'Toda España' && <Globe className="w-3 h-3"/>} {zone} 
+                                                            <button type="button" onClick={() => handleRemoveZone(zone, true)} className="hover:text-red-500 ml-1"><XIcon className="w-3 h-3"/></button>
                                                         </span>
                                                     ))}
-                                                    <input type="text" value={editZoneInput} onChange={e => setEditZoneInput(e.target.value)} onKeyDown={e => handleAddZone(e, true)} className="flex-1 bg-transparent min-w-[120px] text-sm outline-none dark:text-white" placeholder="Añadir zona..."/>
+                                                    <input ref={editZoneRef} type="text" value={editZoneInput} onChange={e => setEditZoneInput(e.target.value)} onKeyDown={e => handleAddZone(e, true)} className="flex-1 bg-transparent min-w-[120px] text-sm outline-none dark:text-white" placeholder="Buscar zona..."/>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
@@ -262,7 +275,7 @@ export default function SettingsView({
                                                 <div>
                                                     <div className="text-sm font-bold text-zinc-900 dark:text-white">{member.email}</div>
                                                     <div className="text-[10px] mt-2 flex flex-wrap gap-1">
-                                                        {member.allowedZones?.map(z => <span key={z} className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 px-1.5 py-0.5 rounded-md">{z}</span>)}
+                                                        {member.allowedZones?.map(z => <span key={z} className={cn("border px-1.5 py-0.5 rounded-md flex items-center gap-1", z === 'Toda España' ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-400" : "bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800")}>{z === 'Toda España' && <Globe className="w-2.5 h-2.5"/>} {z}</span>)}
                                                     </div>
                                                     <div className="text-[10px] mt-2 text-zinc-500 flex gap-2">
                                                         {member.permissions?.canEditSeasons && <span>✓ Temporadas</span>}
@@ -305,7 +318,6 @@ export default function SettingsView({
                     
                     {/* Objetivos */}
                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 relative overflow-hidden">
-                        {/* BLOQUEO VISUAL */}
                         {userProfile?.role === 'comercial' && !userProfile?.permissions?.canEditObjectives && (
                             <div className="absolute inset-0 z-10 bg-zinc-100/60 dark:bg-zinc-950/60 backdrop-blur-[1px] flex items-center justify-center">
                                 <span className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-md text-xs font-bold text-zinc-500 flex items-center gap-2 border border-zinc-200 dark:border-zinc-800"><Shield className="w-4 h-4"/> Sin Permisos de Edición</span>
