@@ -126,7 +126,6 @@ export default function App() {
       if (currentUser) {
         setUser(currentUser);
         
-        // Vamos a buscar el perfil del usuario a Firestore
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           const userDoc = await getDoc(userDocRef);
@@ -134,19 +133,27 @@ export default function App() {
           if (userDoc.exists()) {
             setUserProfile(userDoc.data());
           } else {
-            console.warn("Perfil de usuario no encontrado en Firestore.");
-            // Opcional: Para evitar bloqueos si olvidas crearlo, lo tratamos como admin temporal
-            setUserProfile({ role: 'admin', allowedZones: [] }); 
+            console.log("No se encontró perfil. Creando cuenta Admin automáticamente...");
+            // Si no existe, lo creamos forzosamente como ADMIN con su UID exacto
+            const newAdminProfile = {
+              email: currentUser.email,
+              role: 'admin',
+              allowedZones: []
+            };
+            
+            await setDoc(userDocRef, newAdminProfile);
+            setUserProfile(newAdminProfile);
+            console.log("¡Cuenta Admin creada con éxito!");
           }
         } catch (error) {
-          console.error("Error al obtener el perfil:", error);
+          console.error("Error al obtener o crear el perfil:", error);
         }
 
         setIsLocked(false);
       } else {
         setUser(null);
         setUserProfile(null);
-        setIsLocked(true); // Bloqueamos si no hay usuario
+        setIsLocked(true);
       }
       setAuthLoading(false);
     });
