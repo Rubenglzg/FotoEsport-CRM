@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus, ListChecks, UserPlus, Users, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { auth, functions } from '../lib/firebase';
+import { auth, functions, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function SettingsView({ 
-    userProfile, // <-- NUEVO: Para saber si es admin
+    userProfile, // <-- Para saber si es admin
     targetClients, onUpdateTarget, seasons, currentSeason, showToast, 
     googleToken, setGoogleToken, googleEmail, setGoogleEmail,
     onAddSeason, onEditSeason, onDeleteSeason, onExportSeason,
@@ -28,6 +29,22 @@ export default function SettingsView({
     // Estados para el Creador de Comerciales
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [comercialData, setComercialData] = useState({ email: '', password: '', zones: '' });
+
+    // --- PASO 2: ESTADOS PARA GESTIÓN DE EQUIPO Y DESCARGA DE USUARIOS ---
+    const [team, setTeam] = useState([]);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editUserData, setEditUserData] = useState({ password: '', zones: '' });
+
+    React.useEffect(() => {
+        if (userProfile?.role === 'admin' && auth.currentUser) {
+            const q = query(collection(db, 'users'), where('adminUid', '==', auth.currentUser.uid));
+            const unsub = onSnapshot(q, (snapshot) => {
+                setTeam(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+            });
+            return () => unsub();
+        }
+    }, [userProfile]);
+    // ---------------------------------------------------------------------
 
     const handleCalendarConnect = useGoogleLogin({
         flow: 'auth-code', 
@@ -93,6 +110,29 @@ export default function SettingsView({
             setIsCreatingUser(false);
         }
     };
+
+    // --- PASO 3: FUNCIONES PARA EDITAR Y BORRAR COMERCIALES ---
+    const handleUpdateUser = async (e, targetUid) => {
+        e.preventDefault();
+        try {
+            const updateFn = httpsCallable(functions, 'updateComercialUser');
+            const zonesArray = editUserData.zones.split(',').map(z => z.trim()).filter(z => z.length > 0);
+            
+            await updateFn({ targetUid, newPassword: editUserData.password, allowedZones: zonesArray });
+            showToast("Usuario actualizado", "success");
+            setEditingUser(null);
+        } catch (error) { showToast(error.message, "error"); }
+    };
+
+    const handleDeleteUser = async (targetUid) => {
+        if (!window.confirm("¿Seguro que quieres eliminar a este comercial? Perderá el acceso de inmediato.")) return;
+        try {
+            const deleteFn = httpsCallable(functions, 'deleteComercialUser');
+            await deleteFn({ targetUid });
+            showToast("Comercial eliminado", "success");
+        } catch (error) { showToast(error.message, "error"); }
+    };
+    // ------------------------------------------------------------
 
     return (
       <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 overflow-y-auto">
@@ -185,6 +225,43 @@ export default function SettingsView({
                                 Crear Cuenta Comercial
                             </Button>
                         </form>
+
+                        {/* --- PASO 4: LISTA DE EQUIPO ACTUAL --- */}
+                        {team.length > 0 && (
+                            <div className="mt-6 pt-6 border-t border-indigo-200 dark:border-indigo-900/50 space-y-3">
+                                <h4 className="text-xs font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-widest">Tu Equipo ({team.length})</h4>
+                                {team.map(member => (
+                                    <div key={member.id} className="bg-white dark:bg-zinc-950 border border-indigo-100 dark:border-indigo-900/30 p-3 rounded-lg shadow-sm">
+                                        {editingUser === member.id ? (
+                                            <form onSubmit={(e) => handleUpdateUser(e, member.id)} className="space-y-3">
+                                                <div className="text-sm font-bold text-zinc-900 dark:text-white">{member.email}</div>
+                                                <input type="password" placeholder="Nueva contraseña (deja en blanco para no cambiar)" value={editUserData.password} onChange={e => setEditUserData({...editUserData, password: e.target.value})} className="w-full text-xs px-2 py-1.5 border rounded outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
+                                                <input type="text" placeholder="Zonas separadas por comas" value={editUserData.zones} onChange={e => setEditUserData({...editUserData, zones: e.target.value})} className="w-full text-xs px-2 py-1.5 border rounded outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="primary">Guardar Cambios</Button>
+                                                    <Button size="sm" variant="ghost" onClick={() => setEditingUser(null)}>Cancelar</Button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="text-sm font-bold text-zinc-900 dark:text-white">{member.email}</div>
+                                                    <div className="text-[10px] mt-1 flex flex-wrap gap-1">
+                                                        {member.allowedZones?.map(z => <span key={z} className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded">{z}</span>)}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => { setEditingUser(member.id); setEditUserData({ password: '', zones: member.allowedZones?.join(', ') || '' }); }} className="p-1.5 text-zinc-400 hover:text-indigo-600 transition-colors"><Edit2 className="w-4 h-4"/></button>
+                                                    <button onClick={() => handleDeleteUser(member.id)} className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* -------------------------------------- */}
+
                     </div>
                     )}
 

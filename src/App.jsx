@@ -319,8 +319,9 @@ export default function App() {
 
       {/* MODALES FLOTANTES */}
 
-      {showNewClubModal && (
+        {showNewClubModal && (
           <NewClubModal 
+              userProfile={userProfile} 
               onClose={() => setShowNewClubModal(false)} 
               onSave={handleCreateClub} 
           />

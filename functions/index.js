@@ -205,3 +205,61 @@ exports.createComercialUser = onCall(async (request) => {
         throw new HttpsError('internal', error.message);
     }
 });
+
+// --- NUEVA FUNCIÓN: Editar Comercial ---
+exports.updateComercialUser = onCall(async (request) => {
+    const { auth, data } = request;
+    if (!auth) throw new HttpsError('unauthenticated', 'Sin autorización.');
+
+    const callerDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Solo administradores.');
+    }
+
+    const { targetUid, newPassword, allowedZones } = data;
+
+    try {
+        // 1. Actualizamos zonas en Firestore
+        if (allowedZones) {
+            await admin.firestore().collection('users').doc(targetUid).update({
+                allowedZones: allowedZones
+            });
+        }
+        
+        // 2. Si se escribió una nueva contraseña, la actualizamos en Auth
+        if (newPassword && newPassword.length >= 6) {
+            await admin.auth().updateUser(targetUid, {
+                password: newPassword
+            });
+        }
+
+        return { success: true, message: "Usuario actualizado." };
+    } catch (error) {
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+// --- NUEVA FUNCIÓN: Eliminar Comercial ---
+exports.deleteComercialUser = onCall(async (request) => {
+    const { auth, data } = request;
+    if (!auth) throw new HttpsError('unauthenticated', 'Sin autorización.');
+
+    const callerDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    if (!callerDoc.exists || callerDoc.data().role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Solo administradores.');
+    }
+
+    const { targetUid } = data;
+
+    try {
+        // 1. Lo borramos de Authentication (ya no podrá loguearse)
+        await admin.auth().deleteUser(targetUid);
+        
+        // 2. Lo borramos de Firestore
+        await admin.firestore().collection('users').doc(targetUid).delete();
+
+        return { success: true, message: "Usuario eliminado." };
+    } catch (error) {
+        throw new HttpsError('internal', error.message);
+    }
+});
