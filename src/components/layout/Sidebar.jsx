@@ -27,7 +27,10 @@ export default function Sidebar({ currentView, setCurrentView, theme, toggleThem
          <button onClick={toggleTheme} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 transition-colors">
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
          </button>
-         <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 transition-colors">
+         <button 
+              onClick={() => setCurrentView('settings')} 
+              className={`w-full p-3 mb-2 rounded-xl flex items-center justify-center transition-colors ${currentView === 'settings' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg' : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'}`}
+          >
             <Settings size={20} />
          </button>
           <button 

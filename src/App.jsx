@@ -29,11 +29,11 @@ import CalendarView from './pages/CalendarView';
 import TargetsView from './pages/TargetsView';
 import OverviewView from './pages/OverviewView';
 import PipelineView from './pages/PipelineView';
+import SettingsView from './pages/SettingsView';
 
 // --- COMPONENTES UI ---
 import { Button } from './components/ui/Button';
 import ClubDetailPanel from './components/ui/ClubDetailPanel';
-import SettingsModal from './components/ui/SettingsModal';
 import NewTaskModal from './components/ui/NewTaskModal';
 import NotificationCenter from './components/ui/NotificationCenter';
 import NewClubModal from './components/ui/NewClubModal';
@@ -92,7 +92,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('details');
   
   // --- MODALES Y TOASTS ---
-  const [showSettings, setShowSettings] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showNewClubModal, setShowNewClubModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -235,6 +234,31 @@ export default function App() {
 
       case 'calendar': return <CalendarView tasks={tasks} clubs={clubs} onUpdateTaskPriority={updateTaskPriority} onOpenNewTask={() => setShowTaskModal(true)} onDeleteTask={deleteTask} onEditTask={(task) => setTaskToEdit(task)} />;
       case 'targets': return <TargetsView stats={stats} targetClients={targetClients} ticketMedio={ticketMedio} clubs={clubs} />;
+
+      // --- NUEVA VISTA DE CONFIGURACIÓN ---
+        case 'settings': return <SettingsView 
+                userProfile={userProfile}
+                activeSeason={activeSeason}
+                onSetActiveSeason={handleSetOfficialActiveSeason}
+                targetClients={targetClients} 
+                onUpdateTarget={handleUpdateTargetClients} 
+                seasons={seasons} 
+                currentSeason={selectedSeason} 
+                showToast={showToast}
+                googleToken={googleToken}
+                setGoogleToken={setGoogleToken}
+                googleEmail={googleEmail}
+                setGoogleEmail={setGoogleEmail}
+                onAddSeason={handleAddSeason}
+                onEditSeason={handleEditSeason}
+                onDeleteSeason={handleDeleteSeason}
+                onExportSeason={handleExportSeason}
+                checklistConfig={checklistConfig}
+                onUpdateChecklist={handleUpdateChecklist}
+                ticketMedio={ticketMedio}
+                onUpdateTicketMedio={handleUpdateTicketMedio}
+            />;
+
       default: return <MapView clubs={filteredClubs} />;
     }
   };
@@ -248,7 +272,6 @@ export default function App() {
           setCurrentView={setCurrentView} 
           theme={theme} 
           toggleTheme={toggleTheme} 
-          setShowSettings={setShowSettings} 
       />
 
       {/* ÁREA PRINCIPAL */}
@@ -300,32 +323,6 @@ export default function App() {
           <NewClubModal 
               onClose={() => setShowNewClubModal(false)} 
               onSave={handleCreateClub} 
-          />
-      )}
-        
-        {showSettings && (
-          <SettingsModal 
-              onClose={() => setShowSettings(false)} 
-              activeSeason={activeSeason}
-              onSetActiveSeason={handleSetOfficialActiveSeason}
-              targetClients={targetClients} 
-              onUpdateTarget={handleUpdateTargetClients} 
-              seasons={seasons} 
-              currentSeason={selectedSeason} 
-              showToast={showToast}
-              googleToken={googleToken}
-              setGoogleToken={setGoogleToken}
-              googleEmail={googleEmail}
-              setGoogleEmail={setGoogleEmail}
-              onAddSeason={handleAddSeason}
-              onEditSeason={handleEditSeason}
-              onDeleteSeason={handleDeleteSeason}
-              onExportSeason={handleExportSeason}
-        
-              checklistConfig={checklistConfig}
-              onUpdateChecklist={handleUpdateChecklist}
-              ticketMedio={ticketMedio}
-              onUpdateTicketMedio={handleUpdateTicketMedio}
           />
       )}
       

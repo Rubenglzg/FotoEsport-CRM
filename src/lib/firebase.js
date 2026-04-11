@@ -1,7 +1,7 @@
-// Importa las funciones que necesitas de los SDKs
 import { initializeApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions"; // <-- AÑADIDO
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,22 +13,14 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
-// Exporta la base de datos y la autenticación para usarlas en la app
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+const functions = getFunctions(app); // <-- AÑADIDO
 
-// Configurar la persistencia local
 setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-        // La persistencia se ha configurado correctamente
-        console.log("Persistencia de sesión configurada a local");
-    })
-    .catch((error) => {
-        console.error("Error al configurar la persistencia:", error);
-    });
+    .then(() => console.log("Persistencia de sesión configurada a local"))
+    .catch((error) => console.error("Error al configurar persistencia:", error));
 
-export { auth, db, googleProvider };
+export { auth, db, googleProvider, functions }; // <-- AÑADIDO 'functions'
