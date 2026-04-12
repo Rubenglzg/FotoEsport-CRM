@@ -113,18 +113,39 @@ export default function PipelineView({ clubs, statuses, onUpdateClub, onSelect, 
                                                 <span className="truncate max-w-[80px]">{club.lastContactDate === "Sin contacto" ? "N/A" : club.lastContactDate}</span>
                                             </div>
                                         </div>
+                                        {/* BOTONES DE FASE RÁPIDOS PARA MÓVIL */}
+                                        <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 md:hidden flex gap-2">
+                                            {(() => {
+                                                // Calculamos la fase anterior y siguiente dinámicamente
+                                                const currentIndex = statuses.findIndex(s => s.id === club.status);
+                                                const prevStatus = currentIndex > 0 ? statuses[currentIndex - 1] : null;
+                                                const nextStatus = currentIndex < statuses.length - 1 ? statuses[currentIndex + 1] : null;
 
-                                        {/* NUEVO: Selector de fase visible SÓLO en móvil */}
-                                        <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 md:hidden">
-                                            <select 
-                                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded p-1.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none focus:ring-1 focus:ring-emerald-500"
-                                                value={club.status}
-                                                onChange={(e) => moveClubToStatus(club.id, e.target.value)}
-                                            >
-                                                {statuses.map(s => (
-                                                    <option key={s.id} value={s.id}>Mover a: {s.label}</option>
-                                                ))}
-                                            </select>
+                                                return (
+                                                    <>
+                                                        <button 
+                                                            disabled={!prevStatus}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if(prevStatus) moveClubToStatus(club.id, prevStatus.id);
+                                                            }}
+                                                            className="flex-1 bg-zinc-100 dark:bg-zinc-800 disabled:opacity-30 text-zinc-600 dark:text-zinc-400 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1"
+                                                        >
+                                                            <span className="text-[10px]">◀</span> Atrás
+                                                        </button>
+                                                        <button 
+                                                            disabled={!nextStatus}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if(nextStatus) moveClubToStatus(club.id, nextStatus.id);
+                                                            }}
+                                                            className="flex-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 disabled:opacity-30 disabled:bg-zinc-100 disabled:text-zinc-400 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1 border border-emerald-200 dark:border-emerald-800/50 disabled:border-transparent"
+                                                        >
+                                                            Avanzar <span className="text-[10px]">▶</span>
+                                                        </button>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 ))}
