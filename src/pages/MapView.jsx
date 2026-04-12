@@ -161,9 +161,9 @@ export default function MapView({
       </div>
       {/* ======================================================== */}
 
-      {/* PANEL FLOTANTE DEL GESTOR DE RUTAS */}
+    {/* PANEL FLOTANTE DEL GESTOR DE RUTAS */}
       {showRoute && (
-         <div className="absolute top-4 right-4 z-[1000] w-80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in slide-in-from-right-8 fade-in">
+         <div className="absolute top-20 md:top-4 right-4 left-4 md:left-auto z-[1000] w-auto md:w-80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in slide-in-from-right-8 fade-in">
              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                  <Car className="w-5 h-5 text-emerald-500" />
                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Planificador de Ruta</h3>
@@ -302,7 +302,7 @@ export default function MapView({
       </MapContainer>
 
       {/* Botones Flotantes Inferiores */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex gap-2">
+      <div className="absolute bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex gap-2 w-max max-w-[90vw]">
          {selectedId && clubs.find(c => c.id === selectedId)?.status === 'signed' && (
            <button onClick={() => setShowRadius(!showRadius)} className={cn("flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold transition-all shadow-xl", showRadius ? "bg-emerald-500 text-white border-emerald-400" : "bg-white text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-800")}>
              <Target className={cn("w-4 h-4", showRadius && "animate-spin-slow")} />
