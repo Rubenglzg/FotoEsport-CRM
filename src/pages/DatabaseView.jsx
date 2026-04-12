@@ -168,11 +168,13 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                <Settings className="w-4 h-4 text-zinc-500" />
            </Button>
 
-           <div className="relative group">
+            {/* MENÚ COLUMNAS (Z-index elevado y posición segura para móvil) */}
+           <div className="relative group z-[60]">
               <Button variant="outline" className="flex items-center gap-2">
                  <LayoutList className="w-4 h-4" /> <span className="hidden sm:inline">Columnas</span>
               </Button>
-              <div className="absolute right-0 md:left-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 flex flex-col gap-1">
+              {/* Alineado a la derecha en móvil (right-0) para que crezca hacia la izquierda y no se corte */}
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
                  {columns.map(col => (
                     <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
                         <input type="checkbox" checked={visibleCols.includes(col.id)} onChange={() => toggleColumn(col.id)} className="rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500 bg-transparent" />
@@ -188,132 +190,122 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       </div>
 
       {/* BARRA DE HERRAMIENTAS DE FILTRO Y ORDEN VISUAL */}
-      <div className="flex flex-wrap gap-4 mb-4 items-center bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative z-40">
+      <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:items-center bg-white dark:bg-zinc-900 p-3 md:p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative z-40">
          
-         <div className="flex items-center gap-2 pl-2">
-             <Filter className="w-4 h-4 text-zinc-400" />
-             <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Filtros:</span>
-         </div>
-         
-         {/* 1. SELECTOR VISUAL DE ESTADO */}
-         <div className="relative">
-             <button
-                 onClick={() => { setIsStatusFilterOpen(!isStatusFilterOpen); setIsCategoryFilterOpen(false); setIsSortOpen(false); }}
-                 className="flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-3 py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors min-w-[160px]"
-             >
-                 <div className="flex items-center gap-2">
-                     {statusFilter === 'all' ? (
-                         <span>Todos los estados</span>
-                     ) : (
-                         <>
-                             <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: statuses?.find(s => s.id === statusFilter)?.color }}></span>
-                             <span className="truncate max-w-[100px]">{statuses?.find(s => s.id === statusFilter)?.label}</span>
-                         </>
+         {/* BLOQUE 1: FILTROS */}
+         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-1">
+             <div className="flex items-center gap-2 pl-1">
+                 <Filter className="w-4 h-4 text-zinc-400" />
+                 <span className="text-[10px] md:text-xs font-bold uppercase text-zinc-500 tracking-wider">Filtros:</span>
+             </div>
+             
+             {/* GRID EN MÓVIL (2 columnas), FLEX EN DESKTOP */}
+             <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto">
+                 
+                 {/* 1. SELECTOR VISUAL DE ESTADO */}
+                 <div className="relative w-full md:min-w-[160px]">
+                     <button
+                         onClick={() => { setIsStatusFilterOpen(!isStatusFilterOpen); setIsCategoryFilterOpen(false); setIsSortOpen(false); }}
+                         className="w-full flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-2.5 py-2 md:py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                     >
+                         <div className="flex items-center gap-2 overflow-hidden">
+                             {statusFilter === 'all' ? (
+                                 <span className="truncate">Todos los estados</span>
+                             ) : (
+                                 <>
+                                     <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: statuses?.find(s => s.id === statusFilter)?.color }}></span>
+                                     <span className="truncate">{statuses?.find(s => s.id === statusFilter)?.label}</span>
+                                 </>
+                             )}
+                         </div>
+                         <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-zinc-400 transition-transform", isStatusFilterOpen && "rotate-180")} />
+                     </button>
+
+                     {isStatusFilterOpen && (
+                         <div className="absolute top-full left-0 mt-1 w-full min-w-[180px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1">
+                             <button onClick={() => { setStatusFilter('all'); setIsStatusFilterOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                                 <span className={cn("flex-1 text-left font-medium", statusFilter === 'all' ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>Todos los estados</span>
+                                 {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                             </button>
+                             <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-2 my-1"></div>
+                             {statuses?.map(s => (
+                                 <button key={s.id} onClick={() => { setStatusFilter(s.id); setIsStatusFilterOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group">
+                                     <span className="w-2 h-2 rounded-full border border-black/10 dark:border-white/10 shrink-0" style={{ backgroundColor: s.color }}></span>
+                                     <span className={cn("flex-1 text-left font-medium truncate", statusFilter === s.id ? "text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400")}>{s.label}</span>
+                                     {statusFilter === s.id && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white shrink-0" />}
+                                 </button>
+                             ))}
+                         </div>
                      )}
                  </div>
-                 <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", isStatusFilterOpen && "rotate-180")} />
-             </button>
 
-             {isStatusFilterOpen && (
-                 <div className="absolute top-full left-0 mt-1 w-full min-w-[180px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1">
+                 {/* 2. SELECTOR VISUAL DE CATEGORÍA */}
+                 <div className="relative w-full md:min-w-[160px]">
                      <button
-                         onClick={() => { setStatusFilter('all'); setIsStatusFilterOpen(false); }}
-                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                         onClick={() => { setIsCategoryFilterOpen(!isCategoryFilterOpen); setIsStatusFilterOpen(false); setIsSortOpen(false); }}
+                         className="w-full flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-2.5 py-2 md:py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                      >
-                         <span className={cn("flex-1 text-left font-medium", statusFilter === 'all' ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>Todos los estados</span>
-                         {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                         <div className="flex items-center gap-2 overflow-hidden">
+                             <Users className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
+                             <span className="truncate">{categoryFilter === 'all' ? 'Todas las categorías' : categoryFilter}</span>
+                         </div>
+                         <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-zinc-400 transition-transform", isCategoryFilterOpen && "rotate-180")} />
                      </button>
-                     <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-2 my-1"></div>
-                     {statuses?.map(s => (
-                         <button
-                             key={s.id}
-                             onClick={() => { setStatusFilter(s.id); setIsStatusFilterOpen(false); }}
-                             className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group"
-                         >
-                             <span className="w-2 h-2 rounded-full border border-black/10 dark:border-white/10" style={{ backgroundColor: s.color }}></span>
-                             <span className={cn("flex-1 text-left font-medium truncate", statusFilter === s.id ? "text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400")}>{s.label}</span>
-                             {statusFilter === s.id && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />}
-                         </button>
-                     ))}
-                 </div>
-             )}
-         </div>
 
-         {/* 2. SELECTOR VISUAL DE CATEGORÍA */}
-         <div className="relative">
-             <button
-                 onClick={() => { setIsCategoryFilterOpen(!isCategoryFilterOpen); setIsStatusFilterOpen(false); setIsSortOpen(false); }}
-                 className="flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-3 py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors min-w-[160px]"
-             >
-                 <div className="flex items-center gap-2">
-                     <Users className="w-3.5 h-3.5 text-zinc-400" />
-                     <span className="truncate max-w-[100px]">{categoryFilter === 'all' ? 'Todas las categorías' : categoryFilter}</span>
-                 </div>
-                 <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", isCategoryFilterOpen && "rotate-180")} />
-             </button>
-
-             {isCategoryFilterOpen && (
-                 <div className="absolute top-full left-0 mt-1 w-full min-w-[180px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1">
-                     <button
-                         onClick={() => { setCategoryFilter('all'); setIsCategoryFilterOpen(false); }}
-                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                     >
-                         <span className={cn("flex-1 text-left font-medium", categoryFilter === 'all' ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>Todas las categorías</span>
-                         {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                     </button>
-                     {uniqueCategories.length > 0 && <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-2 my-1"></div>}
-                     {uniqueCategories.map(cat => (
-                         <button
-                             key={cat}
-                             onClick={() => { setCategoryFilter(cat); setIsCategoryFilterOpen(false); }}
-                             className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                         >
-                             <span className={cn("flex-1 text-left font-medium truncate", categoryFilter === cat ? "text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400")}>{cat}</span>
-                             {categoryFilter === cat && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />}
-                         </button>
-                     ))}
-                 </div>
-             )}
-         </div>
-
-         <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
-
-         <div className="flex items-center gap-2">
-             <ArrowUpDown className="w-4 h-4 text-zinc-400" />
-             <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Ordenar:</span>
-         </div>
-
-         {/* 3. SELECTOR VISUAL DE ORDENACIÓN */}
-         <div className="relative">
-             <button
-                 onClick={() => { setIsSortOpen(!isSortOpen); setIsStatusFilterOpen(false); setIsCategoryFilterOpen(false); }}
-                 className="flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-3 py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors min-w-[160px]"
-             >
-                 <span className="truncate">{sortOptions.find(o => o.value === `${sortConfig.key}-${sortConfig.direction}`)?.label || 'Ordenar por...'}</span>
-                 <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", isSortOpen && "rotate-180")} />
-             </button>
-
-             {isSortOpen && (
-                 <div className="absolute top-full left-0 mt-1 w-full min-w-[180px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1">
-                     {sortOptions.map(option => {
-                         const isActive = `${sortConfig.key}-${sortConfig.direction}` === option.value;
-                         return (
-                             <button
-                                 key={option.value}
-                                 onClick={() => {
-                                     const [key, direction] = option.value.split('-');
-                                     setSortConfig({ key, direction });
-                                     setIsSortOpen(false);
-                                 }}
-                                 className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                             >
-                                 <span className={cn("flex-1 text-left font-medium", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-600 dark:text-zinc-400")}>{option.label}</span>
-                                 {isActive && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                     {isCategoryFilterOpen && (
+                         <div className="absolute top-full left-0 md:right-0 md:left-auto mt-1 w-full md:min-w-[180px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1">
+                             <button onClick={() => { setCategoryFilter('all'); setIsCategoryFilterOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                                 <span className={cn("flex-1 text-left font-medium", categoryFilter === 'all' ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>Todas las categorías</span>
+                                 {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                              </button>
-                         );
-                     })}
+                             {uniqueCategories.length > 0 && <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-2 my-1"></div>}
+                             {uniqueCategories.map(cat => (
+                                 <button key={cat} onClick={() => { setCategoryFilter(cat); setIsCategoryFilterOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                                     <span className={cn("flex-1 text-left font-medium truncate", categoryFilter === cat ? "text-zinc-900 dark:text-white" : "text-zinc-600 dark:text-zinc-400")}>{cat}</span>
+                                     {categoryFilter === cat && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white shrink-0" />}
+                                 </button>
+                             ))}
+                         </div>
+                     )}
                  </div>
-             )}
+             </div>
+         </div>
+
+         {/* SEPARADORES VERTICAL/HORIZONTAL DEPENDIENDO DE LA PANTALLA */}
+         <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
+         <div className="md:hidden h-px w-full bg-zinc-100 dark:bg-zinc-800/50 my-1"></div>
+
+         {/* BLOQUE 2: ORDENAR */}
+         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
+             <div className="flex items-center gap-2 pl-1">
+                 <ArrowUpDown className="w-4 h-4 text-zinc-400" />
+                 <span className="text-[10px] md:text-xs font-bold uppercase text-zinc-500 tracking-wider">Ordenar:</span>
+             </div>
+
+             {/* 3. SELECTOR VISUAL DE ORDENACIÓN */}
+             <div className="relative w-full md:w-[180px]">
+                 <button
+                     onClick={() => { setIsSortOpen(!isSortOpen); setIsStatusFilterOpen(false); setIsCategoryFilterOpen(false); }}
+                     className="w-full flex items-center justify-between gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 text-xs rounded-lg px-2.5 py-2 md:py-1.5 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                 >
+                     <span className="truncate">{sortOptions.find(o => o.value === `${sortConfig.key}-${sortConfig.direction}`)?.label || 'Ordenar por...'}</span>
+                     <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-zinc-400 transition-transform", isSortOpen && "rotate-180")} />
+                 </button>
+
+                 {isSortOpen && (
+                     <div className="absolute top-full left-0 md:right-0 md:left-auto mt-1 w-full md:w-[220px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                         {sortOptions.map(option => {
+                             const isActive = `${sortConfig.key}-${sortConfig.direction}` === option.value;
+                             return (
+                                 <button key={option.value} onClick={() => { const [key, direction] = option.value.split('-'); setSortConfig({ key, direction }); setIsSortOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                                     <span className={cn("flex-1 text-left font-medium", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-600 dark:text-zinc-400")}>{option.label}</span>
+                                     {isActive && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                 </button>
+                             );
+                         })}
+                     </div>
+                 )}
+             </div>
          </div>
       </div>
       
