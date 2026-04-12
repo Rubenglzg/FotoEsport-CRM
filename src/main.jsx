@@ -1,8 +1,11 @@
+// En src/main.jsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.jsx'
 import './index.css'
-import { GoogleOAuthProvider } from '@react-oauth/google'
+
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 // --- SILENCIADOR DE AVISOS DE GOOGLE MAPS ---
 const originalWarn = console.warn;
@@ -10,7 +13,9 @@ const originalError = console.error;
 
 const silenceGoogleMaps = (...args) => {
   const text = typeof args[0] === 'string' ? args[0] : (args[0]?.message || '');
-  if (text.includes('google.maps.places.Autocomplete is not available to new customers')) return true;
+  if (text && typeof text === 'string' && text.includes('google.maps.places.Autocomplete is not available to new customers')) {
+      return true;
+  }
   return false;
 };
 
@@ -26,7 +31,8 @@ console.error = (...args) => {
 // --------------------------------------------
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+  // Quitamos <React.StrictMode> para que no duplique la carga del botón
+  <GoogleOAuthProvider clientId={clientId}>
     <App />
-  </GoogleOAuthProvider>,
+  </GoogleOAuthProvider>
 )
