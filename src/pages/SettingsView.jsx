@@ -145,8 +145,8 @@ export default function SettingsView({
             await httpsCallable(functions, 'createComercialUser')({ 
                 email: comercialData.email, 
                 password: comercialData.password, 
-                nombre: comercialData.nombre,       // <-- AÑADIDO
-                apellidos: comercialData.apellidos, // <-- AÑADIDO
+                nombre: comercialData.nombre,       
+                apellidos: comercialData.apellidos, 
                 allowedZones: comercialData.zones, 
                 permissions: comercialData.permissions 
             });
@@ -179,7 +179,14 @@ export default function SettingsView({
     const handleUpdateUser = async (e, targetUid) => {
         e.preventDefault();
         try {
-            await httpsCallable(functions, 'updateComercialUser')({ targetUid, newPassword: editUserData.password, allowedZones: editUserData.zones, permissions: editUserData.permissions });
+            await httpsCallable(functions, 'updateComercialUser')({ 
+                targetUid, 
+                newPassword: editUserData.password, 
+                nombre: editUserData.nombre,      
+                apellidos: editUserData.apellidos, 
+                allowedZones: editUserData.zones, 
+                permissions: editUserData.permissions 
+            });
             showToast("Actualizado", "success"); setEditingUser(null);
         } catch (error) { showToast(error.message, "error"); }
     };
@@ -248,7 +255,20 @@ export default function SettingsView({
                             <Users className="w-4 h-4"/> Gestión de Equipo (Comerciales)
                         </h3>
                         <form onSubmit={handleCreateComercial} className="space-y-5 bg-white dark:bg-zinc-950 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
-                            {/* grid-cols-1 en móvil para que los campos no se queden sin espacio */}
+                            
+                            {/* NUEVA FILA: NOMBRE Y APELLIDOS */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-indigo-900/70 dark:text-indigo-300 block mb-1 font-bold">Nombre</label>
+                                    <input required type="text" value={comercialData.nombre} onChange={e => setComercialData({...comercialData, nombre: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800/50 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Nombre"/>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-indigo-900/70 dark:text-indigo-300 block mb-1 font-bold">Apellidos</label>
+                                    <input required type="text" value={comercialData.apellidos} onChange={e => setComercialData({...comercialData, apellidos: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800/50 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500" placeholder="Apellidos"/>
+                                </div>
+                            </div>
+
+                            {/* Fila existente: Correo y Contraseña */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs text-indigo-900/70 dark:text-indigo-300 block mb-1 font-bold">Correo de Acceso</label>
@@ -320,6 +340,13 @@ export default function SettingsView({
                                                 <div className="text-sm font-bold text-zinc-900 dark:text-white flex items-center justify-between">
                                                     {member.email} <Button size="sm" variant="ghost" type="button" onClick={() => setEditingUser(null)}>Cancelar</Button>
                                                 </div>
+                                                
+                                                {/* MODIFICACIÓN: Fila de Nombre y Apellidos para la Edición */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <input type="text" placeholder="Nombre" value={editUserData.nombre} onChange={e => setEditUserData({...editUserData, nombre: e.target.value})} className="w-full text-sm px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
+                                                    <input type="text" placeholder="Apellidos" value={editUserData.apellidos} onChange={e => setEditUserData({...editUserData, apellidos: e.target.value})} className="w-full text-sm px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
+                                                </div>
+
                                                 <input type="password" placeholder="Nueva contraseña (opcional)" value={editUserData.password} onChange={e => setEditUserData({...editUserData, password: e.target.value})} className="w-full text-sm px-3 py-2 border rounded-lg outline-none focus:border-indigo-500 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"/>
                                                 
                                                 <div className="flex justify-between items-end mb-1 mt-2">
@@ -347,7 +374,12 @@ export default function SettingsView({
                                         ) : (
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <div className="text-sm font-bold text-zinc-900 dark:text-white">{member.email}</div>
+                                                    {/* MODIFICACIÓN: Mostrar Nombre y Apellidos en lugar del correo como título principal */}
+                                                    <div className="text-sm font-bold text-zinc-900 dark:text-white">
+                                                        {member.nombre ? `${member.nombre} ${member.apellidos}` : member.email}
+                                                    </div>
+                                                    {member.nombre && <div className="text-[10px] text-zinc-500">{member.email}</div>}
+
                                                     <div className="text-[10px] mt-2 flex flex-wrap gap-1">
                                                         {member.allowedZones?.map(z => <span key={z} className={cn("border px-1.5 py-0.5 rounded-md flex items-center gap-1", z === 'Toda España' ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-400" : "bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800")}>{z === 'Toda España' && <Globe className="w-2.5 h-2.5"/>} {z}</span>)}
                                                     </div>
@@ -358,7 +390,17 @@ export default function SettingsView({
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    <button onClick={() => { setEditingUser(member.id); setEditUserData({ password: '', zones: member.allowedZones || [], permissions: member.permissions || {canEditSeasons:false, canEditChecklist:false, canEditObjectives:false} }); }} className="p-1.5 text-zinc-400 hover:text-indigo-600 transition-colors bg-zinc-50 dark:bg-zinc-900 rounded-md"><Edit2 className="w-4 h-4"/></button>
+                                                    {/* MODIFICACIÓN: Rellenar nombre y apellidos al editar */}
+                                                    <button onClick={() => { 
+                                                        setEditingUser(member.id); 
+                                                        setEditUserData({ 
+                                                            password: '', 
+                                                            nombre: member.nombre || '',
+                                                            apellidos: member.apellidos || '',
+                                                            zones: member.allowedZones || [], 
+                                                            permissions: member.permissions || {canEditSeasons:false, canEditChecklist:false, canEditObjectives:false} 
+                                                        }); 
+                                                    }} className="p-1.5 text-zinc-400 hover:text-indigo-600 transition-colors bg-zinc-50 dark:bg-zinc-900 rounded-md"><Edit2 className="w-4 h-4"/></button>
                                                     <button onClick={() => handleDeleteUser(member.id)} className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors bg-zinc-50 dark:bg-zinc-900 rounded-md"><Trash2 className="w-4 h-4"/></button>
                                                 </div>
                                             </div>
