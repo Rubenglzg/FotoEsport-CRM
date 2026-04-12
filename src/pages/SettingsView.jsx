@@ -339,9 +339,13 @@ export default function SettingsView({
                             </div>
                         )}
                         <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-5">Gestor de Temporadas</h3>
-                        <div className="mb-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 p-4 rounded-xl">
-                            <h4 className="text-sm font-bold text-emerald-800 mb-1">Temporada Activa (Oficial)</h4>
-                            <select value={activeSeason} onChange={(e) => onSetActiveSeason(e.target.value)} className="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm outline-none">
+                        <div className="mb-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-4 rounded-xl">
+                            <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-1">Temporada Activa (Oficial)</h4>
+                            <select 
+                                value={activeSeason} 
+                                onChange={(e) => onSetActiveSeason(e.target.value)} 
+                                className="w-full bg-white dark:bg-zinc-950 border border-emerald-300 dark:border-emerald-500/50 rounded-lg px-3 py-2 text-sm outline-none text-zinc-900 dark:text-white"
+                            >
                                 {seasons.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>

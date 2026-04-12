@@ -1,6 +1,34 @@
 // src/utils/helpers.js
 export const cn = (...classes) => classes.filter(Boolean).join(' ');
 
+// --- NUEVA FUNCIÓN PARA FORMATEAR FECHAS A DD-MM-YYYY ---
+export const formatDateToDDMMYYYY = (dateString) => {
+    if (!dateString) return '';
+    if (typeof dateString === 'string') {
+        // Si viene del input tipo "date" o de la IA (YYYY-MM-DD)
+        if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = dateString.split('-');
+            return `${day}-${month}-${year}`;
+        }
+        // Si viene del sistema español por defecto (DD/MM/YYYY)
+        if (dateString.includes('/')) {
+            return dateString.replace(/\//g, '-');
+        }
+    }
+    // Fallback de seguridad
+    try {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return dateString;
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    } catch {
+        return dateString;
+    }
+};
+// ---------------------------------------------------------
+
 export const generateContractFile = (clubName, season) => {
     const printWindow = window.open('', '_blank');
     const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -74,7 +102,6 @@ export const generateContractFile = (clubName, season) => {
 };
 
 export const exportToCSV = (clubs, seasonName) => {
-    // 1. Añadimos columnas más útiles para que la migración tenga toda la info de contacto
     const headers = ["ID", "Club", "Categoría", "Estado", "Última Interacción", "Contacto Principal", "Rol", "Teléfono", "Email", "Fecha de Sesión", "Contrato Firmado"];
     
     const rows = clubs.map(club => {
@@ -84,7 +111,7 @@ export const exportToCSV = (clubs, seasonName) => {
             `"${club.name || ''}"`, 
             `"${club.category || ''}"`, 
             `"${club.status || ''}"`, 
-            `"${club.lastInteraction || ''}"`, 
+            `"${formatDateToDDMMYYYY(club.lastInteraction) || ''}"`, 
             `"${mainContact?.name || ''}"`,
             `"${mainContact?.role || ''}"`,
             `"${mainContact?.phone || ''}"`,
@@ -94,7 +121,6 @@ export const exportToCSV = (clubs, seasonName) => {
         ];
     });
 
-    // 2. MAGIA PARA EXCEL: Añadimos "\uFEFF" al principio. Esto se llama BOM (Byte Order Mark) y evita que se rompan las tildes/ñ en Excel.
     const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -142,7 +168,6 @@ export const predictDateWithAI = async (historyText) => {
   Historial: ${historyText}`;
 
   try {
-    // CORRECCIÓN: Actualizado a gemini-2.5-flash ya que la versión 1.5 fue descontinuada.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {

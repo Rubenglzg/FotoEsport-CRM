@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, PhoneCall, Clock, AlertCircle, CheckCircle2, ChevronRight, Target, Loader2, RefreshCw, Briefcase } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { formatDateToDDMMYYYY } from '../utils/helpers'; // <-- AÑADIDA LA IMPORTACIÓN AQUÍ
 
 const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) => {
   const [activeMode, setActiveMode] = useState(null);
   const [aiRecommendation, setAiRecommendation] = useState(null);
   const [loadingAI, setLoadingAI] = useState(true);
 
-  // Extraemos las tareas urgentes reales de tu base de datos
   const urgentTasks = tasks
     .filter(t => t.priority === 'high' || new Date(t.due) <= new Date())
     .slice(0, 3);
 
-  // 1. LLAMADA A GEMINI (Caché + Nuevo Prompt de Secretario Estratégico)
   const fetchAIRecommendation = useCallback(async (forceRefresh = false) => {
     try {
       const today = new Date().toLocaleDateString(); 
@@ -21,7 +20,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
       const cachedRec = localStorage.getItem('ai_rec_data');
       const cachedDate = localStorage.getItem('ai_rec_date');
       
-      // Control de caché para no saturar la API
       if (!forceRefresh && cachedRec && cachedDate === today) {
           setAiRecommendation(JSON.parse(cachedRec));
           setLoadingAI(false);
@@ -36,10 +34,8 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           .filter(c => c.status !== 'rejected')
           .map(c => ({ id: c.id, nombre: c.name, estado: c.status, interaccion: c.lastInteraction }));
           
-      // CAMBIO 1: Añadimos la fecha de creación a la nota
       const recentInteractions = interactions.slice(0, 8).map(i => {
           const clubInfo = clubs.find(c => c.id === i.clubId);
-          // Extraemos la fecha de la interacción (asegúrate de que el campo en tu BD se llama 'date' o cámbialo si usas 'createdAt', etc.)
           const noteDate = i.date ? new Date(i.date).toLocaleDateString('es-ES') : 'Fecha desconocida';
           return `[Nota escrita el: ${noteDate}] Club: ${clubInfo?.name || 'Desconocido'} | Nota: ${i.note}`;
       });
@@ -116,7 +112,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
     { id: 'urgent', title: "Apagar Fuegos", desc: "Completar las tareas marcadas como urgentes.", icon: AlertCircle, color: "bg-red-100 text-red-700" }
   ];
 
-  // Nueva función adaptada para recibir el clubId de la lista de tareas
   const handleActionClick = (clubId) => {
     if (clubId) {
         const club = clubs.find(c => c.id === clubId);
@@ -139,7 +134,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           
-          {/* TARJETA DEL PLAN DE VUELO (Secretario AI) */}
           <div className="bg-gradient-to-br from-emerald-700 to-slate-900 rounded-xl p-6 text-white shadow-xl relative overflow-hidden min-h-[300px]">
             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
               <Sparkles size={150} />
@@ -152,7 +146,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                 </div>
             ) : (
                 <div className="relative z-10">
-                  {/* CABECERA */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-white/20 pb-4 gap-4">
                       <div className="flex items-center space-x-2 text-emerald-300 font-bold tracking-wide uppercase text-sm">
                           <Briefcase size={18} />
@@ -169,12 +162,10 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                       </button>
                   </div>
 
-                  {/* MENSAJE EJECUTIVO */}
                   <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 leading-snug">
                       "{aiRecommendation?.executiveSummary || 'Aquí tienes las misiones ordenadas por prioridad para hoy.'}"
                   </h2>
                   
-                  {/* LISTA DE ACCIONES (El Plan de Vuelo) */}
                   <div className="space-y-3">
                       {aiRecommendation?.actionPlan?.map((plan, index) => (
                           <div key={index} className="bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-md transition-all">
@@ -201,7 +192,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
             )}
           </div>
 
-          {/* Modos de Trabajo (Atajos rápidos) */}
           <div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
               <Target size={20} className="mr-2 text-slate-400" />
@@ -228,7 +218,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           </div>
         </div>
 
-        {/* Tareas del día (Sidebar derecho) */}
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm h-fit">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex justify-between items-center">
               Vencen pronto
@@ -248,7 +237,8 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                     </div>
                     <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white leading-tight">{task.task}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{task.due} {task.time}</p>
+                    {/* FECHA FORMATEADA AQUÍ */}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{formatDateToDDMMYYYY(task.due)} {task.time}</p>
                     </div>
                 </div>
                 ))

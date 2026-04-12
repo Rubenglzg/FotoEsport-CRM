@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ArrowUpDown, ChevronDown, Check, Sparkles } from 'lucide-react'; 
 import { Button } from '../components/ui/Button';
-import { cn } from '../utils/helpers';
+import { cn, formatDateToDDMMYYYY } from '../utils/helpers'; // <-- AÑADIDA LA IMPORTACIÓN AQUÍ
 
 // MODAL PARA GESTIONAR ESTADOS DINÁMICOS
 function StatusManagerModal({ statuses, onSave, onClose }) {
@@ -336,7 +336,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
             return (
                <div key={club.id} onClick={() => onSelect(club)} className="flex items-center p-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group">
                   
-                  {/* 1. Nombre del Club (Añadido) */}
+                  {/* 1. Nombre del Club */}
                   {visibleCols.includes('club') && (
                       <div style={{ flex: columns.find(c=>c.id==='club').flex }} className="pr-2 truncate">
                           <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">
@@ -357,7 +357,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 3. Jugadores (Ahora en el orden correcto) */}
+                  {/* 3. Jugadores */}
                   {visibleCols.includes('players') && (
                       <div style={{ flex: columns.find(c=>c.id==='players').flex }} className="pr-2">
                          <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
@@ -409,22 +409,22 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                    {/* 6. Último Contacto (NUEVO) */}
+                    {/* 6. Último Contacto (CON FECHA TRADUCIDA) */}
                   {visibleCols.includes('lastContact') && (
                       <div style={{ flex: columns.find(c=>c.id==='lastContact').flex }} className="pr-2">
                          <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                             {club.lastContactDate || '-'}
+                             {formatDateToDDMMYYYY(club.lastContactDate) || '-'}
                          </div>
                       </div>
                   )}
 
-                    {/* 7. Fecha Recomendada IA */}
+                    {/* 7. Fecha Recomendada IA (CON FECHA TRADUCIDA) */}
                     {visibleCols.includes('recommendedDate') && (
                         <div style={{ flex: columns.find(c=>c.id==='recommendedDate').flex }} className="pr-4 text-right">
                             {club.recommendedContactDate ? (
                                 <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-900/50">
-                                    <Sparkles className="w-3 h-3"/> {/* Este es el componente que causaba el error */}
-                                    {club.recommendedContactDate}
+                                    <Sparkles className="w-3 h-3"/>
+                                    {formatDateToDDMMYYYY(club.recommendedContactDate)}
                                 </div>
                             ) : (
                                 <span className="text-xs text-zinc-400">-</span>
@@ -435,7 +435,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
              );
            })}
 
-           {/* Mensaje si el filtro no devuelve resultados */}
            {processedClubs.length === 0 && (
                <div className="flex flex-col items-center justify-center p-12 text-zinc-500 dark:text-zinc-400">
                    <Filter className="w-8 h-8 mb-3 opacity-20" />

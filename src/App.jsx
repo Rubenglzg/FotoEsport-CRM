@@ -289,6 +289,7 @@ export default function App() {
             currentView={currentView}
             seasons={seasons}
             selectedSeason={selectedSeason}
+            activeSeason={activeSeason}
             onActiveSeasonChange={handleActiveSeasonChange}
             filterNeedsAttention={filterNeedsAttention}
             setFilterNeedsAttention={setFilterNeedsAttention}
