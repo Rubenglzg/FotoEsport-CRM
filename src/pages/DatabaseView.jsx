@@ -173,8 +173,8 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
               <Button variant="outline" className="flex items-center gap-2">
                  <LayoutList className="w-4 h-4" /> <span className="hidden sm:inline">Columnas</span>
               </Button>
-              {/* Alineado a la derecha en móvil (right-0) para que crezca hacia la izquierda y no se corte */}
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {/* left-0 en móvil para que crezca hacia la derecha, md:right-0 en ordenador */}
+              <div className="absolute left-0 md:right-0 md:left-auto top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
                  {columns.map(col => (
                     <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
                         <input type="checkbox" checked={visibleCols.includes(col.id)} onChange={() => toggleColumn(col.id)} className="rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500 bg-transparent" />
