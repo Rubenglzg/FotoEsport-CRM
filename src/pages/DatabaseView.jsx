@@ -157,22 +157,22 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950 p-6 overflow-hidden flex flex-col relative">
       
       {/* CABECERA TOP */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Cartera de Clubes</h2>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Gestiona la base de datos de equipos.</p>
         </div>
         
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
            <Button variant="outline" onClick={() => setShowStatusModal(true)} title="Configurar Estados">
                <Settings className="w-4 h-4 text-zinc-500" />
            </Button>
 
            <div className="relative group">
               <Button variant="outline" className="flex items-center gap-2">
-                 <LayoutList className="w-4 h-4" /> Columnas
+                 <LayoutList className="w-4 h-4" /> <span className="hidden sm:inline">Columnas</span>
               </Button>
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 flex flex-col gap-1">
+              <div className="absolute right-0 md:left-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 flex flex-col gap-1">
                  {columns.map(col => (
                     <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
                         <input type="checkbox" checked={visibleCols.includes(col.id)} onChange={() => toggleColumn(col.id)} className="rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500 bg-transparent" />
@@ -182,8 +182,8 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
               </div>
            </div>
 
-           <Button variant="outline"><Download className="w-4 h-4 mr-2"/> Exportar CSV</Button>
-           <Button variant="neon" onClick={onNewClub}><Plus className="w-4 h-4 mr-2"/> Nuevo Club</Button>
+           <Button variant="outline" className="hidden sm:flex"><Download className="w-4 h-4 mr-2"/> Exportar CSV</Button>
+           <Button variant="neon" onClick={onNewClub} className="flex-1 sm:flex-none justify-center"><Plus className="w-4 h-4 sm:mr-2"/> <span className="hidden sm:inline">Nuevo Club</span><span className="sm:hidden">Nuevo</span></Button>
         </div>
       </div>
 
@@ -319,16 +319,21 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       
       {/* CONTENEDOR DE LA TABLA */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex-1 shadow-sm flex flex-col relative z-10">
-        <div className="flex bg-zinc-100 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 p-3 text-xs font-bold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider">
-           {columns.map(col => visibleCols.includes(col.id) && (
-               <div key={`header-${col.id}`} style={{ flex: col.flex }} className={col.id === 'next' ? 'text-right pr-4' : ''}>
-                   {col.label}
-               </div>
-           ))}
-        </div>
+        
+        {/* WRAPPER SCROLL HORIZONTAL (Evita que la tabla se comprima) */}
+        <div className="overflow-x-auto flex-1 flex flex-col custom-scrollbar">
+          <div className="min-w-[900px] flex-1 flex flex-col">
+            
+            <div className="flex bg-zinc-100 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 p-3 text-xs font-bold text-zinc-600 dark:text-zinc-500 uppercase tracking-wider">
+               {columns.map(col => visibleCols.includes(col.id) && (
+                   <div key={`header-${col.id}`} style={{ flex: col.flex }} className={col.id === 'next' ? 'text-right pr-4' : ''}>
+                       {col.label}
+                   </div>
+               ))}
+            </div>
 
-        <div className="overflow-y-auto flex-1 pb-10" onClick={() => { setIsStatusFilterOpen(false); setIsCategoryFilterOpen(false); setIsSortOpen(false); }}>
-           {processedClubs.map(club => {
+            <div className="overflow-y-auto flex-1 pb-10 custom-scrollbar" onClick={() => { setIsStatusFilterOpen(false); setIsCategoryFilterOpen(false); setIsSortOpen(false); }}>
+               {processedClubs.map(club => {
              const mainContact = club.contacts?.find(c => c.isDecisionMaker) || club.contacts?.[0] || { name: 'Sin Contacto' };
              const phoneToShow = mainContact.phone || club.genericPhone || '-';
              const needsAttention = club.lastInteraction === "Never" || club.lastInteraction === "30d";
@@ -435,12 +440,14 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
              );
            })}
 
-           {processedClubs.length === 0 && (
+            {processedClubs.length === 0 && (
                <div className="flex flex-col items-center justify-center p-12 text-zinc-500 dark:text-zinc-400">
                    <Filter className="w-8 h-8 mb-3 opacity-20" />
                    <p className="text-sm">No se encontraron clubes con los filtros seleccionados.</p>
                </div>
            )}
+            </div>
+          </div>
         </div>
       </div>
 
