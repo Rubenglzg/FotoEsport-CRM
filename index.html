@@ -2,14 +2,27 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#18181b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <link rel="manifest" href="/manifest.json" />
     <title>FotoEsport CRM</title>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDkX0srGnmlsYFmFij2jQPrUACKajf5rv8&libraries=places&loading=async"></script>
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDkX0srGnmlsYFmFij2jQPrUACKajf5rv8&libraries=places"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+        });
+      }
+    </script>
   </body>
 </html>

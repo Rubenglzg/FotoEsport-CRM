@@ -120,36 +120,32 @@ export default function App() {
   }, [theme]);
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
-  // --- AUTENTICACIÓN FIREBASE Y PERFILES ---
+  // --- AUTENTICACIÓN FIREBASE Y PERFILES (MODO SEGURO) ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
-        
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
+            // El usuario existe en la base de datos (Es Admin o Comercial) -> Le dejamos pasar
+            setUser(currentUser);
             setUserProfile(userDoc.data());
+            setIsLocked(false);
           } else {
-            console.log("No se encontró perfil. Creando cuenta Admin automáticamente...");
-            // Si no existe, lo creamos forzosamente como ADMIN con su UID exacto
-            const newAdminProfile = {
-              email: currentUser.email,
-              role: 'admin',
-              allowedZones: []
-            };
-            
-            await setDoc(userDocRef, newAdminProfile);
-            setUserProfile(newAdminProfile);
-            console.log("¡Cuenta Admin creada con éxito!");
+            // INTRUSO DETECTADO -> No está en la base de datos. Lo expulsamos.
+            console.warn("Intento de acceso bloqueado para:", currentUser.email);
+            await auth.signOut(); 
+            setUser(null);
+            setUserProfile(null);
+            setIsLocked(true);
+            alert("No tienes permisos para acceder a este CRM.");
           }
         } catch (error) {
-          console.error("Error al obtener o crear el perfil:", error);
+          console.error("Error al obtener el perfil:", error);
+          setIsLocked(true);
         }
-
-        setIsLocked(false);
       } else {
         setUser(null);
         setUserProfile(null);
