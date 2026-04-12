@@ -12,15 +12,20 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
                       : '';
 
   const [formData, setFormData] = useState({
-    name: '', category: 'Fútbol', provincia: defaultZone, estimatedPlayers: '', totalTeams: '',
+    name: '', category: 'Fútbol', provincia: defaultZone, 
+    address: '', lat: '', lng: '', // <-- NUEVOS CAMPOS AÑADIDOS
+    estimatedPlayers: '', totalTeams: '',
     baseTeams: '', genericEmail: '', genericPhone: '',
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true }]
   });
   
   const [error, setError] = useState('');
+  
+  // REFERENCIAS PARA GOOGLE MAPS
   const adminInputRef = useRef(null);
+  const addressInputRef = useRef(null); // <-- REFERENCIA PARA LA DIRECCIÓN EXACTA
 
-  // EFECTO: Carga segura de Google Maps (Para Admin y Comerciales con Toda España)
+  // EFECTO: Carga de Google Maps para PROVINCIA (Admin / Toda España)
   useEffect(() => {
     const initGoogle = () => {
         if (isAdminOrAllSpain && window.google && window.google.maps && window.google.maps.places && adminInputRef.current) {
@@ -39,6 +44,10 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
                     setTimeout(() => { if (adminInputRef.current) adminInputRef.current.value = place.name; }, 10);
                 }
             });
+            
+            adminInputRef.current.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
         } else if (isAdminOrAllSpain) {
             setTimeout(initGoogle, 500);
         }
@@ -47,9 +56,51 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
     initGoogle();
   }, [isAdminOrAllSpain]);
 
+  // EFECTO: Carga de Google Maps para UBICACIÓN EXACTA (Para todos los usuarios)
+  useEffect(() => {
+    const initAddressGoogle = () => {
+        if (window.google && window.google.maps && window.google.maps.places && addressInputRef.current) {
+            if (addressInputRef.current.hasAttribute('data-google-ready')) return;
+            addressInputRef.current.setAttribute('data-google-ready', 'true');
+
+            const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+                componentRestrictions: { country: 'es' },
+                fields: ['formatted_address', 'geometry', 'name'] // Solicitamos los datos de dirección y coordenadas
+            });
+            
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (place && place.geometry && place.geometry.location) {
+                    const newAddress = place.formatted_address || place.name;
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        address: newAddress,
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    }));
+                    setTimeout(() => { if (addressInputRef.current) addressInputRef.current.value = newAddress; }, 10);
+                }
+            });
+
+            // Evitar que el 'Enter' cierre el modal al seleccionar una sugerencia
+            addressInputRef.current.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+        } else {
+            setTimeout(initAddressGoogle, 500);
+        }
+    };
+
+    initAddressGoogle();
+  }, []);
+
   const handleSave = () => {
       if (!formData.name.trim()) return setError("El nombre del club es obligatorio.");
       if (!formData.provincia.trim()) return setError("La Provincia / Zona es obligatoria.");
+      
+      // NUEVA VALIDACIÓN: La ubicación exacta es obligatoria
+      if (!formData.address.trim()) return setError("La Ubicación Exacta (dirección) es obligatoria.");
+      
       setError('');
       onSave(formData);
   };
@@ -64,6 +115,12 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      
+      {/* Estilos para asegurar que las sugerencias de Google queden por encima del Modal */}
+      <style>{`
+          .pac-container { z-index: 100000 !important; }
+      `}</style>
+
       <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
           <h2 className="text-lg font-bold">Nuevo Club Deportivo</h2>
@@ -84,7 +141,6 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
               <div className="relative mt-1">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
                   
-                  {/* MAGIA AQUÍ: Admin y Comerciales "Toda España" ven buscador libre */}
                   {isAdminOrAllSpain ? (
                       <input ref={adminInputRef} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 outline-none focus:border-emerald-500" value={formData.provincia} onChange={e => setFormData({...formData, provincia: e.target.value})} placeholder="Buscar provincia..." />
                   ) : (
@@ -92,6 +148,21 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
                           {userProfile.allowedZones.map(zone => <option key={zone} value={zone}>{zone}</option>)}
                       </select>
                   )}
+              </div>
+            </div>
+
+            {/* NUEVA CASILLA: UBICACIÓN EXACTA */}
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase text-emerald-600">Ubicación Exacta *</label>
+              <div className="relative mt-1">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                  <input 
+                      ref={addressInputRef} 
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 outline-none focus:border-emerald-500" 
+                      value={formData.address} 
+                      onChange={e => setFormData({...formData, address: e.target.value})} 
+                      placeholder="Busca la dirección o la calle con Google..." 
+                  />
               </div>
             </div>
 
