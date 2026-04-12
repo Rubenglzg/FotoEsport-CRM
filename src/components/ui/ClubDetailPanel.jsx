@@ -182,10 +182,17 @@ export default function ClubDetailPanel({
         if(!note) return;
         setIsSubmitting(true);
         try {
-            // <-- AÑADIDO: Obtenemos el nombre y apellidos del perfil actual
-            const autor = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
+            // Combinar nombre y apellidos del perfil del usuario
+            const userName = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
             
-            await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: interactionType, user: autor, note, date: new Date().toLocaleDateString() });
+            await onAddInteraction({ 
+                id: Math.random().toString(), 
+                clubId: club.id, 
+                type: interactionType, 
+                user: userName, // Usar el nombre real
+                note, 
+                date: new Date().toLocaleDateString() 
+            });
             
             if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             setNote(""); setNextDate("");
