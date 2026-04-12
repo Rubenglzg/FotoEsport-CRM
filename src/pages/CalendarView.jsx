@@ -31,14 +31,14 @@ export default function CalendarView({ tasks, clubs, onUpdateTaskPriority, onOpe
 
   return (
     <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950 p-6 overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-6">
         <div>
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-white capitalize">{currentMonthName}</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Las tareas de Alta Prioridad aparecen primero.</p>
+            <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">Las tareas de Alta Prioridad aparecen primero.</p>
         </div>
         
         {/* Controles de navegación y nueva tarea */}
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-2 w-full md:w-auto justify-between md:justify-end items-center">
            <div className="flex items-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-1 shadow-sm">
               <Button variant="ghost" size="icon" onClick={prevWeek} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <ChevronLeft className="w-4 h-4 text-zinc-600 dark:text-zinc-400"/>
@@ -50,34 +50,39 @@ export default function CalendarView({ tasks, clubs, onUpdateTaskPriority, onOpe
                   <ChevronRight className="w-4 h-4 text-zinc-600 dark:text-zinc-400"/>
               </Button>
            </div>
-           <Button variant="primary" onClick={onOpenNewTask}><Plus className="w-4 h-4 mr-2"/> Tarea Manual</Button>
+           <Button variant="primary" onClick={onOpenNewTask}>
+              <Plus className="w-4 h-4 md:mr-2"/> 
+              <span className="hidden md:inline">Tarea Manual</span>
+              <span className="md:hidden">Nueva</span>
+           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-3 h-[600px]">
+      {/* grid-cols-1 en móvil, grid-cols-7 en PC. En PC le damos altura fija, en móvil que fluya. */}
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4 md:h-[650px] pb-24 md:pb-0">
          {weekDays.map((day) => {
-           // Formateamos la fecha a YYYY-MM-DD para compararla con tus tasks
            const dateString = format(day, 'yyyy-MM-dd');
-           // Filtramos las tareas que tocan este día
            const dayTasks = sortTasks(tasks.filter(t => t.due === dateString));
            const isCurrentDay = isToday(day);
-           const isWeekend = day.getDay() === 0 || day.getDay() === 6; // 0 es Domingo, 6 es Sábado
+           const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
            return (
-             <div key={dateString} className={cn("bg-white dark:bg-zinc-900/50 border rounded-xl flex flex-col shadow-sm transition-colors", 
+             <div key={dateString} className={cn("bg-white dark:bg-zinc-900/50 border rounded-xl flex flex-col shadow-sm transition-colors min-h-[120px] md:min-h-0", 
                   isCurrentDay ? "border-emerald-500 ring-1 ring-emerald-500/20 dark:border-emerald-500/50" : "border-zinc-200 dark:border-zinc-800",
-                  isWeekend && !isCurrentDay && "bg-zinc-50/80 dark:bg-zinc-950/50" // <-- Añadido fondo distinto para fin de semana
+                  isWeekend && !isCurrentDay && "bg-zinc-50/80 dark:bg-zinc-950/50"
                )}>
-                <div className={cn("p-3 border-b text-center rounded-t-xl", isCurrentDay ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-zinc-50 border-zinc-100 dark:bg-transparent dark:border-zinc-800")}>
-                   <span className={cn("text-sm font-bold uppercase", isCurrentDay ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400")}>
+                
+                {/* Cabecera del día adaptada: Horizontal en móvil, Centrada en PC */}
+                <div className={cn("p-3 border-b flex md:block justify-between items-center md:text-center rounded-t-xl shrink-0", isCurrentDay ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-zinc-50 border-zinc-100 dark:bg-transparent dark:border-zinc-800")}>
+                   <span className={cn("text-xs md:text-sm font-bold uppercase", isCurrentDay ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400")}>
                       {format(day, 'EEEE', { locale: es })}
                    </span>
-                   <div className={cn("text-2xl font-bold mt-1", isCurrentDay ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>
+                   <div className={cn("text-lg md:text-2xl font-bold md:mt-1", isCurrentDay ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300")}>
                       {format(day, 'd')}
                    </div>
                 </div>
                 
-                <div className="p-2 space-y-2 flex-1 overflow-y-auto">
+                <div className="p-2 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
                    {dayTasks.length > 0 ? (
                        dayTasks.map(task => (
                            <TaskCard key={task.id} task={task} clubs={clubs} onTogglePriority={() => onUpdateTaskPriority(task.id)} onDeleteTask={() => onDeleteTask(task.id)} onEditTask={() => onEditTask(task)} />
