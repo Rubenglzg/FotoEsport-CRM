@@ -30,9 +30,14 @@ export default function LoginScreen({ onLogin }) {
     return (
         <div className="flex h-screen w-full bg-zinc-50 dark:bg-zinc-950 items-center justify-center font-sans transition-colors duration-300">
             <div className="w-full max-w-sm p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-2xl flex flex-col items-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center text-white dark:text-black font-bold text-3xl shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-6">
-                    F
-                </div>
+                
+                {/* LOGO MODIFICADO */}
+                <img 
+                    src="/logo192.png" 
+                    alt="Logo" 
+                    className="w-16 h-16 mb-6 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] object-contain bg-white" 
+                />
+
                 <h1 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Sooner CRM</h1>
                 <p className="text-zinc-500 text-xs mb-8 text-center">Acceso restringido. Por favor, introduce tus credenciales de administrador.</p>
                 

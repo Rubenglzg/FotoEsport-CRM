@@ -15,8 +15,13 @@ export default function Sidebar({ currentView, setCurrentView, theme, toggleThem
   return (
     <aside className="fixed bottom-0 left-0 w-full h-16 md:relative md:w-16 md:h-full border-t md:border-t-0 md:border-r border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 flex flex-row md:flex-col items-center justify-between md:justify-start md:py-6 px-2 md:px-0 z-[60] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-lg">
       
-      {/* Logo oculto en móvil */}
-      <div className="hidden md:flex h-10 w-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl items-center justify-center text-white font-bold text-xl shadow-md cursor-pointer mb-4" onClick={() => setCurrentView('map')}>S</div>
+      {/* LOGO MODIFICADO (Oculto en móvil) */}
+      <img 
+          src="/logo192.png" 
+          alt="Logo" 
+          onClick={() => setCurrentView('map')}
+          className="hidden md:flex w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.4)] object-cover bg-white flex-shrink-0 cursor-pointer mb-4" 
+      />
       
       <nav className="flex flex-row md:flex-col gap-2 md:gap-3 w-full md:px-2 overflow-x-auto no-scrollbar items-center justify-around">
         <NavButton icon={Sparkles} isActive={currentView === 'overview'} onClick={() => setCurrentView('overview')} title="Asistente IA" />
