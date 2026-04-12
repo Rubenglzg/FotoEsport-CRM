@@ -278,7 +278,7 @@ export default function App() {
       />
 
       {/* ÁREA PRINCIPAL */}
-      <main className="flex-1 relative bg-white dark:bg-zinc-900 flex flex-col transition-colors duration-300 md:shadow-inner md:rounded-l-2xl overflow-hidden md:my-2 md:mr-2 border-0 md:border border-zinc-200 dark:border-zinc-800 pb-16 md:pb-0">
+      <main className="flex-1 relative bg-white dark:bg-zinc-900 flex flex-col transition-colors duration-300 md:shadow-inner md:rounded-l-2xl overflow-hidden md:my-2 md:mr-2 border-0 md:border border-zinc-200 dark:border-zinc-800 pb-20 md:pb-0">
         
         {/* HEADER SUPERIOR */}
         <Header 

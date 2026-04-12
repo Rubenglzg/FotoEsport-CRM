@@ -125,10 +125,10 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 overflow-y-auto h-full">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Hola, ¿qué hacemos hoy?</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2">Tu asistente inteligente ha revisado tu agenda y notas para organizarte el día.</p>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6 overflow-y-auto h-full pb-24 md:pb-6">
+      <div className="mb-4 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Hola, ¿qué hacemos hoy?</h1>
+        <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1 md:mt-2">Tu asistente inteligente ha revisado tu agenda y notas...</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
