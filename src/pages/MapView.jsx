@@ -1,11 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
+import React, { useState, useMemo, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Navigation, Target, MapPin, Plus, X, Car, ChevronDown, Filter, Settings } from 'lucide-react';
 import { cn } from '../utils/helpers';
 import { Button } from '../components/ui/Button';
 
 import LocationManagerModal from '../components/ui/LocationManagerModal';
+
+// Añade esto ANTES de tu componente MapView
+function ResizeMap() {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Le damos 400ms para que Flexbox y las transiciones terminen de acomodar la pantalla
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 400);
+    
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  return null;
+}
 
 export default function MapView({ 
     clubs, selectedId, onSelect, showRadius, setShowRadius, 
@@ -218,6 +234,8 @@ export default function MapView({
         style={{ height: '100%', width: '100%', zIndex: 10 }}
         zoomControl={false}
       >
+        <ResizeMap />
+        
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
