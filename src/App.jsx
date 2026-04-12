@@ -267,7 +267,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden transition-colors duration-300">
       
       {/* SIDEBAR LADO IZQUIERDO */}
       <Sidebar 
@@ -278,7 +278,7 @@ export default function App() {
       />
 
       {/* ÁREA PRINCIPAL */}
-      <main className="flex-1 relative bg-white dark:bg-zinc-900 flex flex-col transition-colors duration-300 shadow-inner rounded-l-2xl overflow-hidden my-2 mr-2 border border-zinc-200 dark:border-zinc-800">
+      <main className="flex-1 relative bg-white dark:bg-zinc-900 flex flex-col transition-colors duration-300 md:shadow-inner md:rounded-l-2xl overflow-hidden md:my-2 md:mr-2 border-0 md:border border-zinc-200 dark:border-zinc-800 pb-16 md:pb-0">
         
         {/* HEADER SUPERIOR */}
         <Header 
@@ -299,7 +299,10 @@ export default function App() {
       </main>
 
       {/* SIDEBAR PANEL LATERAL DERECHO (Detalle del Club) */}
-      <aside className={cn("bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col z-50 transition-all duration-300 shadow-xl overflow-hidden relative", (currentView === 'map' || currentView === 'database') && selectedClub ? "w-[400px]" : "w-0 border-l-0")}>
+      <aside className={cn(
+          "bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col z-[70] transition-all duration-300 shadow-2xl overflow-hidden fixed md:relative top-0 right-0 h-full", 
+          (currentView === 'map' || currentView === 'database') && selectedClub ? "w-full md:w-[400px] translate-x-0" : "w-0 translate-x-full md:translate-x-0 md:border-l-0"
+      )}>
         {selectedClub && 
             <ClubDetailPanel 
                 club={selectedClub} 

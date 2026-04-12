@@ -70,9 +70,9 @@ export default function Header({
     setShowNotifications 
 }) {
     return (
-        <header className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm flex items-center justify-between px-6 z-40 shrink-0">
-           <div className="flex items-center gap-4">
-             <h1 className="text-lg font-bold uppercase tracking-wide text-zinc-800 dark:text-white">
+        <header className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm flex items-center justify-between px-3 md:px-6 z-40 shrink-0 gap-2">
+           <div className="flex items-center gap-2 md:gap-4 flex-1">
+             <h1 className="hidden md:block text-lg font-bold uppercase tracking-wide text-zinc-800 dark:text-white">
                 {currentView === 'overview' && 'Asistente IA'}
                 {currentView === 'map' && 'Mapa Táctico'}
                 {currentView === 'pipeline' && 'Pipeline de Ventas'}
@@ -81,26 +81,28 @@ export default function Header({
                 {currentView === 'targets' && 'Cuadro de Mando'}
                 {currentView === 'settings' && 'Configuración'}
              </h1>
-             <div className="h-4 w-[1px] bg-zinc-300 dark:bg-zinc-700"></div>
+             <div className="hidden md:block h-4 w-[1px] bg-zinc-300 dark:bg-zinc-700"></div>
              <SeasonSelector 
                  seasons={seasons} 
                  selectedSeason={selectedSeason} 
                  activeSeason={activeSeason} // <-- PASAMOS LA TEMPORADA ACTIVA
                  onSelect={onActiveSeasonChange} 
              />
-             <button onClick={() => setFilterNeedsAttention(!filterNeedsAttention)} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm", filterNeedsAttention ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500 dark:text-red-400" : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400")}>
-                <AlertTriangle className="w-3 h-3" />{filterNeedsAttention ? "Viendo Prioritarios" : "Filtrar Alertas"}
+              <button onClick={() => setFilterNeedsAttention(!filterNeedsAttention)} className={cn("flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm", filterNeedsAttention ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500 dark:text-red-400" : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400")}>
+                <AlertTriangle className="w-4 h-4 md:w-3 md:h-3" />
+                <span className="hidden sm:inline">{filterNeedsAttention ? "Viendo Prioritarios" : "Filtrar Alertas"}</span>
              </button>
            </div>
            
-           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
                 {(currentView === 'map' || currentView === 'database') && (
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-                        <input type="text" placeholder="Buscar Club..." className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 w-64 transition-all text-zinc-900 dark:text-white" />
+                        {/* El buscador se vuelve más pequeño en móvil y w-64 en escritorio */}
+                        <input type="text" placeholder="Buscar..." className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-2 py-2 text-sm focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 w-32 sm:w-48 md:w-64 transition-all text-zinc-900 dark:text-white" />
                     </div>
                 )}
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white shadow-sm transition-colors">
+                <button onClick={() => setShowNotifications(!showNotifications)} className="relative flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white shadow-sm transition-colors">
                     <Bell className="w-4 h-4" />{notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm"></span>}
                 </button>
            </div>
