@@ -109,8 +109,8 @@ export default function App() {
       showRadius, setShowRadius, showRoute, setShowRoute, routeStops, setRouteStops,
       savedLocations, activeOrigin, setActiveOrigin, handleOptimizeRoute,
       handleOpenGoogleMapsNav, toggleRouteStop, 
-      addSavedLocation, updateSavedLocation, deleteSavedLocation // <-- Las 3 funciones nuevas
-  } = useRouting(appId, showToast);
+      addSavedLocation, updateSavedLocation, deleteSavedLocation 
+  } = useRouting(appId, showToast, user); 
 
   // --- MODO CLARO / OSCURO ---
   useEffect(() => {

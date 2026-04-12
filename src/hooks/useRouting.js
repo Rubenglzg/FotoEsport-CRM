@@ -1,40 +1,68 @@
 // src/hooks/useRouting.js
 import { useState, useEffect } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-export const useRouting = (appId, showToast) => {
+export const useRouting = (appId, showToast, user) => {
     const [showRadius, setShowRadius] = useState(false);
     const [showRoute, setShowRoute] = useState(false); 
     const [routeStops, setRouteStops] = useState([]); 
 
-    const [savedLocations, setSavedLocations] = useState(() => {
-        const saved = localStorage.getItem(`${appId}_locations`);
-        return saved ? JSON.parse(saved) : [
-            { id: '1', label: "Oficina Principal", address: "Sede Central", lat: 39.9864, lng: -0.0513 }
-        ];
-    });
-    
-    const [activeOrigin, setActiveOrigin] = useState(savedLocations[0] || null);
+    // Estado inicial por defecto (mientras carga de Firebase)
+    const [savedLocations, setSavedLocations] = useState([
+        { id: '1', label: "Oficina Principal", address: "Sede Central", lat: 39.9864, lng: -0.0513 }
+    ]);
+    const [activeOrigin, setActiveOrigin] = useState(null);
 
-    // Guardar automáticamente cualquier nueva ubicación
+    // 1. CARGAR OFICINAS DESDE FIREBASE AL INICIAR SESIÓN
     useEffect(() => {
-        localStorage.setItem(`${appId}_locations`, JSON.stringify(savedLocations));
-        // Asegurarnos de que el activeOrigin no sea uno que acabamos de borrar
-        if (activeOrigin && !savedLocations.find(l => l.id === activeOrigin.id)) {
-            setActiveOrigin(savedLocations[0] || null);
-        }
-    }, [savedLocations, appId, activeOrigin]);
+        if (!user) return;
+        
+        const loadLocations = async () => {
+            try {
+                const docRef = doc(db, 'users', user.uid);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists() && docSnap.data().savedLocations) {
+                    const locs = docSnap.data().savedLocations;
+                    setSavedLocations(locs);
+                    setActiveOrigin(locs[0] || null);
+                } else {
+                    setActiveOrigin(savedLocations[0]);
+                }
+            } catch (error) {
+                console.error("Error al cargar oficinas:", error);
+            }
+        };
+        
+        loadLocations();
+    }, [user]);
 
-    // --- NUEVAS FUNCIONES CRUD DE UBICACIONES ---
+    // 2. FUNCIÓN PARA GUARDAR EN LA NUBE
+    const syncToFirebase = async (newLocations) => {
+        setSavedLocations(newLocations); // Actualiza la UI al instante
+        if (!user) return;
+        try {
+            const docRef = doc(db, 'users', user.uid);
+            await setDoc(docRef, { savedLocations: newLocations }, { merge: true });
+        } catch (error) {
+            console.error("Error al sincronizar oficinas:", error);
+            showToast("Error al guardar en la nube", "error");
+        }
+    };
+
+    // --- FUNCIONES CRUD MODIFICADAS PARA USAR FIREBASE ---
     const addSavedLocation = (loc) => {
         const newLoc = { id: Math.random().toString(), ...loc, lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) };
-        setSavedLocations([...savedLocations, newLoc]);
+        const updatedLocations = [...savedLocations, newLoc];
+        syncToFirebase(updatedLocations);
         setActiveOrigin(newLoc);
-        showToast("Oficina creada", "success");
+        showToast("Oficina guardada en la nube", "success");
     };
 
     const updateSavedLocation = (id, updatedLoc) => {
         const newLocations = savedLocations.map(l => l.id === id ? { ...l, ...updatedLoc, lat: parseFloat(updatedLoc.lat), lng: parseFloat(updatedLoc.lng) } : l);
-        setSavedLocations(newLocations);
+        syncToFirebase(newLocations);
         if (activeOrigin?.id === id) {
             setActiveOrigin(newLocations.find(l => l.id === id));
         }
@@ -46,8 +74,14 @@ export const useRouting = (appId, showToast) => {
             showToast("Debes tener al menos una oficina registrada.", "error");
             return;
         }
-        if (window.confirm("¿Estás seguro de eliminar esta oficina?")) {
-            setSavedLocations(savedLocations.filter(l => l.id !== id));
+        if (window.confirm("¿Estás seguro de eliminar esta oficina de la base de datos?")) {
+            const updatedLocations = savedLocations.filter(l => l.id !== id);
+            syncToFirebase(updatedLocations);
+            
+            // Si borramos la que estaba seleccionada, elegimos la primera de la lista
+            if (activeOrigin?.id === id) {
+                setActiveOrigin(updatedLocations[0] || null);
+            }
             showToast("Oficina eliminada", "success");
         }
     };
@@ -98,7 +132,7 @@ export const useRouting = (appId, showToast) => {
             const lat = stop.lat || stop.coordinates?.lat; const lng = stop.lng || stop.coordinates?.lng;
             return `${lat},${lng}`;
         }).join('/');
-        window.open(`https://www.google.com/maps/dir/$${originStr}/${stopsStr}/data=!4m2!4m1!3e0`, '_blank');
+        window.open(`https://www.google.com/maps/dir/${originStr}/${stopsStr}/data=!4m2!4m1!3e0`, '_blank');
     };
 
     const toggleRouteStop = (club) => {
