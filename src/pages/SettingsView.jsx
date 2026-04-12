@@ -151,16 +151,18 @@ export default function SettingsView({
 
     return (
       <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 overflow-y-auto">
-        <div className="max-w-6xl w-full mx-auto p-8 space-y-8">
+        {/* Reducimos el padding en móvil (p-4) y lo mantenemos en PC (md:p-8) */}
+        <div className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-24 md:pb-8">
             
-            <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800">
+            {/* flex-col en móvil para que el botón no aplaste el texto */}
+            <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800">
                 <div>
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-3">
-                        <Settings className="w-7 h-7 text-emerald-500"/> Configuración del Sistema
+                    <h2 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2 md:gap-3">
+                        <Settings className="w-6 h-6 md:w-7 md:h-7 text-emerald-500"/> Configuración
                     </h2>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">Gestiona integraciones, bases de datos y usuarios desde un solo lugar.</p>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-xs md:text-sm mt-1">Gestiona integraciones, bases de datos y usuarios.</p>
                 </div>
-                <Button variant="outline" className="text-red-600 hover:bg-red-50 border-red-200" onClick={handleLogout}>Cerrar Sesión</Button>
+                <Button variant="outline" className="w-full md:w-auto justify-center text-red-600 hover:bg-red-50 border-red-200" onClick={handleLogout}>Cerrar Sesión</Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -175,7 +177,8 @@ export default function SettingsView({
                             <Users className="w-4 h-4"/> Gestión de Equipo (Comerciales)
                         </h3>
                         <form onSubmit={handleCreateComercial} className="space-y-5 bg-white dark:bg-zinc-950 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* grid-cols-1 en móvil para que los campos no se queden sin espacio */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs text-indigo-900/70 dark:text-indigo-300 block mb-1 font-bold">Correo de Acceso</label>
                                     <input required type="email" value={comercialData.email} onChange={e => setComercialData({...comercialData, email: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800/50 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500" placeholder="comercial@fotoesport.com"/>
@@ -324,10 +327,11 @@ export default function SettingsView({
                             </div>
                         )}
                         <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-5">Objetivos y Finanzas</h3>
-                        <div className="flex gap-4 items-end">
+                        {/* Apilamos los campos en vertical si la pantalla es muy pequeña (flex-col) */}
+                        <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
                             <div className="flex-1"><label className="text-xs block mb-1 font-bold">Meta Clubes</label><input type="number" className="w-full bg-zinc-50 border rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:bg-zinc-950 dark:border-zinc-800" value={localTarget} onChange={(e) => setLocalTarget(e.target.value)}/></div>
                             <div className="flex-1"><label className="text-xs block mb-1 font-bold">Ticket Medio (€)</label><input type="number" className="w-full bg-zinc-50 border rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:bg-zinc-950 dark:border-zinc-800" value={localTicket} onChange={(e) => setLocalTicket(e.target.value)}/></div>
-                            <Button variant="primary" onClick={handleSaveObjectives}><Save className="w-4 h-4 mr-2"/> Guardar</Button>
+                            <Button variant="primary" onClick={handleSaveObjectives} className="w-full sm:w-auto justify-center"><Save className="w-4 h-4 mr-2"/> Guardar</Button>
                         </div>
                     </div>
 
@@ -397,15 +401,16 @@ export default function SettingsView({
                                 ))}
                             </div>
                             <div className="p-3 bg-zinc-50 dark:bg-zinc-950 flex flex-col gap-2 border-t dark:border-zinc-800">
-                                <div className="flex gap-2">
-                                    <input value={newChecklistLabel} onChange={e => setNewChecklistLabel(e.target.value)} placeholder="Ej: Logo..." className="flex-1 text-sm px-3 py-1.5 border rounded" />
-                                    <select value={newChecklistType} onChange={e => setNewChecklistType(e.target.value)} className="text-xs px-2 border rounded">
+                                {/* flex-col en móvil para que el input y el select no queden aplastados */}
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input value={newChecklistLabel} onChange={e => setNewChecklistLabel(e.target.value)} placeholder="Ej: Logo..." className="flex-1 text-sm px-3 py-1.5 border rounded w-full" />
+                                    <select value={newChecklistType} onChange={e => setNewChecklistType(e.target.value)} className="text-sm sm:text-xs px-2 py-1.5 sm:py-0 border rounded w-full sm:w-auto bg-white dark:bg-zinc-900">
                                         <option value="global">Para siempre</option>
                                         <option value="seasonal">Temporada</option>
                                         <option value="contract">Contrato</option>
                                     </select>
                                 </div>
-                                <Button size="sm" variant="outline" onClick={handleAddChecklistItem} className="w-full"><Plus className="w-4 h-4 mr-1"/> Añadir Requisito</Button>
+                                <Button size="sm" variant="outline" onClick={handleAddChecklistItem} className="w-full justify-center"><Plus className="w-4 h-4 mr-1"/> Añadir Requisito</Button>
                             </div>
                         </div>
                     </div>

@@ -166,21 +166,22 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                       "{aiRecommendation?.executiveSummary || 'Aquí tienes las misiones ordenadas por prioridad para hoy.'}"
                   </h2>
                   
-                  <div className="space-y-3">
+                    <div className="space-y-3">
                       {aiRecommendation?.actionPlan?.map((plan, index) => (
-                          <div key={index} className="bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-md transition-all">
+                          <div key={index} className="bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 backdrop-blur-md transition-all">
                               <div className="flex-1">
-                                  <h3 className="font-bold text-white text-base flex items-start gap-3">
+                                  <h3 className="font-bold text-white text-sm md:text-base flex items-start gap-3">
                                       <span className="bg-emerald-500 text-slate-900 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
                                           {index + 1}
                                       </span>
                                       {plan.title}
                                   </h3>
-                                  <p className="text-emerald-100/70 text-sm mt-1 ml-9">{plan.reason}</p>
+                                  <p className="text-emerald-100/70 text-xs md:text-sm mt-1 ml-9">{plan.reason}</p>
                               </div>
+                              {/* Botón: Ancho completo en móvil (w-full) y normal en PC (md:w-auto) */}
                               <button 
                                   onClick={() => handleActionClick(plan.clubId)}
-                                  className="bg-emerald-500 text-slate-900 text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-emerald-400 transition-colors whitespace-nowrap flex-shrink-0 md:ml-4 shadow-sm"
+                                  className="bg-emerald-500 text-slate-900 text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-emerald-400 transition-colors whitespace-nowrap flex-shrink-0 md:ml-4 shadow-sm w-full md:w-auto mt-2 md:mt-0 text-center"
                               >
                                   {plan.action}
                               </button>
@@ -197,7 +198,7 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
               <Target size={20} className="mr-2 text-slate-400" />
               Bloques de Enfoque Rápido
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               {focusModes.map((mode) => (
                 <div 
                   key={mode.id} 
@@ -205,13 +206,16 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                       if(mode.id === 'cold-calls' || mode.id === 'follow-ups') onNavigate('database');
                       if(mode.id === 'urgent') onNavigate('calendar');
                   }}
-                  className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 hover:border-emerald-500 cursor-pointer transition-all group shadow-sm"
+                  // En móvil usamos flex horizontal, en PC block (cuadrado normal)
+                  className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 md:p-5 hover:border-emerald-500 cursor-pointer transition-all group shadow-sm flex items-center md:block gap-4 md:gap-0"
                 >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${mode.color}`}>
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center md:mb-4 ${mode.color}`}>
                     <mode.icon size={20} />
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-500 transition-colors">{mode.title}</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">{mode.desc}</p>
+                  <div>
+                      <h4 className="font-bold text-sm md:text-base text-slate-900 dark:text-white md:mb-1 group-hover:text-emerald-500 transition-colors">{mode.title}</h4>
+                      <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-snug line-clamp-1 md:line-clamp-none">{mode.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>

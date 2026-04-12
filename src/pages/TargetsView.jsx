@@ -31,25 +31,25 @@ export default function TargetsView({ stats, targetClients, ticketMedio, clubs =
       }, 0) / clubesCerrados.length)
     : 0;
 
-  return (
-    <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950 p-8 overflow-y-auto">
-       <div className="flex justify-between items-center mb-8">
+ return (
+    <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950 p-4 md:p-8 overflow-y-auto">
+       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
            <div>
-               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Rendimiento Comercial</h2>
-               <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">Análisis de cartera y proyecciones financieras</p>
+               <h2 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-white">Rendimiento Comercial</h2>
+               <p className="text-zinc-500 dark:text-zinc-400 text-xs md:text-sm mt-1">Análisis de cartera y proyecciones financieras</p>
            </div>
            
-           <div className="text-right bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-sm">
-               <p className="text-[10px] font-bold uppercase text-emerald-100 tracking-wider">Objetivo Temporada</p>
-               <div className="flex items-end gap-1 justify-end">
-                   <p className="text-2xl font-mono font-bold">{stats.signed}</p>
-                   <p className="text-sm font-mono text-emerald-200 mb-0.5">/ {targetClients}</p>
+           <div className="w-full md:w-auto flex md:block justify-between items-center bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-sm">
+               <p className="text-[10px] md:text-xs font-bold uppercase text-emerald-100 tracking-wider">Objetivo Temporada</p>
+               <div className="flex items-end gap-1 justify-end mt-0 md:mt-1">
+                   <p className="text-2xl font-mono font-bold leading-none">{stats.signed}</p>
+                   <p className="text-sm font-mono text-emerald-200 leading-none mb-0.5">/ {targetClients}</p>
                </div>
            </div>
        </div>
 
        {/* KPIs COMERCIALES ORIGINALES (Contadores de Leads) */}
-       <div className="grid grid-cols-3 gap-6 mb-8">
+       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
           <MetricCard 
               title="Clubes Activos (Clientes)" 
               value={stats.signed} 
@@ -165,9 +165,10 @@ export default function TargetsView({ stats, targetClients, ticketMedio, clubs =
            </div>
        </div>
 
-       <div className="grid grid-cols-2 gap-6">
+        {/* lg:grid-cols-2 para PC, grid-cols-1 en móvil, y añadimos padding abajo para que la barra inferior del móvil no tape el final */}
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 pb-24 md:pb-0">
           {/* EMBUDO DE VENTAS */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 md:p-6 shadow-sm">
              <div className="flex items-center justify-between mb-6">
                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                      <BarChart3 className="w-5 h-5 text-zinc-400" /> Estado de la Cartera
@@ -209,12 +210,14 @@ export default function TargetsView({ stats, targetClients, ticketMedio, clubs =
 }
 
 const MetricCard = ({ title, value, icon, colorClass }) => (
-   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl relative overflow-hidden shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-      <div className="flex justify-between items-start mb-4">
+   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 rounded-xl relative overflow-hidden shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors flex items-center sm:block gap-4 sm:gap-0">
+      <div className="flex justify-between items-start sm:mb-4 shrink-0">
          <div className={cn("p-2.5 rounded-xl", colorClass)}>{icon}</div>
       </div>
-      <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{value}</p>
-      <h3 className="text-zinc-500 dark:text-zinc-400 text-sm font-bold uppercase mt-1">{title}</h3>
+      <div>
+         <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white sm:mt-1">{value}</p>
+         <h3 className="text-zinc-500 dark:text-zinc-400 text-[10px] sm:text-sm font-bold uppercase mt-0 sm:mt-1">{title}</h3>
+      </div>
    </div>
 );
 
