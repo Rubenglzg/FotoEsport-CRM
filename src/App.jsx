@@ -320,6 +320,7 @@ export default function App() {
                 statuses={statuses}
                 checklistConfig={checklistConfig}
                 seasons={seasons} 
+                userProfile={userProfile}
             />
         }
       </aside>

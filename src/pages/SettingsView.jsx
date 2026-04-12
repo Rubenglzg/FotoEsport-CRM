@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Settings, CheckCircle2, RefreshCw, Save, Mail, Calendar, Edit2, Trash2, Download, Plus, ListChecks, UserPlus, Users, Loader2, Shield, MapPin, X as XIcon, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { auth, functions, db } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
+import { signOut, updatePassword } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { cn } from '../utils/helpers';
 
 export default function SettingsView({ 
@@ -31,6 +31,8 @@ export default function SettingsView({
     const [comercialData, setComercialData] = useState({ 
         email: '', 
         password: '', 
+        nombre: '',
+        apellidos: '',
         zones: [],
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false }
     });
@@ -40,8 +42,17 @@ export default function SettingsView({
     const [editZoneInput, setEditZoneInput] = useState('');
     const [editUserData, setEditUserData] = useState({ 
         password: '', 
+        nombre: '', 
+        apellidos: '',
         zones: [],
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } 
+    });
+
+    // Estado para el perfil del administrador
+    const [adminProfileData, setAdminProfileData] = useState({
+        nombre: userProfile?.nombre || '',
+        apellidos: userProfile?.apellidos || '',
+        newPassword: ''
     });
 
     const createZoneRef = useRef(null);
@@ -131,10 +142,38 @@ export default function SettingsView({
     const handleCreateComercial = async (e) => {
         e.preventDefault(); setIsCreatingUser(true);
         try {
-            await httpsCallable(functions, 'createComercialUser')({ email: comercialData.email, password: comercialData.password, allowedZones: comercialData.zones, permissions: comercialData.permissions });
+            await httpsCallable(functions, 'createComercialUser')({ 
+                email: comercialData.email, 
+                password: comercialData.password, 
+                nombre: comercialData.nombre,       // <-- AÑADIDO
+                apellidos: comercialData.apellidos, // <-- AÑADIDO
+                allowedZones: comercialData.zones, 
+                permissions: comercialData.permissions 
+            });
             showToast("Comercial creado", "success");
-            setComercialData({ email: '', password: '', zones: [], permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } });
+            setComercialData({ email: '', password: '', nombre: '', apellidos: '', zones: [], permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } });
         } catch (error) { showToast(error.message, "error"); } finally { setIsCreatingUser(false); }
+    };
+
+    // Función para actualizar el perfil del Admin
+    const handleUpdateAdminProfile = async () => {
+        try {
+            const userRef = doc(db, 'users', auth.currentUser.uid);
+            await updateDoc(userRef, {
+                nombre: adminProfileData.nombre,
+                apellidos: adminProfileData.apellidos
+            });
+
+            if (adminProfileData.newPassword) {
+                await updatePassword(auth.currentUser, adminProfileData.newPassword);
+                showToast("Contraseña actualizada", "success");
+            }
+            
+            showToast("Perfil de admin guardado", "success");
+            setAdminProfileData(prev => ({...prev, newPassword: ''}));
+        } catch (error) {
+            showToast(error.message || "Error al actualizar perfil", "error");
+        }
     };
 
     const handleUpdateUser = async (e, targetUid) => {
@@ -169,6 +208,38 @@ export default function SettingsView({
                 
                 {/* COLUMNA IZQUIERDA */}
                 <div className="space-y-8">
+
+                    {/* PANEL DEL ADMINISTRADOR --> */}
+                    {userProfile?.role === 'admin' && (
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800">
+                            <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-5 flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-emerald-500"/> Mi Perfil (Administrador)
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-zinc-500 block mb-1 font-bold">Nombre</label>
+                                        <input type="text" value={adminProfileData.nombre} onChange={e => setAdminProfileData({...adminProfileData, nombre: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500" placeholder="Tu nombre"/>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-zinc-500 block mb-1 font-bold">Apellidos</label>
+                                        <input type="text" value={adminProfileData.apellidos} onChange={e => setAdminProfileData({...adminProfileData, apellidos: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500" placeholder="Tus apellidos"/>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-zinc-500 block mb-1 font-bold">Correo de Acceso (Solo Lectura)</label>
+                                        <input type="email" disabled value={auth.currentUser?.email || ''} className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-500 cursor-not-allowed" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-zinc-500 block mb-1 font-bold">Nueva Contraseña</label>
+                                        <input type="password" value={adminProfileData.newPassword} onChange={e => setAdminProfileData({...adminProfileData, newPassword: e.target.value})} placeholder="Dejar en blanco para no cambiar" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                                    </div>
+                                </div>
+                                <Button variant="primary" onClick={handleUpdateAdminProfile}><Save className="w-4 h-4 mr-2"/> Actualizar Mi Perfil</Button>
+                            </div>
+                        </div>
+                    )}
                     
                     {/* GESTIÓN DE COMERCIALES */}
                     {userProfile?.role === 'admin' && (

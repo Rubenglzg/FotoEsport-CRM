@@ -8,7 +8,8 @@ export default function ClubDetailPanel({
     interactions, onAddInteraction, currentSeason, onDeleteClub, 
     onUpdateInteraction, onDeleteInteraction, statuses, 
     checklistConfig = [],
-    seasons = []
+    seasons = [],
+    userProfile // <-- AÑADIDO
     }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('call');
@@ -181,7 +182,11 @@ export default function ClubDetailPanel({
         if(!note) return;
         setIsSubmitting(true);
         try {
-            await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: interactionType, user: "Tú", note, date: new Date().toLocaleDateString() });
+            // <-- AÑADIDO: Obtenemos el nombre y apellidos del perfil actual
+            const autor = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
+            
+            await onAddInteraction({ id: Math.random().toString(), clubId: club.id, type: interactionType, user: autor, note, date: new Date().toLocaleDateString() });
+            
             if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             setNote(""); setNextDate("");
         } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
@@ -581,9 +586,13 @@ export default function ClubDetailPanel({
                         {[...interactions].reverse().map(event => (
                         <div key={event.id} className="relative group">
                           <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
-                          <div className="flex justify-between items-baseline mb-1">
+                            <div className="flex justify-between items-baseline mb-1">
                              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                                 {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type}
+                                {/* <-- AÑADIDO: Muestra quién registró la nota --> */}
+                                <span className="text-xs font-normal text-zinc-500 ml-2 border-l border-zinc-300 dark:border-zinc-700 pl-2">
+                                    por {event.user || 'Desconocido'}
+                                </span>
                             </span>
                              <div className="flex items-center gap-2">
                                  <span className="text-[10px] text-zinc-500">{event.date}</span>

@@ -179,8 +179,8 @@ exports.createComercialUser = onCall(async (request) => {
         throw new HttpsError('permission-denied', 'Solo administradores.');
     }
 
-    // Recibimos también los 'permissions'
-    const { email, password, allowedZones, permissions } = data;
+    // <-- AÑADIDO: Extraemos nombre y apellidos
+    const { email, password, allowedZones, permissions, nombre, apellidos } = data;
 
     try {
         const userRecord = await admin.auth().createUser({
@@ -190,10 +190,11 @@ exports.createComercialUser = onCall(async (request) => {
 
         await admin.firestore().collection('users').doc(userRecord.uid).set({
             email: email,
+            nombre: nombre || '',       // <-- AÑADIDO
+            apellidos: apellidos || '', // <-- AÑADIDO
             role: 'comercial',
             adminUid: auth.uid, 
             allowedZones: allowedZones || [], 
-            // Guardamos los permisos (si no vienen, todos en false por defecto)
             permissions: permissions || {
                 canEditSeasons: false,
                 canEditChecklist: false,
