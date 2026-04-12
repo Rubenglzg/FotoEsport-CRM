@@ -17,7 +17,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
-const functions = getFunctions(app); // <-- AÑADIDO
+
+// AÑADIR ESTAS LÍNEAS PARA FORZAR LA SELECCIÓN DE CUENTA
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
+const functions = getFunctions(app);
 
 setPersistence(auth, browserLocalPersistence)
     .then(() => console.log("Persistencia de sesión configurada a local"))
