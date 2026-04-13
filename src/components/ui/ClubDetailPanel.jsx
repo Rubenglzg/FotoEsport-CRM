@@ -12,7 +12,7 @@ export default function ClubDetailPanel({
     userProfile // <-- AÑADIDO
     }) {
     const [note, setNote] = useState("");
-    const [interactionType, setInteractionType] = useState('call');
+    const [interactionType, setInteractionType] = useState('manual');
     const [nextDate, setNextDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
@@ -194,7 +194,7 @@ export default function ClubDetailPanel({
                 date: new Date().toLocaleDateString() 
             });
             
-            if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'call' ? 'Llamada' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
+            if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'manual' ? 'Manual' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             setNote(""); setNextDate("");
         } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
     };
@@ -239,6 +239,13 @@ export default function ClubDetailPanel({
         recognition.onend = () => setIsRecording(false);
         recognition.onerror = (event) => {
             console.error("Error de micrófono", event.error);
+            if (event.error === 'not-allowed') {
+                alert("Permiso de micrófono denegado. Revisa los permisos del navegador.");
+            } else if (event.error === 'network' || event.error === 'service-not-allowed') {
+                alert("Tu navegador (ej. Opera/Brave) no soporta los servicios de reconocimiento de voz. Usa Google Chrome o Edge en tu ordenador.");
+            } else {
+                alert("Hubo un problema con el micrófono: " + event.error);
+            }
             setIsRecording(false);
         };
         
@@ -607,7 +614,7 @@ export default function ClubDetailPanel({
                           <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                             <div className="flex justify-between items-baseline mb-1">
                              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                                {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type}
+                                {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type === 'manual' ? 'Manual' : event.type}
                                 {/* <-- AÑADIDO: Muestra quién registró la nota --> */}
                                 <span className="text-xs font-normal text-zinc-500 ml-2 border-l border-zinc-300 dark:border-zinc-700 pl-2">
                                     por {event.user || 'Desconocido'}
