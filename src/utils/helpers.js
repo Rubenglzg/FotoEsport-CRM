@@ -151,9 +151,26 @@ export const summarizeWithAI = async (text) => {
     });
     
     const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+
+    // 1. Si Google devuelve un error HTTP (ej. 400, 403, 404)
+    if (!response.ok) {
+        console.error(">>> ERROR DETALLADO DE GEMINI:", data);
+        alert(`Error de Google: ${data.error?.message || 'Error desconocido'}`);
+        return text; // Devolvemos el texto original para no perderlo
+    }
+
+    // 2. Si la respuesta es exitosa
+    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+        return data.candidates[0].content.parts[0].text;
+    } else {
+        console.error(">>> RESPUESTA INESPERADA:", data);
+        alert("Gemini respondió, pero el formato no es el esperado.");
+        return text;
+    }
+
   } catch (error) {
-    console.error("Error conectando con Gemini:", error);
+    console.error(">>> ERROR DE RED CON GEMINI:", error);
+    alert("Hubo un error de red al conectar con la IA.");
     throw error;
   }
 };
