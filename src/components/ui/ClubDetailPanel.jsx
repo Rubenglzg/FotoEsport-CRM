@@ -215,15 +215,27 @@ export default function ClubDetailPanel({
             alert("Tu navegador no soporta el dictado por voz. Prueba en Google Chrome.");
             return;
         }
+        
         const recognition = new SpeechRecognition();
         recognition.lang = 'es-ES';
         recognition.interimResults = false;
+        recognition.continuous = true; // <-- ESTO EVITA QUE SE CORTE
         
         recognition.onstart = () => setIsRecording(true);
+        
         recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setNote(prev => prev + (prev ? " " : "") + transcript);
+            // Recorre los resultados para concatenar las frases
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+            }
+            if (finalTranscript) {
+                setNote(prev => prev + (prev ? " " : "") + finalTranscript.trim());
+            }
         };
+        
         recognition.onend = () => setIsRecording(false);
         recognition.onerror = (event) => {
             console.error("Error de micrófono", event.error);
@@ -590,7 +602,7 @@ export default function ClubDetailPanel({
                      </div>
 
                     <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
-                        {[...interactions].reverse().map(event => (
+                        {[...interactions].map(event => (
                         <div key={event.id} className="relative group">
                           <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                             <div className="flex justify-between items-baseline mb-1">

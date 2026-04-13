@@ -144,14 +144,34 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
                 
                 const geminiData = await geminiRes.json();
                 if (!geminiData.candidates) return res.status(500).send("Fallo en Gemini");
+                // 1. OBTENEMOS LA RESPUESTA DE GEMINI (Esto ya lo tienes)
                 const summary = geminiData.candidates[0].content.parts[0].text;
 
+                // 2. BUSCAMOS EL NOMBRE REAL DEL USUARIO EN LA BASE DE DATOS
+                let nombreReal = "Asistente IA";
+                try {
+                    const userDoc = await db.collection("users").doc(userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        if (userData.nombre) {
+                            // Si tiene nombre configurado, lo usamos
+                            nombreReal = `${userData.nombre} ${userData.apellidos || ''}`.trim() + ' (App iOS)';
+                        } else if (userData.email) {
+                            // Si por algún motivo no tiene nombre, usamos el inicio del correo
+                            nombreReal = userData.email.split('@')[0] + ' (App iOS)';
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error al buscar el perfil del usuario:", err);
+                }
+
+                // 3. GUARDAMOS EN FIRESTORE CON EL NOMBRE REAL
                 const interactionId = Date.now().toString();
                 await userClubsRef.parent.collection("interactions").doc(interactionId).set({
                     id: interactionId,
                     clubId: targetClubRef.id,
                     type: tipoInteraccion, 
-                    user: "Asistente IA", 
+                    user: nombreReal,  // <--- AHORA USA EL NOMBRE REAL
                     note: summary,
                     date: new Date().toLocaleDateString('es-ES')
                 });

@@ -52,9 +52,15 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         const intRef = collection(db, 'artifacts', appId, 'users', dataUid, 'interactions');
         const unsubInt = onSnapshot(intRef, (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setInteractions(data.sort((a, b) => b.createdAt - a.createdAt));
+            
+            // Ordenamiento a prueba de fallos (asegura que las más nuevas van arriba)
+            setInteractions(data.sort((a, b) => {
+                const timeA = a.createdAt || parseInt(a.id) || 0;
+                const timeB = b.createdAt || parseInt(b.id) || 0;
+                return timeB - timeA;
+            }));
         });
-
+        
         // 4. CONFIGURACIONES
         const settingsRef = doc(db, 'artifacts', appId, 'users', dataUid, 'settings', 'crm');
         const unsubSettings = onSnapshot(settingsRef, (snapshot) => {
