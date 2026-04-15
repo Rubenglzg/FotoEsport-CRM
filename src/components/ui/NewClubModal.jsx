@@ -109,6 +109,9 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
           id: Date.now().toString(),
           createdAt: Date.now()
       });
+
+      // AÑADE ESTA LÍNEA PARA CERRAR EL MODAL TRAS GUARDAR
+      onClose();
   };
 
   const addContactField = () => setFormData({ ...formData, contacts: [...formData.contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }] });
