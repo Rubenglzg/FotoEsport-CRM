@@ -52,6 +52,7 @@ export default function ClubDetailPanel({
     const [tempBaseTeams, setTempBaseTeams] = useState(club.baseTeams || '');
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
     const [tempGenericEmail, setTempGenericEmail] = useState(club.genericEmail || '');
+    const [tempGenericPhone, setTempGenericPhone] = useState(club.genericPhone || '');
 
     // Referencias para inputs de texto y mapas
     const inputRef = useRef(null);
@@ -99,7 +100,8 @@ export default function ClubDetailPanel({
         setTempBaseTeams(club.baseTeams || '');
         setTempRecDate(club.recommendedContactDate || '');
         setTempGenericEmail(club.genericEmail || '');
-    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail]);
+        setTempGenericPhone(club.genericPhone || '');
+    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -109,6 +111,7 @@ export default function ClubDetailPanel({
     const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
     const handleSaveRecDate = () => { if (tempRecDate !== club.recommendedContactDate) onUpdateClub({...club, recommendedContactDate: tempRecDate}); };
     const handleSaveGenericEmail = () => { if (tempGenericEmail !== club.genericEmail) onUpdateClub({...club, genericEmail: tempGenericEmail}); };
+    const handleSaveGenericPhone = () => { if (tempGenericPhone !== club.genericPhone) onUpdateClub({...club, genericPhone: tempGenericPhone}); };
 
     const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
 
@@ -448,6 +451,17 @@ export default function ClubDetailPanel({
                                   placeholder="Ej: Tarragona" 
                               />
                           </div>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Phone className="w-3 h-3"/> Teléfono Genérico</span>
+                                <input 
+                                    type="tel" 
+                                    value={tempGenericPhone} 
+                                    onChange={(e) => setTempGenericPhone(e.target.value)} 
+                                    onBlur={handleSaveGenericPhone}
+                                    className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                    placeholder="Ej: 600123456" 
+                                />
+                            </div>
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
                                 <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3"/> Email Genérico</span>
                                 <input 
