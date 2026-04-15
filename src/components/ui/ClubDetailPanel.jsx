@@ -18,6 +18,8 @@ export default function ClubDetailPanel({
     const [isRecording, setIsRecording] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [isSuggestingDate, setIsSuggestingDate] = useState(false);
+    const recognitionRef = useRef(null);
+    const manualStopRef = useRef(false);
 
     const handleAIPredictDate = async () => {
         setIsSuggestingDate(true);
@@ -209,57 +211,84 @@ export default function ClubDetailPanel({
     };
 
     // Funciones para IA y Voz
-    const startDictation = () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Tu navegador no soporta el dictado por voz. Prueba en Google Chrome o Safari.");
+    const toggleDictation = () => {
+        // Si ya está grabando, el usuario quiere pararlo manualmente
+        if (isRecording) {
+            manualStopRef.current = true;
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            setIsRecording(false);
             return;
         }
-        
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'es-ES';
-        recognition.interimResults = false;
-        
-        // DETECCIÓN DE MÓVIL: Desactivamos el modo continuo en móviles porque causa errores nativos
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        recognition.continuous = !isMobile; 
-        
-        recognition.onstart = () => setIsRecording(true);
-        
-        recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
-            }
-            if (finalTranscript) {
-                setNote(prev => prev + (prev ? " " : "") + finalTranscript.trim());
-            }
-        };
-        
-        recognition.onend = () => setIsRecording(false);
-        
-        recognition.onerror = (event) => {
-            console.error("Error de micrófono", event.error);
-            setIsRecording(false);
 
-            // Ignoramos el error cuando el usuario se queda callado para no lanzar alertas molestas
-            if (event.error === 'no-speech') return;
-            
-            if (event.error === 'not-allowed') {
-                alert("Permiso de micrófono denegado. Revisa los permisos del navegador.");
-            } else if (event.error === 'network' || event.error === 'service-not-allowed') {
-                alert("Tu navegador no soporta los servicios de reconocimiento de voz. Usa Google Chrome o Safari.");
-            } else {
-                alert("Hubo un problema con el micrófono: " + event.error);
-            }
-        };
+        // Si no está grabando, empezamos de cero
+        manualStopRef.current = false;
         
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Tu navegador no soporta el dictado por voz.");
+            return;
+        }
+
+        // Solo configuramos el reconocimiento una vez y lo guardamos
+        if (!recognitionRef.current) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+            
+            // En móvil quitamos el modo continuo para evitar el error "caption record"
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            recognition.continuous = !isMobile;
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    }
+                }
+                if (finalTranscript) {
+                    setNote(prev => prev + (prev ? " " : "") + finalTranscript.trim());
+                }
+            };
+
+            recognition.onend = () => {
+                // TRUCO: Si el usuario NO pulsó el botón de parar, volvemos a arrancar el micrófono automáticamente
+                if (!manualStopRef.current) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Error al reiniciar automáticamente", e);
+                        setIsRecording(false);
+                    }
+                } else {
+                    setIsRecording(false);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                // Ignoramos el error de silencio para que 'onend' lo reinicie
+                if (event.error === 'no-speech') return; 
+                
+                console.error("Error de micrófono", event.error);
+                if (event.error === 'not-allowed') {
+                    alert("Permiso de micrófono denegado.");
+                }
+                
+                manualStopRef.current = true;
+                setIsRecording(false);
+            };
+
+            recognitionRef.current = recognition;
+        }
+
+        // Iniciamos la grabación
         try {
-            recognition.start();
+            recognitionRef.current.start();
+            setIsRecording(true);
         } catch (e) {
-            console.error("Error al iniciar reconocimiento:", e);
+            console.error("Error al iniciar el micrófono", e);
             setIsRecording(false);
         }
     };
@@ -595,10 +624,10 @@ export default function ClubDetailPanel({
                             
                             <div className="flex gap-2">
                                 <button 
-                                    onClick={startDictation} 
-                                    className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors ${isRecording ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'}`}
+                                    onClick={toggleDictation} 
+                                    className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-sm' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'}`}
                                 >
-                                    <Mic className="w-3 h-3" /> {isRecording ? "Escuchando..." : "Dictar"}
+                                    <Mic className="w-3 h-3" /> {isRecording ? "Detener grabación" : "Dictar"}
                                 </button>
                                 <button 
                                     onClick={handleAISummary} 
