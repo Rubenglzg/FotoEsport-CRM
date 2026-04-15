@@ -39,6 +39,25 @@ export default function MapView({
     const displayedClubs = statusFilter === 'all' 
         ? clubs 
         : clubs.filter(club => club.status === statusFilter);
+
+    // NUEVO: Agrupar clubes que comparten exactamente las mismas coordenadas
+    const groupedClubs = useMemo(() => {
+        const groups = {};
+        displayedClubs.forEach(club => {
+            const lat = club.lat || club.coordinates?.lat;
+            const lng = club.lng || club.coordinates?.lng;
+            
+            if (!lat || !lng) return;
+
+            // Usamos las coordenadas como llave (key)
+            const key = `${lat},${lng}`;
+            if (!groups[key]) {
+                groups[key] = { lat, lng, clubs: [] };
+            }
+            groups[key].clubs.push(club);
+        });
+        return Object.values(groups);
+    }, [displayedClubs]);
   
   const mapCenter = [40.4168, -3.7038]; 
   const defaultZoom = 6;
@@ -90,6 +109,18 @@ export default function MapView({
         </div>
       </div>`;
       return L.divIcon({ className: 'custom-leaflet-pin', html: html, iconSize: [24, 24], iconAnchor: [12, 12] });
+  };
+
+  // NUEVO: Pin especial para múltiples clubes (Tamaño ajustado)
+  const createMultiPin = (count, isInRoute) => {
+    const html = `
+      <div class="relative group cursor-pointer transition-transform hover:scale-110">
+        <div class="w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center bg-zinc-800 text-white font-bold text-[10px] leading-none ${isInRoute ? 'ring-4 ring-emerald-500/50' : ''}">
+          ${count}
+        </div>
+      </div>
+    `;
+    return L.divIcon({ className: 'custom-leaflet-pin', html: html, iconSize: [20, 20], iconAnchor: [10, 10] });
   };
 
   return (
@@ -251,20 +282,79 @@ export default function MapView({
             </Marker>
         )}
 
-        {/* Marcadores de Clubes */}
-        {displayedClubs.map((club) => {
+        {/* Marcadores de Clubes Agrupados */}
+        {groupedClubs.map((group, index) => {
+          
+          // ==========================================
+          // CASO A: VARIOS CLUBES EN LA MISMA UBICACIÓN
+          // ==========================================
+          if (group.clubs.length > 1) {
+            // Si al menos uno está en ruta, marcamos el pin grupal
+            const isInRoute = showRoute && group.clubs.some(c => routeStops.some(s => s.id === c.id));
+
+            return (
+              <Marker 
+                key={`group-${index}`} 
+                position={[group.lat, group.lng]} 
+                icon={createMultiPin(group.clubs.length, isInRoute)}
+              >
+                <Popup className="multi-club-popup">
+                  <div className="p-1 w-[220px] max-w-[75vw]"> {/* Adaptado a ancho móvil */}
+                      <div className="text-xs uppercase font-bold text-zinc-500 mb-2 border-b border-zinc-200 pb-2">
+                          {group.clubs.length} Clubes aquí
+                      </div>
+                      
+                      {/* Altura dinámica para que no se salga de la pantalla en móviles */}
+                      <div className="max-h-[40vh] sm:max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1 pb-1">
+                          {group.clubs.map(club => {
+                              const isClubSelected = selectedId === club.id;
+                              const isClubInRoute = showRoute && routeStops.some(s => s.id === club.id);
+                              const statusConfig = statuses?.find(s => s.id === club.status);
+                              
+                              return (
+                                  <div 
+                                    key={club.id} 
+                                    className={cn("p-2 rounded-lg border transition-all cursor-pointer active:scale-[0.98]", isClubSelected ? "bg-emerald-50 border-emerald-300 shadow-sm" : "bg-white border-zinc-200 hover:border-zinc-400")} 
+                                    onClick={() => onSelect(club)}
+                                  >
+                                      <div className="font-bold text-sm text-zinc-900 leading-tight">
+                                          {club.name}
+                                      </div>
+                                      <div className="flex items-center justify-between mt-2 gap-2">
+                                          <div className="text-[10px] font-bold px-1.5 py-0.5 rounded truncate max-w-[100px]" style={{ backgroundColor: `${statusConfig?.color}20`, color: statusConfig?.color }}>
+                                              {statusConfig?.label || club.status}
+                                          </div>
+                                          {showRoute && (
+                                              <button 
+                                                  onClick={(e) => { e.stopPropagation(); toggleRouteStop(club); }}
+                                                  className={cn("text-[10px] font-bold px-2 py-1 rounded transition-colors whitespace-nowrap", isClubInRoute ? "bg-red-100 text-red-600 active:bg-red-200" : "bg-emerald-100 text-emerald-600 active:bg-emerald-200")}
+                                              >
+                                                  {isClubInRoute ? "- Ruta" : "+ Ruta"}
+                                              </button>
+                                          )}
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          }
+
+          // ==========================================
+          // CASO B: UN SOLO CLUB EN ESTA UBICACIÓN (Normal)
+          // ==========================================
+          const club = group.clubs[0];
           const isSelected = selectedId === club.id;
           const routeIndex = routeStops.findIndex(s => s.id === club.id);
           const isInRoute = showRoute && routeIndex !== -1;
           
-          const lat = club.lat || club.coordinates?.lat;
-          const lng = club.lng || club.coordinates?.lng;
-          if(!lat || !lng) return null;
-
           return (
             <Marker 
               key={club.id} 
-              position={[lat, lng]} 
+              position={[group.lat, group.lng]} 
               icon={createCustomPin(club, isSelected, isInRoute, routeIndex)}
               eventHandlers={{
                 click: () => onSelect(club),
@@ -291,7 +381,7 @@ export default function MapView({
 
               {isSelected && showRadius && club.status === 'signed' && (
                 <Circle 
-                  center={[lat, lng]} 
+                  center={[group.lat, group.lng]} 
                   radius={5000} 
                   pathOptions={{ color: '#10b981', fillColor: '#10b981', fillOpacity: 0.15 }}
                 />
