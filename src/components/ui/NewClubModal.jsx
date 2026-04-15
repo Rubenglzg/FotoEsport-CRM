@@ -13,10 +13,10 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
 
   const [formData, setFormData] = useState({
     name: '', category: 'Fútbol', provincia: defaultZone, 
-    address: '', lat: '', lng: '', // <-- NUEVOS CAMPOS AÑADIDOS
+    address: '', lat: '', lng: '',
     estimatedPlayers: '', totalTeams: '',
     baseTeams: '', genericEmail: '', genericPhone: '',
-    contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true }]
+    contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true, notes: '' }]
   });
   
   const [error, setError] = useState('');
@@ -114,7 +114,7 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
       onClose();
   };
 
-  const addContactField = () => setFormData({ ...formData, contacts: [...formData.contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }] });
+  const addContactField = () => setFormData({ ...formData, contacts: [...formData.contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false, notes: '' }] });
   const removeContact = (index) => setFormData({ ...formData, contacts: formData.contacts.filter((_, i) => i !== index) });
   const updateContact = (index, field, value) => {
     const newContacts = [...formData.contacts];
@@ -216,6 +216,16 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
                   <input placeholder="Cargo" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.role} onChange={e => updateContact(index, 'role', e.target.value)} />
                   <input placeholder="Teléfono" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.phone} onChange={e => updateContact(index, 'phone', e.target.value)} />
                   <input placeholder="Email" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.email} onChange={e => updateContact(index, 'email', e.target.value)} />
+                  
+                  {/* NUEVO CAMPO DE NOTAS (ocupa todo el ancho) */}
+                  <div className="col-span-2">
+                    <input 
+                      placeholder="Notas relevantes (Ej: Llamar por las mañanas, responsable de pagos...)" 
+                      className="w-full bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm italic" 
+                      value={contact.notes || ''} 
+                      onChange={e => updateContact(index, 'notes', e.target.value)} 
+                    />
+                  </div>
                 </div>
               </div>
             ))}

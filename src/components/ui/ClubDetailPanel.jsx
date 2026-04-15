@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield } from 'lucide-react';
+import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
@@ -173,7 +173,7 @@ export default function ClubDetailPanel({
     };
 
     // Gestión de Contactos
-    const handleAddContact = () => setContacts([...contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }]);
+    const handleAddContact = () => setContacts([...contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false, notes: '' }]);
     const updateContact = (index, field, value) => {
         const newContacts = [...contacts];
         newContacts[index][field] = value;
@@ -555,6 +555,18 @@ export default function ClubDetailPanel({
                                 <div className="flex flex-col gap-1.5">
                                     <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><Phone className="w-3 h-3 text-zinc-400"/> <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Teléfono" /></div>
                                     <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><MessageSquare className="w-3 h-3 text-zinc-400"/> <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Correo electrónico" /></div>
+                                    
+                                    {/* NUEVO CAMPO DE NOTAS */}
+                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2 mt-1">
+                                        <FileText className="w-3 h-3 text-zinc-400"/> 
+                                        <input 
+                                            value={contact.notes || ''} 
+                                            onChange={e => updateContact(idx, 'notes', e.target.value)} 
+                                            onBlur={handleSaveContacts} 
+                                            className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700 placeholder:italic" 
+                                            placeholder="Notas (Ej: Trabaja de tardes, llamar por la mañana)" 
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ))}
