@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Plus, Trash2, MapPin, AlertTriangle } from 'lucide-react';
+import { X, Save, Plus, Trash2, MapPin, AlertTriangle, User, Briefcase, Phone, Mail, FileText } from 'lucide-react';
 import { Button } from './Button';
 
 export default function NewClubModal({ userProfile, onClose, onSave }) {
@@ -23,9 +23,8 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
   
   // REFERENCIAS PARA GOOGLE MAPS
   const adminInputRef = useRef(null);
-  const addressInputRef = useRef(null); // <-- REFERENCIA PARA LA DIRECCIÓN EXACTA
+  const addressInputRef = useRef(null);
 
-  // EFECTO: Carga de Google Maps para PROVINCIA (Admin / Toda España)
   useEffect(() => {
     const initGoogle = () => {
         if (isAdminOrAllSpain && window.google && window.google.maps && window.google.maps.places && adminInputRef.current) {
@@ -56,7 +55,6 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
     initGoogle();
   }, [isAdminOrAllSpain]);
 
-  // EFECTO: Carga de Google Maps para UBICACIÓN EXACTA (Para todos los usuarios)
   useEffect(() => {
     const initAddressGoogle = () => {
         if (window.google && window.google.maps && window.google.maps.places && addressInputRef.current) {
@@ -65,7 +63,7 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
 
             const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
                 componentRestrictions: { country: 'es' },
-                fields: ['formatted_address', 'geometry', 'name'] // Solicitamos los datos de dirección y coordenadas
+                fields: ['formatted_address', 'geometry', 'name']
             });
             
             autocomplete.addListener('place_changed', () => {
@@ -82,7 +80,6 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
                 }
             });
 
-            // Evitar que el 'Enter' cierre el modal al seleccionar una sugerencia
             addressInputRef.current.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') e.preventDefault();
             });
@@ -97,20 +94,16 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
   const handleSave = () => {
       if (!formData.name.trim()) return setError("El nombre del club es obligatorio.");
       if (!formData.provincia.trim()) return setError("La Provincia / Zona es obligatoria.");
-      
-      // NUEVA VALIDACIÓN: La ubicación exacta es obligatoria
       if (!formData.address.trim()) return setError("La Ubicación Exacta (dirección) es obligatoria.");
       
       setError('');
       
-      // Le inyectamos un ID único y la fecha de creación antes de guardar
       onSave({
           ...formData,
           id: Date.now().toString(),
           createdAt: Date.now()
       });
 
-      // AÑADE ESTA LÍNEA PARA CERRAR EL MODAL TRAS GUARDAR
       onClose();
   };
 
@@ -125,7 +118,6 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       
-      {/* Estilos para asegurar que las sugerencias de Google queden por encima del Modal */}
       <style>{`
           .pac-container { z-index: 100000 !important; }
       `}</style>
@@ -160,7 +152,6 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
               </div>
             </div>
 
-            {/* NUEVA CASILLA: UBICACIÓN EXACTA */}
             <div className="col-span-2">
               <label className="text-xs font-bold text-zinc-500 uppercase text-emerald-600">Ubicación Exacta *</label>
               <div className="relative mt-1">
@@ -188,47 +179,70 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center"><h3 className="text-sm font-bold uppercase text-emerald-600">Contactos Específicos</h3><Button variant="outline" size="sm" onClick={addContactField}><Plus className="w-3 h-3 mr-1"/> Añadir</Button></div>
-            {formData.contacts.map((contact, index) => (
-              <div key={index} className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
-                
-                {/* Cabecera del bloque de contacto */}
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                    {index === 0 ? "Contacto Principal" : `Contacto Adicional ${index}`}
-                  </span>
-                  
-                  {index > 0 && (
-                    <button 
-                      onClick={() => removeContact(index)} 
-                      className="flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-500/10 dark:hover:bg-red-500/20 px-2 py-1 rounded-md transition-colors"
-                      title="Eliminar contacto"
-                    >
-                      <Trash2 size={14}/>
-                      Eliminar
-                    </button>
-                  )}
-                </div>
-                {/* Grid de inputs */}
-                <div className="grid grid-cols-2 gap-3">
-                  <input placeholder="Nombre" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.name} onChange={e => updateContact(index, 'name', e.target.value)} />
-                  <input placeholder="Cargo" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.role} onChange={e => updateContact(index, 'role', e.target.value)} />
-                  <input placeholder="Teléfono" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.phone} onChange={e => updateContact(index, 'phone', e.target.value)} />
-                  <input placeholder="Email" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.email} onChange={e => updateContact(index, 'email', e.target.value)} />
-                  
-                  {/* NUEVO CAMPO DE NOTAS (ocupa todo el ancho) */}
-                  <div className="col-span-2">
-                    <input 
-                      placeholder="Notas relevantes (Ej: Llamar por las mañanas, responsable de pagos...)" 
-                      className="w-full bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm italic" 
-                      value={contact.notes || ''} 
-                      onChange={e => updateContact(index, 'notes', e.target.value)} 
-                    />
+          <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold uppercase text-emerald-600 flex items-center gap-2">
+                    <User className="w-4 h-4"/> Contactos del Club
+                </h3>
+                <Button variant="outline" size="sm" onClick={addContactField}><Plus className="w-3 h-3 mr-1"/> Añadir Persona</Button>
+            </div>
+            
+            <div className="space-y-4">
+                {formData.contacts.map((contact, index) => (
+                  <div key={index} className={`relative overflow-hidden rounded-xl border transition-all ${index === 0 ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700'}`}>
+                    
+                    {/* Borde izquierdo decorativo para el contacto principal */}
+                    {index === 0 && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>}
+
+                    <div className="p-4">
+                        <div className="flex justify-between items-center mb-4">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${index === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-500'}`}>
+                            {index === 0 ? "★ Contacto Principal" : `Contacto Adicional ${index}`}
+                        </span>
+                        
+                        {index > 0 && (
+                            <button 
+                            onClick={() => removeContact(index)} 
+                            className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1.5 rounded-md transition-colors"
+                            title="Eliminar contacto"
+                            >
+                            <Trash2 size={14}/>
+                            </button>
+                        )}
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input placeholder="Nombre completo" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-emerald-500 outline-none transition-colors shadow-sm" value={contact.name} onChange={e => updateContact(index, 'name', e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input placeholder="Cargo (Ej: Presidente)" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-emerald-500 outline-none transition-colors shadow-sm" value={contact.role} onChange={e => updateContact(index, 'role', e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input placeholder="Teléfono" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-emerald-500 outline-none transition-colors shadow-sm" value={contact.phone} onChange={e => updateContact(index, 'phone', e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input placeholder="Email" className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-emerald-500 outline-none transition-colors shadow-sm" value={contact.email} onChange={e => updateContact(index, 'email', e.target.value)} />
+                            </div>
+                            
+                            <div className="col-span-1 md:col-span-2 relative mt-1">
+                                <FileText className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
+                                <input 
+                                    placeholder="Notas relevantes (Ej: Llamar por las mañanas...)" 
+                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-emerald-500 outline-none transition-colors shadow-sm italic" 
+                                    value={contact.notes || ''} 
+                                    onChange={e => updateContact(index, 'notes', e.target.value)} 
+                                />
+                            </div>
+                        </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                ))}
+            </div>
           </div>
         </div>
         <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant="neon" onClick={handleSave}><Save className="w-4 h-4 mr-2"/> Guardar Club</Button></div>

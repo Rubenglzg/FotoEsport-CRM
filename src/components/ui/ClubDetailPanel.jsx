@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText } from 'lucide-react';
+import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
 export default function ClubDetailPanel({ 
     club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, 
     interactions, onAddInteraction, currentSeason, onDeleteClub, 
-    onUpdateInteraction, onDeleteInteraction, statuses, 
+    onUpdateInteraction, onDeleteInteraction, statuses, onUpdate,
     checklistConfig = [],
     seasons = [],
     userProfile // <-- AÑADIDO
@@ -19,7 +19,13 @@ export default function ClubDetailPanel({
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [isSuggestingDate, setIsSuggestingDate] = useState(false);
     const recognitionRef = useRef(null);
+    const [expandedContactIdx, setExpandedContactIdx] = useState(null);
     const manualStopRef = useRef(false);
+
+    // Función para alternar el desplegable
+    const toggleContact = (idx) => {
+        setExpandedContactIdx(expandedContactIdx === idx ? null : idx);
+    };
 
     const handleAIPredictDate = async () => {
         setIsSuggestingDate(true);
@@ -484,7 +490,7 @@ export default function ClubDetailPanel({
                  <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+<div className="flex-1 overflow-y-auto p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
                       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
@@ -542,35 +548,124 @@ export default function ClubDetailPanel({
                           </div>
                       </div>
                       
-                      <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contactos</h4>
-                            <button onClick={handleAddContact} className="text-[10px] text-emerald-600 font-bold hover:underline">+ Añadir</button>
-                        </div>
-                        {contacts.map((contact, idx) => (
-                            <div key={idx} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg mb-2 relative group focus-within:ring-1 focus-within:ring-emerald-500">
-                                <button onClick={() => removeContact(idx)} title="Eliminar Contacto" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity"><Trash2 className="w-3.5 h-3.5"/></button>
-                                <input value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} onBlur={handleSaveContacts} className="font-bold text-zinc-800 dark:text-zinc-200 text-sm bg-transparent outline-none w-[90%] border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700 placeholder:font-normal mb-1" placeholder="Nombre completo" />
-                                <input value={contact.role} onChange={e => updateContact(idx, 'role', e.target.value)} onBlur={handleSaveContacts} className="text-xs text-zinc-500 mb-2 bg-transparent outline-none w-full border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Cargo (Ej: Presidente)" />
-                                <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><Phone className="w-3 h-3 text-zinc-400"/> <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Teléfono" /></div>
-                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2"><MessageSquare className="w-3 h-3 text-zinc-400"/> <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700" placeholder="Correo electrónico" /></div>
-                                    
-                                    {/* NUEVO CAMPO DE NOTAS */}
-                                    <div className="flex items-center text-xs text-zinc-600 dark:text-zinc-400 gap-2 mt-1">
-                                        <FileText className="w-3 h-3 text-zinc-400"/> 
-                                        <input 
-                                            value={contact.notes || ''} 
-                                            onChange={e => updateContact(idx, 'notes', e.target.value)} 
-                                            onBlur={handleSaveContacts} 
-                                            className="bg-transparent outline-none flex-1 border-b border-transparent focus:border-zinc-300 dark:focus:border-zinc-700 placeholder:italic" 
-                                            placeholder="Notas (Ej: Trabaja de tardes, llamar por la mañana)" 
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                      {/* --- SECCIÓN DE CONTACTOS REDISEÑADA (ACORDEÓN) --- */}
+                      <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                              <h4 className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest flex items-center gap-1">
+                                  <User className="w-3 h-3" /> Personas de Contacto
+                              </h4>
+                              <button onClick={handleAddContact} className="text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-1 rounded-md font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors flex items-center gap-1">
+                                  + Añadir Nuevo
+                              </button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                              {contacts.map((contact, idx) => {
+                                  const isExpanded = expandedContactIdx === idx;
+                                  
+                                  return (
+                                      <div key={idx} className={`bg-white dark:bg-zinc-950 border rounded-xl overflow-hidden transition-all duration-200 ${isExpanded ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                                          
+{/* CABECERA (Siempre visible y clickeable) */}
+                                          <div 
+                                              onClick={() => toggleContact(idx)}
+                                              className={`p-3.5 flex items-center gap-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${isExpanded ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+                                          >
+                                              {/* Avatar */}
+                                              <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
+                                                  {contact.name ? contact.name.substring(0,2).toUpperCase() : <User className="w-4 h-4"/>}
+                                              </div>
+
+                                              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                  {/* 1. Línea Superior: Nombre + Teléfono */}
+                                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                      <span className={`text-base font-bold truncate ${isExpanded ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                                                          {contact.name || "Nuevo Contacto"}
+                                                      </span>
+                                                      
+                                                      {!isExpanded && contact.phone && (
+                                                          <span className="flex items-center gap-1 text-sm text-zinc-500 font-medium">
+                                                              <Phone className="w-3.5 h-3.5 text-emerald-500"/>
+                                                              {contact.phone}
+                                                          </span>
+                                                      )}
+                                                  </div>
+                                                  
+                                                  {/* 2. Línea Inferior: Cargo (Con todo el ancho disponible) */}
+                                                  <div className="flex items-center gap-1.5 mt-0.5 text-sm text-zinc-500">
+                                                      <Briefcase className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0"/> 
+                                                      <span className="truncate">{contact.role || "Sin cargo asignado"}</span>
+                                                  </div>
+                                              </div>
+
+                                              {/* Icono de estado (Flecha) */}
+                                              <div className="flex items-center gap-2 pl-2">
+                                                  {isExpanded ? <ChevronUp className="w-5 h-5 text-emerald-500" /> : <ChevronDown className="w-5 h-5 text-zinc-400" />}
+                                              </div>
+                                          </div>
+
+                                          {/* CUERPO DESPLEGABLE (Contenido detallado) */}
+                                          {isExpanded && (
+                                              <div className="p-4 bg-white dark:bg-zinc-950 space-y-4">
+                                                  <div className="grid grid-cols-1 gap-4">
+                                                      
+                                                      {/* Nombre y Cargo (Editables) */}
+                                                      <div className="grid grid-cols-2 gap-3">
+                                                          <div className="space-y-1">
+                                                              <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Nombre</label>
+                                                              <input value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Nombre completo" />
+                                                          </div>
+                                                          <div className="space-y-1">
+                                                              <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Cargo</label>
+                                                              <input value={contact.role} onChange={e => updateContact(idx, 'role', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Cargo (Ej: Presidente)" />
+                                                          </div>
+                                                      </div>
+
+                                                      {/* Teléfono y Email */}
+                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                          <div className="relative">
+                                                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500" />
+                                                              <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Teléfono" />
+                                                          </div>
+                                                          <div className="relative">
+                                                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500" />
+                                                              <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Correo electrónico" />
+                                                          </div>
+                                                      </div>
+
+                                                      {/* Notas */}
+                                                      <div className="space-y-1">
+                                                          <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 flex items-center gap-1">
+                                                              <FileText className="w-3 h-3 text-amber-500"/> Notas y Observaciones
+                                                          </label>
+                                                          <textarea 
+                                                              value={contact.notes || ''} 
+                                                              onChange={e => updateContact(idx, 'notes', e.target.value)} 
+                                                              onBlur={handleSaveContacts} 
+                                                              rows={3}
+                                                              className="w-full bg-amber-50/30 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-900/30 rounded-lg px-3 py-2 text-sm focus:border-amber-500 outline-none resize-none placeholder:italic transition-colors" 
+                                                              placeholder="Escribe aquí detalles importantes..." 
+                                                          />
+                                                      </div>
+                                                  </div>
+
+                                                  {/* Botón de eliminar */}
+                                                  <div className="pt-2 flex justify-end">
+                                                      <button 
+                                                          onClick={() => { if(window.confirm('¿Eliminar este contacto?')) removeContact(idx); }} 
+                                                          className="text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                                      >
+                                                          <Trash2 className="w-3.5 h-3.5"/> Eliminar Contacto
+                                                      </button>
+                                                  </div>
+                                              </div>
+                                          )}
+                                      </div>
+                                  );
+                              })}
+                          </div>
                       </div>
+                      {/* --- FIN SECCIÓN CONTACTOS --- */}
 
                       {/* NUEVA UBICACIÓN MAPA (Sencillo y sin Latitud/Longitud visibles) */}
                       <div className="relative z-50">
@@ -696,7 +791,6 @@ export default function ClubDetailPanel({
                             <div className="flex justify-between items-baseline mb-1">
                              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                                 {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type === 'manual' ? 'Manual' : event.type}
-                                {/* <-- AÑADIDO: Muestra quién registró la nota --> */}
                                 <span className="text-xs font-normal text-zinc-500 ml-2 border-l border-zinc-300 dark:border-zinc-700 pl-2">
                                     por {event.user || 'Desconocido'}
                                 </span>
@@ -727,6 +821,6 @@ export default function ClubDetailPanel({
                    </div>
                  )}
               </div>
-           </div>
+            </div>
     );
 }
