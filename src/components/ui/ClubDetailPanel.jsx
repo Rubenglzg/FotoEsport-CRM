@@ -212,19 +212,21 @@ export default function ClubDetailPanel({
     const startDictation = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            alert("Tu navegador no soporta el dictado por voz. Prueba en Google Chrome.");
+            alert("Tu navegador no soporta el dictado por voz. Prueba en Google Chrome o Safari.");
             return;
         }
         
         const recognition = new SpeechRecognition();
         recognition.lang = 'es-ES';
         recognition.interimResults = false;
-        recognition.continuous = true; // <-- ESTO EVITA QUE SE CORTE
+        
+        // DETECCIÓN DE MÓVIL: Desactivamos el modo continuo en móviles porque causa errores nativos
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        recognition.continuous = !isMobile; 
         
         recognition.onstart = () => setIsRecording(true);
         
         recognition.onresult = (event) => {
-            // Recorre los resultados para concatenar las frases
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
@@ -237,19 +239,29 @@ export default function ClubDetailPanel({
         };
         
         recognition.onend = () => setIsRecording(false);
+        
         recognition.onerror = (event) => {
             console.error("Error de micrófono", event.error);
+            setIsRecording(false);
+
+            // Ignoramos el error cuando el usuario se queda callado para no lanzar alertas molestas
+            if (event.error === 'no-speech') return;
+            
             if (event.error === 'not-allowed') {
                 alert("Permiso de micrófono denegado. Revisa los permisos del navegador.");
             } else if (event.error === 'network' || event.error === 'service-not-allowed') {
-                alert("Tu navegador (ej. Opera/Brave) no soporta los servicios de reconocimiento de voz. Usa Google Chrome o Edge en tu ordenador.");
+                alert("Tu navegador no soporta los servicios de reconocimiento de voz. Usa Google Chrome o Safari.");
             } else {
                 alert("Hubo un problema con el micrófono: " + event.error);
             }
-            setIsRecording(false);
         };
         
-        recognition.start();
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error("Error al iniciar reconocimiento:", e);
+            setIsRecording(false);
+        }
     };
 
     const handleAISummary = async () => {
