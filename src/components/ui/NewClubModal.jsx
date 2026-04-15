@@ -191,8 +191,26 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
           <div className="space-y-4">
             <div className="flex justify-between items-center"><h3 className="text-sm font-bold uppercase text-emerald-600">Contactos Específicos</h3><Button variant="outline" size="sm" onClick={addContactField}><Plus className="w-3 h-3 mr-1"/> Añadir</Button></div>
             {formData.contacts.map((contact, index) => (
-              <div key={index} className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700 relative">
-                {index > 0 && <button onClick={() => removeContact(index)} className="absolute top-2 right-2 text-zinc-400 hover:text-red-500"><Trash2 size={14}/></button>}
+              <div key={index} className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                
+                {/* Cabecera del bloque de contacto */}
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    {index === 0 ? "Contacto Principal" : `Contacto Adicional ${index}`}
+                  </span>
+                  
+                  {index > 0 && (
+                    <button 
+                      onClick={() => removeContact(index)} 
+                      className="flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-500/10 dark:hover:bg-red-500/20 px-2 py-1 rounded-md transition-colors"
+                      title="Eliminar contacto"
+                    >
+                      <Trash2 size={14}/>
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+                {/* Grid de inputs */}
                 <div className="grid grid-cols-2 gap-3">
                   <input placeholder="Nombre" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.name} onChange={e => updateContact(index, 'name', e.target.value)} />
                   <input placeholder="Cargo" className="bg-white dark:bg-zinc-900 border rounded px-2 py-1 text-sm" value={contact.role} onChange={e => updateContact(index, 'role', e.target.value)} />
