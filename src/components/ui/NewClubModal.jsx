@@ -102,7 +102,13 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
       if (!formData.address.trim()) return setError("La Ubicación Exacta (dirección) es obligatoria.");
       
       setError('');
-      onSave(formData);
+      
+      // Le inyectamos un ID único y la fecha de creación antes de guardar
+      onSave({
+          ...formData,
+          id: Date.now().toString(),
+          createdAt: Date.now()
+      });
   };
 
   const addContactField = () => setFormData({ ...formData, contacts: [...formData.contacts, { name: '', role: '', phone: '', email: '', isDecisionMaker: false }] });
