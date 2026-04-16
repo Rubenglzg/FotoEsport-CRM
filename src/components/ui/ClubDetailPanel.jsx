@@ -6,7 +6,7 @@ import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '..
 export default function ClubDetailPanel({ 
     club, onUpdateClub, onClose, activeTab, setActiveTab, onAddTask, 
     interactions, onAddInteraction, currentSeason, onDeleteClub, 
-    onUpdateInteraction, onDeleteInteraction, statuses, onUpdate,
+    onUpdateInteraction, onDeleteInteraction, statuses, onUpdate, sportsList,
     checklistConfig = [],
     seasons = [],
     userProfile,
@@ -57,6 +57,7 @@ export default function ClubDetailPanel({
     const [contacts, setContacts] = useState(club.contacts || []);
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
+    const [tempCategory, setTempCategory] = useState(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
 
     const [tempPlayers, setTempPlayers] = useState(club.estimatedPlayers || '');
     const [tempTotalTeams, setTempTotalTeams] = useState(club.totalTeams || '');
@@ -65,6 +66,7 @@ export default function ClubDetailPanel({
     const [tempGenericEmail, setTempGenericEmail] = useState(club.genericEmail || '');
     const [tempGenericPhone, setTempGenericPhone] = useState(club.genericPhone || '');
     const [tempAssignedTo, setTempAssignedTo] = useState(Array.isArray(club.assignedTo) ? club.assignedTo : (club.assignedTo ? [club.assignedTo] : []));
+    const [isSportsOpen, setIsSportsOpen] = useState(false);
 
     // Referencias para inputs de texto y mapas
     const inputRef = useRef(null);
@@ -114,7 +116,8 @@ export default function ClubDetailPanel({
         setTempGenericEmail(club.genericEmail || '');
         setTempGenericPhone(club.genericPhone || '');
         setTempAssignedTo(Array.isArray(club.assignedTo) ? club.assignedTo : (club.assignedTo ? [club.assignedTo] : []));
-    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
+        setTempCategory(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
+    }, [club.id, club.name, club.provincia, club.category, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -126,6 +129,10 @@ export default function ClubDetailPanel({
     const handleSaveGenericEmail = () => { if (tempGenericEmail !== club.genericEmail) onUpdateClub({...club, genericEmail: tempGenericEmail}); };
     const handleSaveGenericPhone = () => { if (tempGenericPhone !== club.genericPhone) onUpdateClub({...club, genericPhone: tempGenericPhone}); };
     const handleSaveAssignedTo = () => { if (tempAssignedTo !== club.assignedTo) onUpdateClub({...club, assignedTo: tempAssignedTo}); };
+
+    const handleSaveCategory = () => { 
+        if (tempCategory !== club.category) onUpdateClub({...club, category: tempCategory}); 
+    };
 
     const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
 
@@ -418,6 +425,60 @@ export default function ClubDetailPanel({
                       >
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
+
+                        {/* NUEVO CAMPO: Deporte */}
+                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-[60]">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1">Deportes</span>
+                            <div 
+                                onClick={() => setIsSportsOpen(!isSportsOpen)}
+                                className="w-full min-h-[34px] flex flex-wrap items-center gap-1.5 cursor-pointer"
+                            >
+                                {(!tempCategory || tempCategory.length === 0) ? (
+                                    <span className="text-zinc-400 text-xs font-medium">-- Seleccionar --</span>
+                                ) : (
+                                    tempCategory.map(sport => (
+                                        <span key={sport} className="flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/50">
+                                            {sport}
+                                            <button type="button" onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                const newVal = tempCategory.filter(s => s !== sport);
+                                                setTempCategory(newVal);
+                                                onUpdateClub({...club, category: newVal}); 
+                                            }} className="hover:text-red-500"><X className="w-3 h-3"/></button>
+                                        </span>
+                                    ))
+                                )}
+                            </div>
+
+                            {isSportsOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-[70]" onClick={() => setIsSportsOpen(false)}></div>
+                                    <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar z-[80]">
+                                        {sportsList.map(sport => {
+                                            const isSelected = tempCategory?.includes(sport);
+                                            return (
+                                                <label key={sport} className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="hidden"
+                                                        checked={isSelected}
+                                                        onChange={(e) => {
+                                                            const newVal = e.target.checked ? [...tempCategory, sport] : tempCategory.filter(s => s !== sport);
+                                                            setTempCategory(newVal);
+                                                            onUpdateClub({...club, category: newVal});
+                                                        }}
+                                                    />
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                        {isSelected && <Check className="w-3 h-3" />}
+                                                    </div>
+                                                    <span className={`text-sm font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{sport}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-2">
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">

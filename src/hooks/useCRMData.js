@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'; 
 import { db } from '../lib/firebase';
-import { DEFAULT_STATUSES } from '../utils/constants';
+import { DEFAULT_STATUSES, DEFAULT_SPORTS } from '../utils/constants';
 
 export const useCRMData = (user, userProfile, isLocked, appId) => { 
     // --- DATOS FIRESTORE ---
@@ -20,6 +20,7 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
         { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
     ]);
+    const [sportsList, setSportsList] = useState(DEFAULT_SPORTS);
     const [teamUsers, setTeamUsers] = useState([]);
 
     // --- SUSCRIPCIONES A FIRESTORE ---
@@ -72,6 +73,7 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
                 if (data.ticketMedio) setTicketMedio(data.ticketMedio);
                 if (data.seasons) setSeasons(data.seasons);
                 if (data.checklistConfig) setChecklistConfig(data.checklistConfig);
+                if (data.sportsList) setSportsList(data.sportsList);
                 
                 const seasonOficial = data.activeSeason || data.currentSeason || '2024-2025';
                 setActiveSeason(seasonOficial);
@@ -122,6 +124,6 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
         clubs, setClubs, tasks, setTasks, interactions, setInteractions, statuses, setStatuses,
         targetClients, setTargetClients, ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig,
-        teamUsers
+        teamUsers, sportsList, setSportsList
     };
 };

@@ -48,6 +48,14 @@ export default function SettingsView({
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } 
     });
 
+    const [newSportInput, setNewSportInput] = useState('');
+
+    const handleAddSport = () => {
+        if (!newSportInput.trim()) return;
+        onUpdateSports([...sportsList, newSportInput.trim()]);
+        setNewSportInput('');
+    };
+
     // Estado para el perfil del administrador
     const [adminProfileData, setAdminProfileData] = useState({
         nombre: userProfile?.nombre || '',
@@ -492,6 +500,35 @@ export default function SettingsView({
                             <div className="p-3 bg-zinc-50 dark:bg-zinc-950 flex gap-2">
                                 <input value={newSeasonInput} onChange={e => setNewSeasonInput(e.target.value)} placeholder="Nueva (Ej: 2026-2027)" className="flex-1 text-sm px-3 py-1.5 border rounded" />
                                 <Button size="sm" variant="neon" onClick={() => { onAddSeason(newSeasonInput); setNewSeasonInput(''); }}><Plus className="w-4 h-4 mr-1"/> Añadir</Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Gestor de Deportes */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 relative overflow-hidden">
+                        <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-5 flex items-center gap-2">Gestor de Deportes</h3>
+                        <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+                            <div className="max-h-48 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                                {sportsList.map(sport => (
+                                    <div key={sport} className="flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md">
+                                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{sport}</span>
+                                        <button onClick={() => {
+                                            if(window.confirm(`¿Eliminar ${sport}?`)) {
+                                                onUpdateSports(sportsList.filter(s => s !== sport));
+                                            }
+                                        }} className="p-1.5 text-zinc-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="p-3 bg-zinc-50 dark:bg-zinc-950 flex gap-2 border-t dark:border-zinc-800">
+                                <input 
+                                    value={newSportInput} 
+                                    onChange={e => setNewSportInput(e.target.value)} 
+                                    onKeyDown={e => e.key === 'Enter' && handleAddSport()}
+                                    placeholder="Añadir (Ej: Natación)" 
+                                    className="flex-1 text-sm px-3 py-1.5 border rounded dark:bg-zinc-900 dark:border-zinc-800 dark:text-white outline-none focus:border-emerald-500" 
+                                />
+                                <Button size="sm" variant="outline" onClick={handleAddSport}><Plus className="w-4 h-4 mr-1"/> Añadir</Button>
                             </div>
                         </div>
                     </div>

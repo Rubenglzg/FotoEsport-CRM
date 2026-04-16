@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Plus, Trash2, MapPin, AlertTriangle, User, Briefcase, Phone, Mail, FileText, ChevronDown, Search, Check } from 'lucide-react';
 import { Button } from './Button';
 
-export default function NewClubModal({ userProfile, onClose, onSave, teamUsers = [] }) {
+export default function NewClubModal({ userProfile, sportsList, onClose, onSave, teamUsers = [] }) {
   // LÓGICA DE PERMISOS "Toda España"
   const hasAllSpain = userProfile?.allowedZones?.includes('Toda España');
   const isAdminOrAllSpain = userProfile?.role === 'admin' || hasAllSpain;
@@ -12,7 +12,7 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
                       : '';
 
   const [formData, setFormData] = useState({
-    name: '', category: 'Fútbol', provincia: defaultZone, 
+    name: '', category: [], provincia: defaultZone, 
     address: '', lat: '', lng: '',
     estimatedPlayers: '', totalTeams: '',
     baseTeams: '', genericEmail: '', genericPhone: '',
@@ -21,6 +21,8 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
   });
   
   const [error, setError] = useState('');
+
+  const [isSportsOpen, setIsSportsOpen] = useState(false);
 
   // ESTADOS DEL SELECTOR VISUAL DE COMERCIALES
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -140,6 +142,47 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
             <div className="col-span-2 md:col-span-1">
               <label className="text-xs font-bold text-zinc-500 uppercase">Nombre del Club *</label>
               <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 outline-none focus:border-emerald-500" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej: CD Ejemplo" />
+            </div>
+
+            {/* NUEVO CAMPO: Deporte */}
+            <div className="col-span-2 md:col-span-1 relative">
+                <label className="text-xs font-bold text-zinc-500 uppercase">Deportes *</label>
+                <div 
+                    onClick={() => setIsSportsOpen(!isSportsOpen)}
+                    className="w-full mt-1 min-h-[42px] flex flex-wrap items-center gap-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2 outline-none cursor-pointer focus-within:border-emerald-500 transition-colors"
+                >
+                    {(!formData.category || formData.category.length === 0) ? (
+                        <span className="text-zinc-400 text-sm pl-1">Seleccionar deportes...</span>
+                    ) : (
+                        formData.category.map(sport => (
+                            <span key={sport} className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200 dark:border-emerald-800/50">
+                                {sport}
+                                <button type="button" onClick={(e) => { e.stopPropagation(); setFormData({...formData, category: formData.category.filter(s => s !== sport)}); }} className="hover:text-red-500"><X className="w-3 h-3"/></button>
+                            </span>
+                        ))
+                    )}
+                    <ChevronDown className={`ml-auto w-4 h-4 text-zinc-400 transition-transform ${isSportsOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* Dropdown Personalizado (Soporta cientos de clubes/deportes con Scroll) */}
+                {isSportsOpen && (
+                    <>
+                        <div className="fixed inset-0 z-[60]" onClick={() => setIsSportsOpen(false)}></div>
+                        <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl max-h-52 overflow-y-auto custom-scrollbar z-[70]">
+                            {sportsList.map(sport => {
+                                const isSelected = formData.category?.includes(sport);
+                                return (
+                                    <label key={sport} className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800 transition-colors">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                            {isSelected && <Check className="w-3 h-3" />}
+                                        </div>
+                                        <span className={`text-sm font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{sport}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
             </div>
             
             <div className="col-span-2 md:col-span-1">

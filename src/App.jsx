@@ -55,7 +55,7 @@ export default function App() {
   const {
       seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
       clubs, teamUsers, tasks, interactions, statuses, setStatuses, targetClients, setTargetClients,
-      ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig
+      ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig, sportsList, setSportsList
   } = useCRMData(user, userProfile, isLocked, appId);
 
     // --- ESTADOS DE GOOGLE CON PERSISTENCIA (src/App.jsx) ---
@@ -175,6 +175,23 @@ export default function App() {
         setSelectedClub
     });
 
+    const handleUpdateSports = async (newSportsArray) => {
+        // 1. Actualizamos la pantalla al instante (optimista)
+        setSportsList(newSportsArray); 
+        
+        // 2. Guardamos en Firebase para que sea persistente
+        try {
+            const dataUid = userProfile?.role === 'admin' ? user.uid : userProfile?.adminUid;
+            const settingsRef = doc(db, 'artifacts', appId, 'users', dataUid, 'settings', 'crm');
+            
+            await updateDoc(settingsRef, {
+                sportsList: newSportsArray
+            });
+        } catch (error) {
+            console.error("Error guardando deportes:", error);
+        }
+    };
+
   // --- RENDERIZADOS CONDICIONALES PANTALLAS PRINCIPALES ---
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>;
   if (!user || isLocked) return <LoginScreen onLogin={() => setIsLocked(false)} />;
@@ -260,6 +277,8 @@ export default function App() {
                 onUpdateChecklist={handleUpdateChecklist}
                 ticketMedio={ticketMedio}
                 onUpdateTicketMedio={handleUpdateTicketMedio}
+                sportsList={sportsList}
+                onUpdateSports={handleUpdateSports}
             />;
 
       default: return <MapView clubs={filteredClubs} />;
@@ -322,6 +341,7 @@ export default function App() {
                 checklistConfig={checklistConfig}
                 seasons={seasons} 
                 userProfile={userProfile}
+                sportsList={sportsList}
             />
         }
       </aside>
@@ -334,6 +354,7 @@ export default function App() {
               onClose={() => setShowNewClubModal(false)} 
               onSave={handleCreateClub} 
               teamUsers={teamUsers}
+              sportsList={sportsList}
           />
       )}
       

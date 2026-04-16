@@ -21,3 +21,7 @@ export const SALES_SCRIPTS = {
 export const SEED_CLUBS = [];
 export const INITIAL_TASKS = [];
 export const INITIAL_TIMELINE = [];
+
+export const DEFAULT_SPORTS = [
+    'Fútbol', 'Baloncesto', 'Fútbol Sala', 'Balonmano', 'Voleibol', 'Pádel', 'Tenis', 'Rugby', 'Otro'
+];
