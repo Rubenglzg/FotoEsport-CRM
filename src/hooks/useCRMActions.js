@@ -1,5 +1,5 @@
 // src/hooks/useCRMActions.js
-import { doc, setDoc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, writeBatch, deleteDoc, FieldPath } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { exportToCSV } from '../utils/helpers';
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../services/googleCalendar';
@@ -13,7 +13,6 @@ export const useCRMActions = ({
     const handleSeedDatabase = async () => {
         if(!user) return;
         try {
-            // Nota: Si no usas SEED_CLUBS, puedes omitir esta función o importarla de tus constantes
             showToast("Base de datos inicializada (Requiere variables SEED).", "info");
         } catch (e) { console.error(e); }
     };
@@ -177,7 +176,8 @@ export const useCRMActions = ({
                 }
 
                 const clubRef = doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', club.id);
-                batch.update(clubRef, { [`seasonStatuses.${newSeasonName}`]: newStatus });
+                // USAMOS FIELDPATH AQUÍ PARA PERMITIR LA BARRA "/" EN EL NOMBRE
+                batch.update(clubRef, new FieldPath('seasonStatuses', newSeasonName), newStatus);
             });
 
             const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
