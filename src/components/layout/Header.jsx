@@ -1,6 +1,6 @@
 // src/components/layout/Header.jsx
 import React, { useState } from 'react';
-import { Search, Bell, AlertTriangle, CalendarIcon, ChevronDown } from 'lucide-react';
+import { Search, Bell, CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '../../utils/helpers';
 
 function SeasonSelector({ seasons, selectedSeason, activeSeason, onSelect }) {
@@ -63,8 +63,6 @@ export default function Header({
     selectedSeason,
     activeSeason,
     onActiveSeasonChange, 
-    filterNeedsAttention, 
-    setFilterNeedsAttention, 
     notifications, 
     showNotifications,
     setShowNotifications,
@@ -87,17 +85,12 @@ export default function Header({
              <SeasonSelector 
                  seasons={seasons} 
                  selectedSeason={selectedSeason} 
-                 activeSeason={activeSeason} // <-- PASAMOS LA TEMPORADA ACTIVA
+                 activeSeason={activeSeason}
                  onSelect={onActiveSeasonChange} 
              />
-              <button onClick={() => setFilterNeedsAttention(!filterNeedsAttention)} className={cn("flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm", filterNeedsAttention ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500 dark:text-red-400" : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400")}>
-                <AlertTriangle className="w-4 h-4 md:w-3 md:h-3" />
-                <span className="hidden sm:inline">{filterNeedsAttention ? "Viendo Prioritarios" : "Filtrar Alertas"}</span>
-             </button>
            </div>
            
             <div className="flex items-center gap-2 md:gap-4">
-                {/* AQUÍ ESTÁ EL CAMBIO: Añadimos || currentView === 'pipeline' */}
                 {(currentView === 'map' || currentView === 'database' || currentView === 'pipeline') && (
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
