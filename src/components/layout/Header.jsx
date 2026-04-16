@@ -61,13 +61,15 @@ export default function Header({
     currentView, 
     seasons, 
     selectedSeason,
-    activeSeason, // <-- NUEVO PROP
+    activeSeason,
     onActiveSeasonChange, 
     filterNeedsAttention, 
     setFilterNeedsAttention, 
     notifications, 
     showNotifications,
-    setShowNotifications 
+    setShowNotifications,
+    searchQuery,
+    onSearchChange 
 }) {
     return (
         <header className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm flex items-center justify-between px-3 md:px-6 z-40 shrink-0 gap-2">
@@ -95,11 +97,17 @@ export default function Header({
            </div>
            
             <div className="flex items-center gap-2 md:gap-4">
-                {(currentView === 'map' || currentView === 'database') && (
+                {/* AQUÍ ESTÁ EL CAMBIO: Añadimos || currentView === 'pipeline' */}
+                {(currentView === 'map' || currentView === 'database' || currentView === 'pipeline') && (
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-                        {/* El buscador se vuelve más pequeño en móvil y w-64 en escritorio */}
-                        <input type="text" placeholder="Buscar..." className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-2 py-2 text-sm focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 w-32 sm:w-48 md:w-64 transition-all text-zinc-900 dark:text-white" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar club..." 
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-2 py-2 text-sm focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 w-32 sm:w-48 md:w-64 transition-all text-zinc-900 dark:text-white" 
+                        />
                     </div>
                 )}
                 <button onClick={() => setShowNotifications(!showNotifications)} className="relative flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white shadow-sm transition-colors">

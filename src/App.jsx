@@ -90,6 +90,9 @@ export default function App() {
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+
+  // NUEVO ESTADO PARA EL BUSCADOR:
+  const [searchQuery, setSearchQuery] = useState('');
   
   // --- MODALES Y TOASTS ---
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -161,6 +164,17 @@ export default function App() {
         clubs, interactions, selectedSeason, filterNeedsAttention, ticketMedio, tasks, clearedNotifications
     );
 
+    // 2. AÑADE ESTA FUNCIÓN PARA FILTRAR POR LA BÚSQUEDA
+  const searchedClubs = useMemo(() => {
+      if (!searchQuery.trim()) return filteredClubs;
+      const query = searchQuery.toLowerCase();
+      return filteredClubs.filter(club => 
+          club.name?.toLowerCase().includes(query) || 
+          club.city?.toLowerCase().includes(query) ||
+          club.status?.toLowerCase().includes(query)
+      );
+  }, [filteredClubs, searchQuery]);
+
     // --- LÓGICA DE NEGOCIO DESDE EL HOOK ---
     const {
         handleSeedDatabase, handleCreateClub, handleUpdateClub, handleDeleteClub,
@@ -210,7 +224,7 @@ export default function App() {
     switch (currentView) {
 
         case 'overview': return <OverviewView  
-            clubs={filteredClubs} 
+            clubs={searchedClubs} 
             tasks={tasks} 
             interactions={interactions}
             onNavigate={setCurrentView}
@@ -218,7 +232,7 @@ export default function App() {
         />;
 
         case 'map': return <MapView 
-            clubs={filteredClubs} selectedId={selectedClub?.id} onSelect={setSelectedClub} 
+            clubs={searchedClubs} selectedId={selectedClub?.id} onSelect={setSelectedClub} 
             showRadius={showRadius} setShowRadius={setShowRadius} showRoute={showRoute} 
             setShowRoute={setShowRoute} tasks={tasks} 
 
@@ -237,7 +251,7 @@ export default function App() {
         />;
 
       case 'database': return <DatabaseView 
-            clubs={filteredClubs} 
+            clubs={searchedClubs} 
             onSelect={setSelectedClub} 
             onNewClub={() => setShowNewClubModal(true)} 
             statuses={statuses} 
@@ -245,7 +259,7 @@ export default function App() {
         />;
 
         case 'pipeline': return <PipelineView 
-            clubs={filteredClubs} 
+            clubs={searchedClubs} 
             statuses={statuses} 
             onUpdateClub={handleUpdateClub} 
             onSelect={setSelectedClub} 
@@ -311,6 +325,8 @@ export default function App() {
             notifications={notifications}
             showNotifications={showNotifications}
             setShowNotifications={setShowNotifications}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
         />
 
         {renderMainContent()}
