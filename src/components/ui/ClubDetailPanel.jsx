@@ -9,7 +9,8 @@ export default function ClubDetailPanel({
     onUpdateInteraction, onDeleteInteraction, statuses, onUpdate,
     checklistConfig = [],
     seasons = [],
-    userProfile // <-- AÑADIDO
+    userProfile,
+    teamUsers = []
     }) {
     const [note, setNote] = useState("");
     const [interactionType, setInteractionType] = useState('manual');
@@ -59,6 +60,7 @@ export default function ClubDetailPanel({
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
     const [tempGenericEmail, setTempGenericEmail] = useState(club.genericEmail || '');
     const [tempGenericPhone, setTempGenericPhone] = useState(club.genericPhone || '');
+    const [tempAssignedTo, setTempAssignedTo] = useState(club.assignedTo || '');
 
     // Referencias para inputs de texto y mapas
     const inputRef = useRef(null);
@@ -107,7 +109,8 @@ export default function ClubDetailPanel({
         setTempRecDate(club.recommendedContactDate || '');
         setTempGenericEmail(club.genericEmail || '');
         setTempGenericPhone(club.genericPhone || '');
-    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone]);
+        setTempAssignedTo(club.assignedTo || '');
+    }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -118,6 +121,7 @@ export default function ClubDetailPanel({
     const handleSaveRecDate = () => { if (tempRecDate !== club.recommendedContactDate) onUpdateClub({...club, recommendedContactDate: tempRecDate}); };
     const handleSaveGenericEmail = () => { if (tempGenericEmail !== club.genericEmail) onUpdateClub({...club, genericEmail: tempGenericEmail}); };
     const handleSaveGenericPhone = () => { if (tempGenericPhone !== club.genericPhone) onUpdateClub({...club, genericPhone: tempGenericPhone}); };
+    const handleSaveAssignedTo = () => { if (tempAssignedTo !== club.assignedTo) onUpdateClub({...club, assignedTo: tempAssignedTo}); };
 
     const currentStatus = club.seasonStatuses?.[currentSeason] || club.status || 'to_contact';
 
@@ -479,6 +483,33 @@ export default function ClubDetailPanel({
                                     placeholder="Ej: info@club.com" 
                                 />
                             </div>
+
+                            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative">
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1 flex items-center gap-1">
+                                    <Briefcase className="w-3 h-3"/> Comercial Asignado
+                                </span>
+                                <select 
+                                    value={tempAssignedTo} 
+                                    onChange={(e) => {
+                                        setTempAssignedTo(e.target.value);
+                                        onUpdateClub({...club, assignedTo: e.target.value}); // Guarda automáticamente
+                                    }} 
+                                    className="text-sm font-bold bg-transparent outline-none w-full text-emerald-900 dark:text-emerald-300 cursor-pointer appearance-none"
+                                >
+                                    <option value="">-- Seleccionar responsable --</option>
+                                    {teamUsers.map(u => {
+                                        const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
+                                        return (
+                                            <option key={u.id} value={fullName}>
+                                                {fullName} {u.role === 'admin' ? '(Admin)' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                                {/* Iconito de flecha nativa para indicar que es un desplegable */}
+                                <ChevronDown className="absolute right-3 top-1/2 mt-1 -translate-y-1/2 w-4 h-4 text-emerald-600 pointer-events-none" />
+                            </div>
+
                       </div>
 
                     </div>

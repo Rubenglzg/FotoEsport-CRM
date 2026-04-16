@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Plus, Trash2, MapPin, AlertTriangle, User, Briefcase, Phone, Mail, FileText } from 'lucide-react';
 import { Button } from './Button';
 
-export default function NewClubModal({ userProfile, onClose, onSave }) {
+export default function NewClubModal({ userProfile, onClose, onSave, teamUsers = [] }) {
   // LÓGICA DE PERMISOS "Toda España"
   const hasAllSpain = userProfile?.allowedZones?.includes('Toda España');
   const isAdminOrAllSpain = userProfile?.role === 'admin' || hasAllSpain;
@@ -16,6 +16,7 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
     address: '', lat: '', lng: '',
     estimatedPlayers: '', totalTeams: '',
     baseTeams: '', genericEmail: '', genericPhone: '',
+    assignedTo: '', // <--- AÑADE ESTA LÍNEA AQUÍ
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true, notes: '' }]
   });
   
@@ -177,6 +178,28 @@ export default function NewClubModal({ userProfile, onClose, onSave }) {
               <label className="text-xs font-bold text-zinc-500 uppercase">Email Genérico</label>
               <input type="email" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.genericEmail} onChange={e => setFormData({...formData, genericEmail: e.target.value})} placeholder="Ej: info@club.com" />
             </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase text-emerald-600 flex items-center gap-1">
+                <User className="w-3 h-3"/> Comercial Asignado
+              </label>
+              <select 
+                className="w-full mt-1 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-bold text-emerald-900 dark:text-emerald-400 cursor-pointer appearance-none" 
+                value={formData.assignedTo} 
+                onChange={e => setFormData({...formData, assignedTo: e.target.value})} 
+              >
+                <option value="">-- Sin asignar --</option>
+                {teamUsers.map(u => {
+                    const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
+                    return (
+                        <option key={u.id} value={fullName}>
+                            {fullName} {u.role === 'admin' ? '(Admin)' : ''}
+                        </option>
+                    );
+                })}
+              </select>
+            </div>
+
           </div>
 
           <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">

@@ -20,6 +20,7 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         { id: 'roster', label: 'Listado de Jugadores', type: 'seasonal' },
         { id: 'contract', label: 'Contrato Firmado', type: 'contract' }
     ]);
+    const [teamUsers, setTeamUsers] = useState([]);
 
     // --- SUSCRIPCIONES A FIRESTORE ---
     useEffect(() => {
@@ -84,12 +85,40 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
             }
         });
 
-        return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); };
-    }, [user, userProfile, isLocked, appId]); 
+        // 5. OBTENER USUARIOS DEL EQUIPO (Para el desplegable)
+        const usersRef = collection(db, 'artifacts', appId, 'users');
+        const teamQuery = query(usersRef, where('adminUid', '==', dataUid));
+
+        const unsubTeam = onSnapshot(teamQuery, (snapshot) => {
+            let usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Asegurarnos de incluir al Admin en la lista (si no está ya)
+            if (!usersList.some(u => u.id === dataUid)) {
+                usersList.push({
+                    id: dataUid,
+                    nombre: userProfile.role === 'admin' ? userProfile.nombre : "Administrador",
+                    apellidos: userProfile.role === 'admin' ? userProfile.apellidos : "(Principal)",
+                    role: 'admin'
+                });
+            }
+            
+            // Ordenar alfabéticamente por nombre y luego apellido
+            usersList.sort((a, b) => {
+                const nameA = `${a.nombre || ''} ${a.apellidos || ''}`.trim().toLowerCase();
+                const nameB = `${b.nombre || ''} ${b.apellidos || ''}`.trim().toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            setTeamUsers(usersList);
+        });
+
+        return () => { unsubClubs(); unsubTasks(); unsubInt(); unsubSettings(); unsubTeam(); };
+    }, [user, userProfile, isLocked, appId]);
 
     return {
         seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
         clubs, setClubs, tasks, setTasks, interactions, setInteractions, statuses, setStatuses,
-        targetClients, setTargetClients, ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig
+        targetClients, setTargetClients, ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig,
+        teamUsers
     };
 };
