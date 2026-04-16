@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail } from 'lucide-react';
+import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail, Search, Check } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
@@ -22,6 +22,10 @@ export default function ClubDetailPanel({
     const recognitionRef = useRef(null);
     const [expandedContactIdx, setExpandedContactIdx] = useState(null);
     const manualStopRef = useRef(false);
+
+    // ESTADOS DEL SELECTOR VISUAL DE COMERCIALES
+    const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [assignSearch, setAssignSearch] = useState('');
 
     // Función para alternar el desplegable
     const toggleContact = (idx) => {
@@ -488,26 +492,80 @@ export default function ClubDetailPanel({
                                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1 flex items-center gap-1">
                                     <Briefcase className="w-3 h-3"/> Comercial Asignado
                                 </span>
-                                <select 
-                                    value={tempAssignedTo} 
-                                    onChange={(e) => {
-                                        setTempAssignedTo(e.target.value);
-                                        onUpdateClub({...club, assignedTo: e.target.value}); // Guarda automáticamente
-                                    }} 
-                                    className="text-sm font-bold bg-transparent outline-none w-full text-emerald-900 dark:text-emerald-300 cursor-pointer appearance-none"
+                                
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsAssignOpen(!isAssignOpen)}
+                                    className="text-sm font-bold bg-transparent outline-none w-full text-left text-emerald-900 dark:text-emerald-300 cursor-pointer flex items-center justify-between"
                                 >
-                                    <option value="">-- Seleccionar responsable --</option>
-                                    {teamUsers.map(u => {
-                                        const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
-                                        return (
-                                            <option key={u.id} value={fullName}>
-                                                {fullName} {u.role === 'admin' ? '(Admin)' : ''}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                {/* Iconito de flecha nativa para indicar que es un desplegable */}
-                                <ChevronDown className="absolute right-3 top-1/2 mt-1 -translate-y-1/2 w-4 h-4 text-emerald-600 pointer-events-none" />
+                                    <span className="truncate">{tempAssignedTo || '-- Seleccionar responsable --'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-emerald-600 shrink-0 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isAssignOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsAssignOpen(false)}></div>
+                                        <div className="absolute z-[100] top-[100%] left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                            <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                                    <input 
+                                                        autoFocus
+                                                        type="text" 
+                                                        placeholder="Buscar comercial..." 
+                                                        value={assignSearch}
+                                                        onChange={(e) => setAssignSearch(e.target.value)}
+                                                        className="w-full pl-8 pr-3 py-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1.5 flex flex-col gap-1">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => { 
+                                                        setTempAssignedTo('');
+                                                        onUpdateClub({...club, assignedTo: ''});
+                                                        setIsAssignOpen(false); 
+                                                        setAssignSearch(''); 
+                                                    }}
+                                                    className="w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                                >
+                                                    -- Sin asignar --
+                                                </button>
+                                                
+                                                {teamUsers
+                                                    .filter(u => `${u.nombre || ''} ${u.apellidos || ''}`.toLowerCase().includes(assignSearch.toLowerCase()))
+                                                    .map(u => {
+                                                        const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
+                                                        const isSelected = tempAssignedTo === fullName;
+                                                        
+                                                        return (
+                                                            <button 
+                                                                key={u.id}
+                                                                type="button"
+                                                                onClick={() => { 
+                                                                    setTempAssignedTo(fullName);
+                                                                    onUpdateClub({...club, assignedTo: fullName});
+                                                                    setIsAssignOpen(false); 
+                                                                    setAssignSearch(''); 
+                                                                }}
+                                                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
+                                                            >
+                                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                                                                    {fullName.substring(0, 2).toUpperCase()}
+                                                                </div>
+                                                                <span className="flex-1 text-left truncate">{fullName}</span>
+                                                                {u.role === 'admin' && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>}
+                                                                {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                                            </button>
+                                                        );
+                                                    })
+                                                }
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                       </div>

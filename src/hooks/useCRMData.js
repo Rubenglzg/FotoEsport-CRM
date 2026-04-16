@@ -86,7 +86,10 @@ export const useCRMData = (user, userProfile, isLocked, appId) => {
         });
 
         // 5. OBTENER USUARIOS DEL EQUIPO (Para el desplegable)
-        const usersRef = collection(db, 'artifacts', appId, 'users');
+        // CAMBIO AQUÍ: Buscar en la colección raíz 'users', no dentro de artifacts
+        const usersRef = collection(db, 'users'); 
+        
+        // Buscamos usuarios que pertenezcan a este Admin (o si es el propio Admin, a sí mismo)
         const teamQuery = query(usersRef, where('adminUid', '==', dataUid));
 
         const unsubTeam = onSnapshot(teamQuery, (snapshot) => {

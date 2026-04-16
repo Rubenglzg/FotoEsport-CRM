@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Plus, Trash2, MapPin, AlertTriangle, User, Briefcase, Phone, Mail, FileText } from 'lucide-react';
+import { X, Save, Plus, Trash2, MapPin, AlertTriangle, User, Briefcase, Phone, Mail, FileText, ChevronDown, Search, Check } from 'lucide-react';
 import { Button } from './Button';
 
 export default function NewClubModal({ userProfile, onClose, onSave, teamUsers = [] }) {
@@ -21,6 +21,10 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
   });
   
   const [error, setError] = useState('');
+
+  // ESTADOS DEL SELECTOR VISUAL DE COMERCIALES
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
   
   // REFERENCIAS PARA GOOGLE MAPS
   const adminInputRef = useRef(null);
@@ -179,25 +183,78 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
               <input type="email" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.genericEmail} onChange={e => setFormData({...formData, genericEmail: e.target.value})} placeholder="Ej: info@club.com" />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-2 relative">
               <label className="text-xs font-bold text-zinc-500 uppercase text-emerald-600 flex items-center gap-1">
-                <User className="w-3 h-3"/> Comercial Asignado
+                <Briefcase className="w-3 h-3"/> Comercial Asignado
               </label>
-              <select 
-                className="w-full mt-1 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-bold text-emerald-900 dark:text-emerald-400 cursor-pointer appearance-none" 
-                value={formData.assignedTo} 
-                onChange={e => setFormData({...formData, assignedTo: e.target.value})} 
+              
+              <button 
+                  type="button"
+                  onClick={() => setIsAssignOpen(!isAssignOpen)}
+                  className="w-full mt-1 flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-bold text-emerald-900 dark:text-emerald-400 transition-colors"
               >
-                <option value="">-- Sin asignar --</option>
-                {teamUsers.map(u => {
-                    const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
-                    return (
-                        <option key={u.id} value={fullName}>
-                            {fullName} {u.role === 'admin' ? '(Admin)' : ''}
-                        </option>
-                    );
-                })}
-              </select>
+                  <span className="truncate">
+                      {formData.assignedTo || '-- Sin asignar --'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isAssignOpen && (
+                  <>
+                      {/* Overlay invisible para cerrar al hacer clic fuera */}
+                      <div className="fixed inset-0 z-[110]" onClick={() => setIsAssignOpen(false)}></div>
+                      
+                      <div className="absolute z-[120] top-[100%] left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+                              <div className="relative">
+                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                  <input 
+                                      autoFocus
+                                      type="text" 
+                                      placeholder="Buscar comercial..." 
+                                      value={assignSearch}
+                                      onChange={(e) => setAssignSearch(e.target.value)}
+                                      className="w-full pl-8 pr-3 py-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                  />
+                              </div>
+                          </div>
+                          
+                          <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1.5 flex flex-col gap-1">
+                              <button 
+                                  type="button"
+                                  onClick={() => { setFormData({...formData, assignedTo: ''}); setIsAssignOpen(false); setAssignSearch(''); }}
+                                  className="w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                              >
+                                  -- Sin asignar --
+                              </button>
+                              
+                              {teamUsers
+                                  .filter(u => `${u.nombre || ''} ${u.apellidos || ''}`.toLowerCase().includes(assignSearch.toLowerCase()))
+                                  .map(u => {
+                                      const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
+                                      const isSelected = formData.assignedTo === fullName;
+                                      
+                                      return (
+                                          <button 
+                                              key={u.id}
+                                              type="button"
+                                              onClick={() => { setFormData({...formData, assignedTo: fullName}); setIsAssignOpen(false); setAssignSearch(''); }}
+                                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
+                                          >
+                                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                                                  {fullName.substring(0, 2).toUpperCase()}
+                                              </div>
+                                              <span className="flex-1 text-left truncate">{fullName}</span>
+                                              {u.role === 'admin' && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>}
+                                              {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                          </button>
+                                      );
+                                  })
+                              }
+                          </div>
+                      </div>
+                  </>
+              )}
             </div>
 
           </div>
