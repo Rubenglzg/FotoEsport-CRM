@@ -54,7 +54,7 @@ export default function App() {
   // --- DATOS FIRESTORE DESDE EL HOOK ---
   const {
       seasons, setSeasons, selectedSeason, setSelectedSeason, activeSeason, setActiveSeason,
-      clubs, tasks, interactions, statuses, setStatuses, targetClients, setTargetClients,
+      clubs, teamUsers, tasks, interactions, statuses, setStatuses, targetClients, setTargetClients,
       ticketMedio, setTicketMedio, checklistConfig, setChecklistConfig
   } = useCRMData(user, userProfile, isLocked, appId);
 
@@ -306,6 +306,7 @@ export default function App() {
         {selectedClub && 
             <ClubDetailPanel 
                 club={selectedClub} 
+                teamUsers={teamUsers}
                 onUpdateClub={handleUpdateClub} 
                 onClose={() => setSelectedClub(null)} 
                 activeTab={activeTab} 
@@ -332,6 +333,7 @@ export default function App() {
               userProfile={userProfile} 
               onClose={() => setShowNewClubModal(false)} 
               onSave={handleCreateClub} 
+              teamUsers={teamUsers}
           />
       )}
       
