@@ -16,7 +16,7 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
     address: '', lat: '', lng: '',
     estimatedPlayers: '', totalTeams: '',
     baseTeams: '', genericEmail: '', genericPhone: '',
-    assignedTo: '', // <--- AÑADE ESTA LÍNEA AQUÍ
+    assignedTo: [], // <--- ¡CAMBIADO A ARRAY VACÍO!
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true, notes: '' }]
   });
   
@@ -185,23 +185,44 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
 
             <div className="col-span-2 relative">
               <label className="text-xs font-bold text-zinc-500 uppercase text-emerald-600 flex items-center gap-1">
-                <Briefcase className="w-3 h-3"/> Comercial Asignado
+                <Briefcase className="w-3 h-3"/> Comerciales Asignados
               </label>
               
-              <button 
-                  type="button"
+                <div 
                   onClick={() => setIsAssignOpen(!isAssignOpen)}
-                  className="w-full mt-1 flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-bold text-emerald-900 dark:text-emerald-400 transition-colors"
+                  className="w-full mt-1 min-h-[42px] flex flex-wrap items-center gap-2 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 outline-none hover:border-emerald-500 cursor-pointer transition-colors"
               >
-                  <span className="truncate">
-                      {formData.assignedTo || '-- Sin asignar --'}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
-              </button>
+                  {(() => {
+                      const currentArr = Array.isArray(formData.assignedTo) ? formData.assignedTo : (formData.assignedTo ? [formData.assignedTo] : []);
+                      
+                      if (currentArr.length === 0) {
+                          return <span className="text-emerald-900/60 dark:text-emerald-400/60 text-sm font-bold pl-1 py-0.5">-- Seleccionar responsables --</span>;
+                      }
+                      
+                      return currentArr.map(name => (
+                          <div key={name} className="flex items-center gap-1.5 bg-emerald-500 text-white dark:text-zinc-900 px-2.5 py-1 rounded-md text-sm font-bold shadow-sm antialiased">
+                              {name}
+                              <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      setFormData({...formData, assignedTo: currentArr.filter(n => n !== name)});
+                                  }}
+                                  className="hover:bg-black/20 dark:hover:bg-white/20 rounded-full p-0.5 transition-colors ml-1"
+                              >
+                                  <X className="w-3 h-3" />
+                              </button>
+                          </div>
+                      ));
+                  })()}
+                  
+                  <div className="ml-auto">
+                      <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                  </div>
+              </div>
 
               {isAssignOpen && (
                   <>
-                      {/* Overlay invisible para cerrar al hacer clic fuera */}
                       <div className="fixed inset-0 z-[110]" onClick={() => setIsAssignOpen(false)}></div>
                       
                       <div className="absolute z-[120] top-[100%] left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2">
@@ -222,23 +243,31 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
                           <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1.5 flex flex-col gap-1">
                               <button 
                                   type="button"
-                                  onClick={() => { setFormData({...formData, assignedTo: ''}); setIsAssignOpen(false); setAssignSearch(''); }}
+                                  onClick={() => setFormData({...formData, assignedTo: []})}
                                   className="w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                               >
-                                  -- Sin asignar --
+                                  -- Desmarcar todos --
                               </button>
                               
                               {teamUsers
                                   .filter(u => `${u.nombre || ''} ${u.apellidos || ''}`.toLowerCase().includes(assignSearch.toLowerCase()))
                                   .map(u => {
                                       const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
-                                      const isSelected = formData.assignedTo === fullName;
+                                      const currentArr = Array.isArray(formData.assignedTo) ? formData.assignedTo : (formData.assignedTo ? [formData.assignedTo] : []);
+                                      const isSelected = currentArr.includes(fullName);
                                       
                                       return (
                                           <button 
                                               key={u.id}
                                               type="button"
-                                              onClick={() => { setFormData({...formData, assignedTo: fullName}); setIsAssignOpen(false); setAssignSearch(''); }}
+                                              onClick={() => { 
+                                                  // Lógica para marcar/desmarcar
+                                                  if (isSelected) {
+                                                      setFormData({...formData, assignedTo: currentArr.filter(n => n !== fullName)});
+                                                  } else {
+                                                      setFormData({...formData, assignedTo: [...currentArr, fullName]});
+                                                  }
+                                              }}
                                               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
                                           >
                                               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
@@ -246,7 +275,11 @@ export default function NewClubModal({ userProfile, onClose, onSave, teamUsers =
                                               </div>
                                               <span className="flex-1 text-left truncate">{fullName}</span>
                                               {u.role === 'admin' && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>}
-                                              {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                              
+                                              {/* Checkbox visual a la derecha */}
+                                              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                  {isSelected && <Check className="w-3 h-3" />}
+                                              </div>
                                           </button>
                                       );
                                   })

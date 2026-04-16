@@ -64,7 +64,7 @@ export default function ClubDetailPanel({
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
     const [tempGenericEmail, setTempGenericEmail] = useState(club.genericEmail || '');
     const [tempGenericPhone, setTempGenericPhone] = useState(club.genericPhone || '');
-    const [tempAssignedTo, setTempAssignedTo] = useState(club.assignedTo || '');
+    const [tempAssignedTo, setTempAssignedTo] = useState(Array.isArray(club.assignedTo) ? club.assignedTo : (club.assignedTo ? [club.assignedTo] : []));
 
     // Referencias para inputs de texto y mapas
     const inputRef = useRef(null);
@@ -113,7 +113,7 @@ export default function ClubDetailPanel({
         setTempRecDate(club.recommendedContactDate || '');
         setTempGenericEmail(club.genericEmail || '');
         setTempGenericPhone(club.genericPhone || '');
-        setTempAssignedTo(club.assignedTo || '');
+        setTempAssignedTo(Array.isArray(club.assignedTo) ? club.assignedTo : (club.assignedTo ? [club.assignedTo] : []));
     }, [club.id, club.name, club.provincia, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
 
     // Lógicas de Actualización
@@ -488,19 +488,53 @@ export default function ClubDetailPanel({
                                 />
                             </div>
 
-                            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative">
+                            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-40">
                                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1 flex items-center gap-1">
-                                    <Briefcase className="w-3 h-3"/> Comercial Asignado
+                                    <Briefcase className="w-3 h-3"/> Comerciales Asignados
                                 </span>
                                 
-                                <button 
-                                    type="button"
+                                <div 
                                     onClick={() => setIsAssignOpen(!isAssignOpen)}
-                                    className="text-sm font-bold bg-transparent outline-none w-full text-left text-emerald-900 dark:text-emerald-300 cursor-pointer flex items-center justify-between"
+                                    className="w-full min-h-[36px] flex flex-wrap items-center gap-1.5 bg-transparent outline-none cursor-pointer mt-1"
                                 >
-                                    <span className="truncate">{tempAssignedTo || '-- Seleccionar responsable --'}</span>
-                                    <ChevronDown className={`w-4 h-4 text-emerald-600 shrink-0 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
-                                </button>
+                                    {(() => {
+                                        const currentArr = Array.isArray(tempAssignedTo) ? tempAssignedTo : [];
+                                        
+                                        if (currentArr.length === 0) {
+                                            return (
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span className="text-emerald-900/60 dark:text-emerald-400/60 text-sm font-bold">-- Seleccionar responsables --</span>
+                                                    <ChevronDown className={`w-4 h-4 text-emerald-600 shrink-0 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <>
+                                                {currentArr.map(name => (
+                                                    <div key={name} className="flex items-center gap-1.5 bg-emerald-500 text-white dark:text-zinc-900 px-2 py-1 rounded text-xs font-bold shadow-sm antialiased">
+                                                        {name}
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newAssigned = currentArr.filter(n => n !== name);
+                                                                setTempAssignedTo(newAssigned);
+                                                                onUpdateClub({...club, assignedTo: newAssigned});
+                                                            }}
+                                                            className="hover:bg-black/20 dark:hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <div className="ml-auto">
+                                                    <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
 
                                 {isAssignOpen && (
                                     <>
@@ -524,31 +558,34 @@ export default function ClubDetailPanel({
                                                 <button 
                                                     type="button"
                                                     onClick={() => { 
-                                                        setTempAssignedTo('');
-                                                        onUpdateClub({...club, assignedTo: ''});
-                                                        setIsAssignOpen(false); 
-                                                        setAssignSearch(''); 
+                                                        setTempAssignedTo([]);
+                                                        onUpdateClub({...club, assignedTo: []});
                                                     }}
                                                     className="w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                 >
-                                                    -- Sin asignar --
+                                                    -- Desmarcar todos --
                                                 </button>
                                                 
                                                 {teamUsers
                                                     .filter(u => `${u.nombre || ''} ${u.apellidos || ''}`.toLowerCase().includes(assignSearch.toLowerCase()))
                                                     .map(u => {
                                                         const fullName = `${u.nombre || ''} ${u.apellidos || ''}`.trim();
-                                                        const isSelected = tempAssignedTo === fullName;
+                                                        const currentArr = Array.isArray(tempAssignedTo) ? tempAssignedTo : [];
+                                                        const isSelected = currentArr.includes(fullName);
                                                         
                                                         return (
                                                             <button 
                                                                 key={u.id}
                                                                 type="button"
                                                                 onClick={() => { 
-                                                                    setTempAssignedTo(fullName);
-                                                                    onUpdateClub({...club, assignedTo: fullName});
-                                                                    setIsAssignOpen(false); 
-                                                                    setAssignSearch(''); 
+                                                                    let newAssigned;
+                                                                    if (isSelected) {
+                                                                        newAssigned = currentArr.filter(n => n !== fullName);
+                                                                    } else {
+                                                                        newAssigned = [...currentArr, fullName];
+                                                                    }
+                                                                    setTempAssignedTo(newAssigned);
+                                                                    onUpdateClub({...club, assignedTo: newAssigned}); // Auto guardado Firebase
                                                                 }}
                                                                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
                                                             >
@@ -557,7 +594,11 @@ export default function ClubDetailPanel({
                                                                 </div>
                                                                 <span className="flex-1 text-left truncate">{fullName}</span>
                                                                 {u.role === 'admin' && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>}
-                                                                {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                                                
+                                                                {/* Checkbox visual */}
+                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                                    {isSelected && <Check className="w-3 h-3" />}
+                                                                </div>
                                                             </button>
                                                         );
                                                     })

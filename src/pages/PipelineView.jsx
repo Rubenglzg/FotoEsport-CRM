@@ -99,8 +99,22 @@ export default function PipelineView({ clubs, statuses, onUpdateClub, onSelect, 
                                             draggedClubId === club.id ? "ring-2 ring-emerald-500 opacity-50" : ""
                                         )}
                                     >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1">{club.name}</h4>
+                                        <div className="flex flex-col gap-1.5 mb-3">
+                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{club.name}</h4>
+                                            
+                                            {/* Visualización de comerciales en la ficha del Kanban */}
+                                            {club.assignedTo && (Array.isArray(club.assignedTo) ? club.assignedTo.length > 0 : true) && (
+                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                    {(() => {
+                                                        const names = Array.isArray(club.assignedTo) ? club.assignedTo : [club.assignedTo];
+                                                        return names.map(name => (
+                                                            <span key={name} className="text-[11px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 truncate max-w-full antialiased">
+                                                                {name}
+                                                            </span>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            )}
                                         </div>
                                         
                                         <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400 mt-3">
