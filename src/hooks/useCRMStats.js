@@ -3,9 +3,26 @@ import { useMemo } from 'react';
 
 export const useCRMStats = (clubs, interactions, selectedSeason, filterNeedsAttention, ticketMedio, tasks, clearedNotifications) => {
     
+    // 0. NUEVO: Filtramos primero los clubes por su rango de visibilidad
+    const visibleClubs = useMemo(() => {
+        return clubs.filter(club => {
+            if (!selectedSeason) return true;
+            
+            // Asume que las temporadas tienen formato comparable alfabéticamente (ej: "23/24" < "24/25")
+            if (club.activeFromSeason && selectedSeason < club.activeFromSeason) {
+                return false;
+            }
+            if (club.activeUntilSeason && selectedSeason > club.activeUntilSeason) {
+                return false;
+            }
+            return true;
+        });
+    }, [clubs, selectedSeason]);
+
     // 1. Inyectamos estado, última fecha y calculamos el LEAD SCORE
     const clubsWithSeasonalStatus = useMemo(() => {
-        return clubs.map(club => {
+        // ATENCIÓN: Cambiamos 'clubs.map' por 'visibleClubs.map'
+        return visibleClubs.map(club => {
             const clubInteractions = interactions.filter(i => i.clubId === club.id);
             const lastIntDate = clubInteractions.length > 0 ? clubInteractions[0].date : "Sin contacto";
             const status = club.seasonStatuses?.[selectedSeason] || club.status || 'to_contact';
@@ -41,7 +58,7 @@ export const useCRMStats = (clubs, interactions, selectedSeason, filterNeedsAtte
                 leadScore: Math.min(Math.round(score), 5) 
             };
         });
-    }, [clubs, selectedSeason, interactions]);
+    }, [visibleClubs, selectedSeason, interactions]);
 
     // 2. Filtramos la lista según alertas
     const filteredClubs = useMemo(() => 

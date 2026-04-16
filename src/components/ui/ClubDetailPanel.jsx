@@ -23,6 +23,9 @@ export default function ClubDetailPanel({
     const [expandedContactIdx, setExpandedContactIdx] = useState(null);
     const manualStopRef = useRef(false);
 
+    const [tempActiveFrom, setTempActiveFrom] = useState(club.activeFromSeason || '');
+    const [tempActiveUntil, setTempActiveUntil] = useState(club.activeUntilSeason || '');
+
     // ESTADOS DEL SELECTOR VISUAL DE COMERCIALES
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [assignSearch, setAssignSearch] = useState('');
@@ -117,7 +120,9 @@ export default function ClubDetailPanel({
         setTempGenericPhone(club.genericPhone || '');
         setTempAssignedTo(Array.isArray(club.assignedTo) ? club.assignedTo : (club.assignedTo ? [club.assignedTo] : []));
         setTempCategory(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
-    }, [club.id, club.name, club.provincia, club.category, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
+        setTempActiveFrom(club.activeFromSeason || '');
+        setTempActiveUntil(club.activeUntilSeason || '');
+    }, [club.id, club.name, club.provincia, club.category, club.activeFromSeason, club.activeUntilSeason, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -146,6 +151,18 @@ export default function ClubDetailPanel({
         });
     };
     const handleSaveContacts = () => onUpdateClub({...club, contacts});
+
+    const handleActiveFromChange = (e) => {
+        const val = e.target.value;
+        setTempActiveFrom(val);
+        onUpdateClub({ ...club, activeFromSeason: val });
+    };
+
+    const handleActiveUntilChange = (e) => {
+        const val = e.target.value;
+        setTempActiveUntil(val);
+        onUpdateClub({ ...club, activeUntilSeason: val });
+    };
     
     const getAssetValue = (item) => {
         if (item.type === 'seasonal') return club.assets?.[`${currentSeason}_${item.id}`];
@@ -880,6 +897,35 @@ export default function ClubDetailPanel({
                               </div>
                           </div>
                       </div>
+
+                      {/* Visibilidad del Club */}
+                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 flex flex-col shadow-sm col-span-2 mb-6">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase mb-2">👁️ Visibilidad en el CRM (Filtro por Temporadas)</span>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] text-zinc-400 font-bold block mb-1">Visible DESDE:</label>
+                                    <select 
+                                        value={tempActiveFrom} 
+                                        onChange={handleActiveFromChange} 
+                                        className="w-full text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-2 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
+                                    >
+                                        <option value="">Siempre visible (Sin límite inicial)</option>
+                                        {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-zinc-400 font-bold block mb-1">Visible HASTA:</label>
+                                    <select 
+                                        value={tempActiveUntil} 
+                                        onChange={handleActiveUntilChange} 
+                                        className="w-full text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-2 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
+                                    >
+                                        <option value="">Siempre visible (Sin límite final)</option>
+                                        {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
                       <div>
                           <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest flex justify-between">
