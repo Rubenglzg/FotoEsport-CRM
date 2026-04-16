@@ -16,7 +16,7 @@ export default function SettingsView({
     onAddSeason, onEditSeason, onDeleteSeason, onExportSeason,
     checklistConfig = [], onUpdateChecklist,
     ticketMedio, onUpdateTicketMedio,
-    activeSeason, onSetActiveSeason 
+    activeSeason, onSetActiveSeason, sportsList = [], onUpdateSports
 }) {
     const [localTarget, setLocalTarget] = useState(targetClients);
     const [localTicket, setLocalTicket] = useState(ticketMedio);
@@ -25,6 +25,7 @@ export default function SettingsView({
     const [newSeasonInput, setNewSeasonInput] = useState('');
     const [editingSeason, setEditingSeason] = useState(null);
     const [editInput, setEditInput] = useState('');
+    const [newSportInput, setNewSportInput] = useState('');
 
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [zoneInput, setZoneInput] = useState('');
@@ -47,8 +48,6 @@ export default function SettingsView({
         zones: [],
         permissions: { canEditSeasons: false, canEditChecklist: false, canEditObjectives: false } 
     });
-
-    const [newSportInput, setNewSportInput] = useState('');
 
     const handleAddSport = () => {
         if (!newSportInput.trim()) return;
