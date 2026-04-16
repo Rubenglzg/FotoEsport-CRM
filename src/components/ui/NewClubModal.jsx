@@ -172,11 +172,24 @@ export default function NewClubModal({ userProfile, sportsList, onClose, onSave,
                             {sportsList.map(sport => {
                                 const isSelected = formData.category?.includes(sport);
                                 return (
-                                    <label key={sport} className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800 transition-colors">
+                                    <label 
+                                        key={sport} 
+                                        className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800 transition-colors"
+                                        // AÑADE ESTE EVENTO ONCLICK:
+                                        onClick={() => {
+                                            const currentCategories = formData.category || [];
+                                            const newCategories = isSelected 
+                                                ? currentCategories.filter(s => s !== sport) // Si ya está, lo quita
+                                                : [...currentCategories, sport];            // Si no está, lo añade
+                                            setFormData({ ...formData, category: newCategories });
+                                        }}
+                                    >
                                         <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
                                             {isSelected && <Check className="w-3 h-3" />}
                                         </div>
-                                        <span className={`text-sm font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{sport}</span>
+                                        <span className={`text-sm font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                                            {sport}
+                                        </span>
                                     </label>
                                 );
                             })}
