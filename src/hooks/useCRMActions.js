@@ -1,5 +1,5 @@
 // src/hooks/useCRMActions.js
-import { doc, setDoc, updateDoc, writeBatch, deleteDoc, FieldPath } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, writeBatch, deleteDoc, FieldPath, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { exportToCSV } from '../utils/helpers';
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../services/googleCalendar';
@@ -38,12 +38,59 @@ export const useCRMActions = ({
     };
 
     const handleDeleteClub = async (clubId) => {
-        if (!window.confirm("¿Estás seguro de eliminar este club? Se perderán todos sus datos.")) return;
+        if (!window.confirm("¿Estás seguro de eliminar este club? Se perderán todos sus datos, tareas y actividades asociadas.")) return;
+        
+        showToast("Eliminando club y datos asociados...", "info");
+
         try {
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', clubId));
+            const batch = writeBatch(db);
+
+            // 1. Eliminar el documento del club principal
+            const clubRef = doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', clubId);
+            batch.delete(clubRef);
+
+            // 2. Buscar y eliminar todas las interacciones (actividades) asociadas a este club
+            const interactionsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'interactions');
+            const qInteractions = query(interactionsRef, where('clubId', '==', clubId));
+            const interactionsSnapshot = await getDocs(qInteractions);
+            
+            interactionsSnapshot.forEach((docSnap) => {
+                batch.delete(docSnap.ref);
+            });
+
+            // 3. Buscar y eliminar todas las tareas asociadas a este club
+            const tasksRef = collection(db, 'artifacts', appId, 'users', user.uid, 'tasks');
+            const qTasks = query(tasksRef, where('clubId', '==', clubId));
+            const tasksSnapshot = await getDocs(qTasks);
+            
+            for (const taskDoc of tasksSnapshot.docs) {
+                const taskData = taskDoc.data();
+                
+                // Si la tarea tenía un evento programado en Google Calendar, lo eliminamos también
+                if (taskData.googleEventId && googleToken) {
+                    try {
+                        await deleteGoogleCalendarEvent(taskData.googleEventId, googleToken, () => {
+                            setGoogleToken(null);
+                            showToast("La sesión del Calendario ha caducado. El evento debe borrarse manualmente.", "error");
+                        });
+                    } catch (err) {
+                        console.error("Error al borrar evento de calendario:", err);
+                    }
+                }
+                
+                // Añadimos la tarea al lote de borrado de Firestore
+                batch.delete(taskDoc.ref);
+            }
+
+            // 4. Ejecutar todas las eliminaciones en Firebase al mismo tiempo (atomicidad)
+            await batch.commit();
+
             setSelectedClub(null);
-            showToast("Club eliminado", "success");
-        } catch (e) { console.error(e); }
+            showToast("Club y toda su actividad eliminados", "success");
+        } catch (e) { 
+            console.error("Error eliminando club en cascada:", e); 
+            showToast("Error al eliminar los datos del club", "error");
+        }
     };
 
     const handleUpdateChecklist = async (newChecklist) => {
