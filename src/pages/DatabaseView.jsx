@@ -1,10 +1,10 @@
 // src/pages/DatabaseView.jsx
 import React, { useState, useMemo } from 'react';
-import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ArrowUpDown, ChevronDown, Check, Sparkles, ArrowUp, ArrowDown } from 'lucide-react'; 
+import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Sparkles } from 'lucide-react'; 
 import { Button } from '../components/ui/Button';
-import { cn, formatDateToDDMMYYYY } from '../utils/helpers'; // <-- AÑADIDA LA IMPORTACIÓN AQUÍ
+import { cn, formatDateToDDMMYYYY } from '../utils/helpers';
 
-// MODAL PARA GESTIONAR ESTADOS DINÁMICOS
+// MODAL PARA GESTIONAR ESTADOS DINÁMICOS (ADAPTADO A MÓVIL)
 function StatusManagerModal({ statuses, onSave, onClose }) {
   const [localStatuses, setLocalStatuses] = useState(statuses);
 
@@ -18,26 +18,88 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
       setLocalStatuses(localStatuses.filter(s => s.id !== id));
   };
 
+  // FUNCIONES PARA ORDENAR
+  const moveUp = (index) => {
+      if (index === 0) return;
+      const newStatuses = [...localStatuses];
+      [newStatuses[index - 1], newStatuses[index]] = [newStatuses[index], newStatuses[index - 1]];
+      setLocalStatuses(newStatuses);
+  };
+
+  const moveDown = (index) => {
+      if (index === localStatuses.length - 1) return;
+      const newStatuses = [...localStatuses];
+      [newStatuses[index + 1], newStatuses[index]] = [newStatuses[index], newStatuses[index + 1]];
+      setLocalStatuses(newStatuses);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 w-[400px] shadow-2xl">
-           <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Gestionar Estados</h3>
-              <button onClick={onClose}><X className="w-5 h-5 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"/></button>
-           </div>
-           <p className="text-xs text-zinc-500 mb-4">Añade, edita colores o renombra las fases de tu embudo de ventas.</p>
+    // Se añade p-4 al contenedor principal para que haya margen en los bordes del móvil
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+       {/* w-full max-w-[450px] asegura que sea responsive, max-h-[90vh] flex flex-col asegura un scroll interno si hay muchos elementos */}
+       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 md:p-6 w-full max-w-[450px] shadow-2xl flex flex-col max-h-[90vh]">
            
-           <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto pr-2">
-              {localStatuses.map(status => (
-                  <div key={status.id} className="flex gap-2 items-center bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                      <input type="color" value={status.color} onChange={e => updateStatus(status.id, 'color', e.target.value)} className="w-8 h-8 rounded cursor-pointer shrink-0 border-0 p-0 bg-transparent" />
-                      <input type="text" value={status.label} onChange={e => updateStatus(status.id, 'label', e.target.value)} className="flex-1 bg-transparent border-b border-transparent focus:border-emerald-500 px-2 py-1 text-sm font-bold text-zinc-800 dark:text-white outline-none" placeholder="Nombre del estado" />
-                      <button onClick={() => removeStatus(status.id)} className="text-red-500 hover:text-red-600 p-2 rounded hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="w-4 h-4"/></button>
+           <div className="flex justify-between items-center mb-4 shrink-0">
+              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Gestionar Estados</h3>
+              <button onClick={onClose} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <X className="w-5 h-5 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"/>
+              </button>
+           </div>
+           
+           <p className="text-xs text-zinc-500 mb-4 shrink-0">Añade, edita colores, renombra u ordena las fases de tu embudo de ventas.</p>
+           
+           {/* Contenedor con Scroll para los estados */}
+           <div className="space-y-3 mb-6 overflow-y-auto pr-1 custom-scrollbar flex-1">
+              {localStatuses.map((status, index) => (
+                  <div key={status.id} className="flex gap-2 md:gap-3 items-center bg-zinc-50 dark:bg-zinc-950 p-2 md:p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 transition-colors focus-within:border-emerald-500">
+                      
+                      {/* Controles de Ordenación (Más fáciles de tocar en móvil) */}
+                      <div className="flex flex-col border-r border-zinc-200 dark:border-zinc-700 pr-2 mr-1">
+                          <button 
+                              disabled={index === 0} 
+                              onClick={() => moveUp(index)} 
+                              className="p-1 md:p-0.5 text-zinc-400 hover:text-emerald-500 disabled:opacity-20 disabled:hover:text-zinc-400 transition-colors"
+                              title="Subir"
+                          >
+                              <ChevronUp className="w-5 h-5 md:w-4 md:h-4" />
+                          </button>
+                          <button 
+                              disabled={index === localStatuses.length - 1} 
+                              onClick={() => moveDown(index)} 
+                              className="p-1 md:p-0.5 text-zinc-400 hover:text-emerald-500 disabled:opacity-20 disabled:hover:text-zinc-400 transition-colors"
+                              title="Bajar"
+                          >
+                              <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
+                          </button>
+                      </div>
+
+                      <input type="color" value={status.color} onChange={e => updateStatus(status.id, 'color', e.target.value)} className="w-8 h-8 rounded cursor-pointer shrink-0 border-0 p-0 bg-transparent" title="Color del estado" />
+                      
+                      <input 
+                          type="text" 
+                          value={status.label} 
+                          onChange={e => updateStatus(status.id, 'label', e.target.value)} 
+                          className="flex-1 min-w-0 bg-transparent border-b border-transparent focus:border-emerald-500 px-1 md:px-2 py-1 text-sm md:text-base font-bold text-zinc-800 dark:text-white outline-none" 
+                          placeholder="Nombre del estado" 
+                      />
+                      
+                      <button onClick={() => removeStatus(status.id)} className="text-red-500 hover:text-red-600 p-2 rounded hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0" title="Eliminar estado">
+                          <Trash2 className="w-5 h-5 md:w-4 md:h-4"/>
+                      </button>
                   </div>
               ))}
            </div>
-           <Button variant="outline" onClick={handleAdd} className="w-full mb-4">+ Añadir Nuevo Estado</Button>
-           <Button variant="neon" onClick={() => onSave(localStatuses)} className="w-full">Guardar Cambios</Button>
+
+           {/* Botones Fijos Abajo */}
+           <div className="shrink-0 space-y-3 mt-auto">
+               <Button variant="outline" onClick={handleAdd} className="w-full justify-center border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 hover:text-emerald-600 transition-colors">
+                   + Añadir Nuevo Estado
+               </Button>
+               <Button variant="neon" onClick={() => onSave(localStatuses)} className="w-full justify-center py-3">
+                   Guardar Cambios
+               </Button>
+           </div>
+
        </div>
     </div>
   );
@@ -49,15 +111,13 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   // ESTADOS DE FILTRO Y ORDEN
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
   // ESTADOS PARA FILTROS DE COLUMNAS TIPO EXCEL
   const [columnFilters, setColumnFilters] = useState({}); // Guarda: { category: ['Alevín', 'Cadete'], status: ['status_1'] }
   const [openFilterCol, setOpenFilterCol] = useState(null); // Guarda el ID de la columna cuyo menú está abierto
 
-  // Función auxiliar para obtener el valor correcto de cualquier columna (arregla el problema de los filtros)
+  // Función auxiliar para obtener el valor correcto de cualquier columna
   const getCellValue = (club, colId) => {
       if (colId === 'club') return club.name || '';
       if (colId === 'category') return club.category || 'Sin categoría';
@@ -70,11 +130,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       return '';
   };
 
-  // ESTADOS PARA ABRIR/CERRAR LOS MENÚS DESPLEGABLES
-  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
-  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
-  const [isSortOpen, setIsSortOpen] = useState(false);
-
   // Columnas Separadas
   const columns = [
     { id: 'club', label: 'Nombre del Club', flex: 3 },
@@ -86,25 +141,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     { id: 'lastContact', label: 'Último Contacto', flex: 2 },
     { id: 'recommendedDate', label: 'Recomendado (IA)', flex: 2 },
   ];
-
-  // Opciones de Ordenación
-  const sortOptions = [
-    { value: 'leadScore-desc', label: 'Mejores Oportunidades (5 a 0 ⭐️)' },
-    { value: 'name-asc', label: 'Nombre (A-Z)' },
-    { value: 'name-desc', label: 'Nombre (Z-A)' },
-    { value: 'players-desc', label: 'Jugadores (Mayor a Menor)' },
-    { value: 'players-asc', label: 'Jugadores (Menor a Mayor)' },
-    { value: 'status-asc', label: 'Estado (A-Z)' },
-    { value: 'status-desc', label: 'Estado (Z-A)' },
-    { value: 'category-asc', label: 'Categoría (A-Z)' },
-    { value: 'category-desc', label: 'Categoría (Z-A)' }
-  ];
-
-  // Extraer las categorías únicas
-  const uniqueCategories = useMemo(() => {
-      const cats = new Set(clubs.map(c => c.category).filter(Boolean));
-      return Array.from(cats).sort();
-  }, [clubs]);
 
   const toggleColFilterValue = (colId, value) => {
       setColumnFilters(prev => {
@@ -124,10 +160,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
           let matchColumnFilters = true;
           Object.entries(columnFilters).forEach(([colId, activeValues]) => {
               if (activeValues.length === 0) return;
-              
-              // Convertimos a texto para comparar checkboxes con números de forma segura
               const stringValue = String(getCellValue(club, colId)); 
-              
               if (!activeValues.includes(stringValue)) {
                   matchColumnFilters = false;
               }
@@ -137,13 +170,10 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
 
       // 2. Ordenar
       filtered.sort((a, b) => {
-          // Ajuste especial para que la columna 'club' ordene por 'name'
           const sortKey = sortConfig.key === 'club' ? 'name' : sortConfig.key; 
-          
           let valA = sortKey === 'name' ? (a.name || '') : getCellValue(a, sortKey);
           let valB = sortKey === 'name' ? (b.name || '') : getCellValue(b, sortKey);
 
-          // Si son textos, los pasamos a minúsculas para ordenar correctamente
           if (typeof valA === 'string' && typeof valB === 'string') {
               valA = valA.toLowerCase();
               valB = valB.toLowerCase();
@@ -156,7 +186,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
 
       return filtered;
   }, [clubs, columnFilters, sortConfig]);
-
 
   const getStatusBadge = (statusId) => {
     const config = statuses.find(s => s.id === statusId) || statuses[0];
@@ -193,12 +222,10 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                <Settings className="w-4 h-4 text-zinc-500" />
            </Button>
 
-            {/* MENÚ COLUMNAS (Z-index elevado y posición segura para móvil) */}
            <div className="relative group z-[60]">
               <Button variant="outline" className="flex items-center gap-2">
                  <LayoutList className="w-4 h-4" /> <span className="hidden sm:inline">Columnas</span>
               </Button>
-              {/* left-0 en móvil para que crezca hacia la derecha, md:right-0 en ordenador */}
               <div className="absolute left-0 md:right-0 md:left-auto top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
                  {columns.map(col => (
                     <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
@@ -217,7 +244,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       {/* CONTENEDOR DE LA TABLA */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex-1 shadow-sm flex flex-col relative z-10">
         
-        {/* WRAPPER SCROLL HORIZONTAL (Evita que la tabla se comprima) */}
         <div className="overflow-x-auto flex-1 flex flex-col custom-scrollbar">
           <div className="min-w-[900px] flex-1 flex flex-col">
             
@@ -226,7 +252,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                {columns.map(col => {
                    if (!visibleCols.includes(col.id)) return null;
 
-                   // Extraer valores únicos dinámicamente convirtiéndolos a texto
                    const uniqueValues = Array.from(new Set(clubs.map(c => String(getCellValue(c, col.id))).filter(val => val && val !== '0'))).sort();
 
                    const isFilterOpen = openFilterCol === col.id;
@@ -237,14 +262,12 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                        <div key={`header-${col.id}`} style={{ flex: col.flex }} className="relative flex items-center gap-1.5 group">
                            <span>{col.label}</span>
                            
-                           {/* Botón de Menú de Columna (Filtro/Orden) */}
                            <button 
                                onClick={(e) => {
                                    e.stopPropagation();
                                    setOpenFilterCol(isFilterOpen ? null : col.id);
                                }}
                                className={cn(
-                                   // NUEVO: md:opacity-0 hace que en móvil SIEMPRE se vea la flecha, y en PC solo al pasar el ratón
                                    "p-1 rounded transition-colors md:opacity-0 group-hover:opacity-100", 
                                    (hasActiveFilters || isSorted || isFilterOpen) && "opacity-100",
                                    hasActiveFilters ? "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" : "text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
@@ -253,19 +276,15 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                                <ChevronDown className="w-3.5 h-3.5" />
                            </button>
 
-                           {/* Menú desplegable estilo Excel */}
                            {isFilterOpen && (
                                <>
-                                   {/* Capa invisible para cerrar al hacer clic fuera */}
                                    <div className="fixed inset-0 z-[60]" onClick={() => setOpenFilterCol(null)}></div>
                                    
                                    <div className={cn(
                                        "absolute top-full mt-1 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[70] p-2 max-h-80 flex flex-col font-normal text-zinc-700 dark:text-zinc-300 normal-case tracking-normal",
-                                       // NUEVO: Si es una de las últimas columnas, el menú se abre hacia la izquierda para no salirse de la pantalla
                                        ['status', 'lastContact', 'recommendedDate'].includes(col.id) ? "right-0" : "left-0"
                                    )}>
                                        
-                                       {/* OPCIONES DE ORDENACIÓN */}
                                        <div className="flex flex-col gap-1 border-b border-zinc-100 dark:border-zinc-800 pb-2 mb-2">
                                            <button 
                                                onClick={() => { setSortConfig({ key: col.id === 'club' ? 'name' : col.id, direction: 'asc' }); setOpenFilterCol(null); }} 
@@ -281,7 +300,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                                            </button>
                                        </div>
 
-                                       {/* OPCIONES DE FILTRADO */}
                                        <div className="text-xs mb-2 flex justify-between items-center px-1">
                                            <span className="font-bold">Filtros</span>
                                            {hasActiveFilters && (
@@ -323,7 +341,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                })}
             </div>
 
-            <div className="overflow-y-auto flex-1 pb-10 custom-scrollbar" onClick={() => { setIsStatusFilterOpen(false); setIsCategoryFilterOpen(false); setIsSortOpen(false); }}>
+            <div className="overflow-y-auto flex-1 pb-10 custom-scrollbar" onClick={() => setOpenFilterCol(null)}>
                {processedClubs.map(club => {
              const mainContact = club.contacts?.find(c => c.isDecisionMaker) || club.contacts?.[0] || { name: 'Sin Contacto' };
              const phoneToShow = mainContact.phone || club.genericPhone || '-';
@@ -332,7 +350,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
             return (
                <div key={club.id} onClick={() => onSelect(club)} className="flex items-center p-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group">
                   
-                  {/* 1. Nombre del Club */}
                   {visibleCols.includes('club') && (
                       <div style={{ flex: columns.find(c=>c.id==='club').flex }} className="pr-2 truncate">
                           <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">
@@ -343,7 +360,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 2. Categoría */}
                   {visibleCols.includes('category') && (
                       <div style={{ flex: columns.find(c=>c.id==='category').flex }} className="pr-2 truncate">
                          <div className="text-sm text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 truncate">
@@ -353,7 +369,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 3. Jugadores */}
                   {visibleCols.includes('players') && (
                       <div style={{ flex: columns.find(c=>c.id==='players').flex }} className="pr-2">
                          <div className="text-sm font-mono font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 inline-block px-2 py-0.5 rounded">
@@ -374,7 +389,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 4. Equipos */}
                   {visibleCols.includes('teams') && (
                       <div style={{ flex: columns.find(c=>c.id==='teams').flex }} className="pr-2">
                           <div className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -390,22 +404,12 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                  {/* 4. Estado */}
                   {visibleCols.includes('status') && (
                       <div style={{ flex: columns.find(c=>c.id==='status').flex }} className="pr-2">
                           {getStatusBadge(club.status)}
                       </div>
                   )}
 
-                  {/* 5. Contacto Principal */}
-                  {visibleCols.includes('contact') && (
-                      <div style={{ flex: columns.find(c=>c.id==='contact').flex }} className="pr-2 truncate">
-                         <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate">{mainContact.name}</div>
-                         <div className="text-xs text-zinc-500 truncate">{phoneToShow}</div>
-                      </div>
-                  )}
-
-                    {/* 6. Último Contacto (CON FECHA TRADUCIDA) */}
                   {visibleCols.includes('lastContact') && (
                       <div style={{ flex: columns.find(c=>c.id==='lastContact').flex }} className="pr-2">
                          <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -414,7 +418,6 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                       </div>
                   )}
 
-                    {/* 7. Fecha Recomendada IA (CON FECHA TRADUCIDA) */}
                     {visibleCols.includes('recommendedDate') && (
                         <div style={{ flex: columns.find(c=>c.id==='recommendedDate').flex }} className="pr-4 text-right">
                             {club.recommendedContactDate ? (
