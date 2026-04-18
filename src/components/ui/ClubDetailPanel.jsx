@@ -880,7 +880,7 @@ export default function ClubDetailPanel({
                               <span>Requisitos y Contrato</span>
                               <span className="text-emerald-500 text-sm">{currentSeason}</span>
                           </h4>
-                          <button onClick={() => generateContractFile(club.name, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-4 rounded-xl shadow-sm hover:shadow-md transition-all mb-5">
+                          <button onClick={() => generateContractFile(club, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-4 rounded-xl shadow-sm hover:shadow-md transition-all mb-5">
                               <FileSignature className="w-5 h-5 text-blue-500" />
                               <span className="text-base font-bold text-zinc-800 dark:text-white">Generar Contrato PDF</span>
                           </button>

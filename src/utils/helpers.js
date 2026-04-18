@@ -29,7 +29,9 @@ export const formatDateToDDMMYYYY = (dateString) => {
 };
 // ---------------------------------------------------------
 
-export const generateContractFile = (clubName, season) => {
+export const generateContractFile = (club, season) => {
+    // Si viene solo el string por algún error, lo manejamos, sino tomamos el nombre del objeto
+    const clubName = typeof club === 'string' ? club : (club?.name || 'Club no especificado');
     const printWindow = window.open('', '_blank');
     const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -37,58 +39,130 @@ export const generateContractFile = (clubName, season) => {
       <!DOCTYPE html>
       <html lang="es">
       <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Contrato ${clubName} - ${season}</title>
         <style>
           @page { size: A4; margin: 1.5cm; }
-          body { font-family: 'Times New Roman', serif; line-height: 1.2; color: #000; max-width: 100%; margin: 0 auto; padding: 0; background: white; font-size: 10pt; }
-          .header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 8px; }
-          .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; margin-bottom: 2px; }
-          .title { font-size: 14px; font-weight: bold; text-transform: uppercase; margin-top: 5px; }
-          .subtitle { font-size: 11px; font-style: italic; color: #444; }
-          .parties { margin-bottom: 15px; background: #f8f9fa; padding: 8px 15px; border: 1px solid #ddd; font-size: 9.5pt; }
-          .parties p { margin: 3px 0; }
-          .clause { margin-bottom: 8px; text-align: justify; font-size: 10pt; }
-          .clause-title { font-weight: bold; text-transform: uppercase; font-size: 10pt; margin-right: 5px; }
-          .signatures { display: flex; justify-content: space-between; margin-top: 100px; page-break-inside: avoid; }
-          .signature-box { width: 45%; border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 9pt; }
-          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 7pt; color: #888; border-top: 1px solid #eee; padding-top: 5px; }
+          body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            line-height: 1.5; color: #111; 
+            max-width: 100%; margin: 0 auto; padding: 0; 
+            background: white; font-size: 11pt; 
+          }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #059669; padding-bottom: 15px; }
+          .logo { font-size: 26px; font-weight: 900; color: #111; letter-spacing: 1px; margin-bottom: 5px; }
+          .logo span { color: #059669; }
+          .title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-top: 10px; color: #333; }
+          .subtitle { font-size: 13px; color: #666; margin-top: 5px; }
+          .details-box { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 25px; font-size: 10pt; }
+          .details-box div { width: 48%; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eaeaea; }
+          .details-box h3 { margin-top: 0; font-size: 11pt; color: #059669; margin-bottom: 10px; border-bottom: 1px solid #eaeaea; padding-bottom: 5px; text-transform: uppercase;}
+          .clause { margin-bottom: 18px; text-align: justify; font-size: 10.5pt; }
+          .clause-title { font-weight: bold; font-size: 11pt; color: #111; display: block; margin-bottom: 5px; }
+          .signatures { display: flex; justify-content: space-between; margin-top: 60px; page-break-inside: avoid; }
+          .signature-box { width: 45%; border-top: 1px solid #111; padding-top: 10px; text-align: center; font-size: 10pt; height: 80px; position: relative;}
+          .signature-box .sign-placeholder { position: absolute; bottom: -20px; left: 0; right: 0; color: #666; font-style: italic; font-size: 9pt; }
+          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 8pt; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+          
+          /* CONTROLES MÓVILES PARA CERRAR/VOLVER */
+          .mobile-controls { display: none; }
+          @media screen {
+            body { background: #f4f4f5; padding: 20px; }
+            .document-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
+            .mobile-controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+            .btn { padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; font-size: 14px; }
+            .btn-print { background: #059669; color: white; }
+            .btn-close { background: #ef4444; color: white; }
+          }
+          @media print {
+            body { background: white; padding: 0; }
+            .document-container { padding: 0; box-shadow: none; max-width: 100%; }
+            .mobile-controls { display: none !important; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="logo">FOTOESPORT MERCH</div>
-          <div class="title">Contrato de Colaboración y Cesión de Derechos</div>
-          <div class="subtitle">Temporada Oficial ${season}</div>
+        <div class="mobile-controls">
+          <button class="btn btn-close" onclick="window.close()">Volver al CRM</button>
+          <button class="btn btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
         </div>
-        <div class="parties">
-          <p>En Castellón, a <strong>${today}</strong>.</p>
-          <p><strong>REUNIDOS:</strong></p>
-          <p>De una parte, <strong>FOTOESPORT MERCH</strong> (en adelante, "El Proveedor").</p>
-          <p>De otra parte, <strong>${clubName.toUpperCase()}</strong> (en adelante, "El Club").</p>
-          <p>Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato.</p>
+        
+        <div class="document-container">
+            <div class="header">
+              <div class="logo">FOTOESPORT <span>MERCH</span></div>
+              <div class="title">Contrato de Colaboración y Cesión de Derechos</div>
+              <div class="subtitle">Temporada Oficial ${season}</div>
+            </div>
+            
+            <p style="text-align: right; margin-bottom: 25px; font-style: italic;">En Castellón, a <strong>${today}</strong>.</p>
+            
+            <p style="margin-bottom: 15px;"><strong>REUNIDOS:</strong></p>
+            <div class="details-box">
+              <div>
+                <h3>El Proveedor</h3>
+                <strong>FOTOESPORT MERCH</strong><br><br>
+                Servicio de merchandising deportivo personalizado.<br><br>
+                <em>Representante Comercial</em>
+              </div>
+              <div>
+                <h3>El Club</h3>
+                <strong>${clubName.toUpperCase()}</strong><br><br>
+                ${club.address ? `📍 ${club.address}<br>` : ''}
+                ${club.genericPhone ? `📞 ${club.genericPhone}<br>` : ''}
+                ${club.genericEmail ? `✉️ ${club.genericEmail}<br>` : ''}
+                ${club.estimatedPlayers ? `👥 Aprox. ${club.estimatedPlayers} fichas<br>` : ''}
+              </div>
+            </div>
+
+            <p style="margin-bottom: 20px;">Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato y acuerdan las siguientes cláusulas:</p>
+
+            <div class="clause">
+              <span class="clause-title">I. OBJETO DEL ACUERDO.</span>
+              El presente contrato regula la colaboración para la realización de la sesión fotográfica oficial de la temporada ${season} y la posterior gestión, producción y venta bajo demanda de productos de merchandising personalizado (tazas, gorras, botellas, llaveros, fotos individuales y de equipo, cromos, calendarios de pared y zapatilleros) por parte de FOTOESPORT MERCH.
+            </div>
+            
+            <div class="clause">
+              <span class="clause-title">II. CESIÓN DE DERECHOS DE IMAGEN.</span>
+              El Club garantiza poseer las autorizaciones pertinentes de los jugadores (o sus tutores legales en caso de menores) y <strong>CEDE AL PROVEEDOR</strong> el derecho no exclusivo a utilizar y explotar comercialmente dichas imágenes. Esta cesión se limita <strong>EXCLUSIVAMENTE</strong> a la elaboración y venta de los productos de merchandising objeto de este acuerdo durante la vigencia del mismo.
+            </div>
+            
+            <div class="clause">
+              <span class="clause-title">III. PROTECCIÓN DE DATOS (RGPD).</span>
+              El Proveedor tratará las imágenes y datos proporcionados conforme al Reglamento General de Protección de Datos (RGPD) actuando como Encargado del Tratamiento, garantizando que no se utilizarán para fines distintos a los estipulados sin el consentimiento expreso de los interesados.
+            </div>
+            
+            <div class="clause">
+              <span class="clause-title">IV. VIGENCIA.</span>
+              Este contrato tendrá validez durante la temporada deportiva ${season}, finalizando sus efectos a la conclusión de la misma, salvo renovación o firma de acuerdo multianual expresa por ambas partes.
+            </div>
+
+            <div class="signatures">
+              <div class="signature-box">
+                <strong>POR FOTOESPORT MERCH</strong>
+                <div class="sign-placeholder">Firma y Sello</div>
+              </div>
+              <div class="signature-box">
+                <strong>POR ${clubName.toUpperCase()}</strong>
+                <div class="sign-placeholder">Firma del Presidente / Responsable</div>
+              </div>
+            </div>
+            
+            <div class="footer">Documento generado por CRM Sooner (Grupo Avantia) - Válido a efectos administrativos.</div>
         </div>
-        <div class="clause">
-          <span class="clause-title">I. OBJETO.</span>
-          El presente acuerdo regula la colaboración para la realización de la sesión fotográfica oficial de la temporada y la posterior gestión, producción y venta de productos de merchandising personalizados.
-        </div>
-        <div class="clause">
-          <span class="clause-title">II. CESIÓN DE DERECHOS DE IMAGEN.</span>
-          El Club garantiza poseer las autorizaciones de los jugadores (o tutores legales) y <strong>CEDE AL PROVEEDOR</strong> el derecho no exclusivo a utilizar y explotar comercialmente dichas imágenes. Esta cesión se limita <strong>EXCLUSIVAMENTE</strong> a la elaboración y venta de los productos de merchandising objeto de este acuerdo.
-        </div>
-        <div class="clause">
-          <span class="clause-title">III. PROTECCIÓN DE DATOS.</span>
-          El Proveedor tratará las imágenes conforme al RGPD, actuando como Encargado del Tratamiento.
-        </div>
-        <div class="signatures">
-          <div class="signature-box">
-            <strong>POR FOTOESPORT MERCH</strong><br/><span style="font-size: 7pt; color: #666;">(Firma y Sello)</span><br/><br/><br/>Fdo: Dirección Comercial
-          </div>
-          <div class="signature-box">
-            <strong>POR ${clubName.toUpperCase()}</strong><br/><span style="font-size: 7pt; color: #666;">(Firma y Sello)</span><br/><br/><br/>Fdo: El Presidente / Responsable
-          </div>
-        </div>
-        <div class="footer">Documento generado digitalmente por Grupo Avantia (Sooner) - Válido a efectos administrativos.</div>
-        <script>setTimeout(() => { window.print(); }, 800);</script>
+        <script>
+          // En móvil a veces el print automático bloquea la UI, 
+          // así que damos un segundo para que cargue la vista y los botones.
+          window.onload = function() {
+            setTimeout(function() { 
+              window.print(); 
+            }, 1000);
+          };
+          // Intentar cerrar automáticamente la pestaña si el navegador lo permite
+          window.onafterprint = function() {
+            window.close();
+          };
+        </script>
       </body>
       </html>
     `;
