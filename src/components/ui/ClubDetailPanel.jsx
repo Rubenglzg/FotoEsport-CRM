@@ -402,7 +402,7 @@ export default function ClubDetailPanel({
     const isAddressSelected = club.address && club.lat !== undefined && club.lat !== '';
 
     return (
-        <div className="flex-1 flex flex-col min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors">
+        <div className="flex-1 flex flex-col w-full sm:min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors overflow-y-auto overflow-x-hidden">
               {/* Estilos para que la lista clásica de Google se vea perfecta por encima del panel */}
               <style>{`
                   .pac-container {
@@ -421,7 +421,7 @@ export default function ClubDetailPanel({
                   .dark .pac-item-query { color: #fff; }
               `}</style>
 
-              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
+              <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
                  <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
                  <div className="flex items-start gap-4 mb-2 pr-6">
                     <div className="w-12 h-12 rounded-lg flex flex-shrink-0 items-center justify-center text-lg font-bold border bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700">
@@ -693,12 +693,12 @@ export default function ClubDetailPanel({
                  </div>
               </div>
 
-              <div className="flex border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-[60] bg-white dark:bg-zinc-900 shadow-sm">
                  <button onClick={() => setActiveTab('details')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'details' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Gestión</button>
                  <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
               </div>
 
-<div className="flex-1 overflow-y-auto p-6">
+<div className="flex-1 p-4 sm:p-6">
                  {activeTab === 'details' ? (
                    <div className="space-y-8">
                       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
