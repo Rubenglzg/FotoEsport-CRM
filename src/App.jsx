@@ -333,34 +333,39 @@ export default function App() {
         {showNotifications && <NotificationCenter notifications={notifications} onClose={() => setShowNotifications(false)} onClearAll={() => setClearedNotifications(true)} />}
       </main>
 
-      {/* SIDEBAR PANEL LATERAL DERECHO (Detalle del Club) */}
-      <aside className={cn(
-          "bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col z-[70] transition-all duration-300 shadow-2xl overflow-hidden fixed md:relative top-0 right-0 h-full", 
-          (currentView === 'map' || currentView === 'database') && selectedClub ? "w-full md:w-[400px] translate-x-0" : "w-0 translate-x-full md:translate-x-0 md:border-l-0"
-      )}>
-        {selectedClub && 
-            <ClubDetailPanel 
-                club={selectedClub} 
-                teamUsers={teamUsers}
-                onUpdateClub={handleUpdateClub} 
-                onClose={() => setSelectedClub(null)} 
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab} 
-                onAddTask={addTask}
-                interactions={interactions.filter(i => i.clubId === selectedClub.id)}
-                onAddInteraction={addInteraction}
-                currentSeason={selectedSeason}
-                onDeleteClub={() => handleDeleteClub(selectedClub.id)}
-                onUpdateInteraction={handleUpdateInteraction}
-                onDeleteInteraction={handleDeleteInteraction}
-                statuses={statuses}
-                checklistConfig={checklistConfig}
-                seasons={seasons} 
-                userProfile={userProfile}
-                sportsList={sportsList}
-            />
-        }
-      </aside>
+      {/* MODAL FICHA DEL CLUB EN GRANDE (Centro de la pantalla en PC) */}
+      {selectedClub && (
+          <div 
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-0 md:p-6 animate-in fade-in duration-200"
+              onClick={() => setSelectedClub(null)} // Cierra el modal si haces clic fuera de la tarjeta
+          >
+              <div 
+                  className="bg-white dark:bg-zinc-950 w-full h-full md:w-[90vw] md:max-w-6xl md:h-[90vh] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 relative border border-transparent md:border-zinc-200 md:dark:border-zinc-800"
+                  onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer clic dentro de la tarjeta
+              >
+                  <ClubDetailPanel 
+                      club={selectedClub} 
+                      teamUsers={teamUsers}
+                      onUpdateClub={handleUpdateClub} 
+                      onClose={() => setSelectedClub(null)} 
+                      activeTab={activeTab} 
+                      setActiveTab={setActiveTab} 
+                      onAddTask={addTask}
+                      interactions={interactions.filter(i => i.clubId === selectedClub.id)}
+                      onAddInteraction={addInteraction}
+                      currentSeason={selectedSeason}
+                      onDeleteClub={() => handleDeleteClub(selectedClub.id)}
+                      onUpdateInteraction={handleUpdateInteraction}
+                      onDeleteInteraction={handleDeleteInteraction}
+                      statuses={statuses}
+                      checklistConfig={checklistConfig}
+                      seasons={seasons} 
+                      userProfile={userProfile}
+                      sportsList={sportsList}
+                  />
+              </div>
+          </div>
+      )}
 
       {/* MODALES FLOTANTES */}
 

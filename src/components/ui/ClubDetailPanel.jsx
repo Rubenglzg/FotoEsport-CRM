@@ -228,18 +228,15 @@ export default function ClubDetailPanel({
         if(!note) return;
         setIsSubmitting(true);
         try {
-            // Combinar nombre y apellidos del perfil del usuario
             const userName = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
-            
             await onAddInteraction({ 
                 id: Math.random().toString(), 
                 clubId: club.id, 
                 type: interactionType, 
-                user: userName, // Usar el nombre real
+                user: userName,
                 note, 
                 date: new Date().toLocaleDateString() 
             });
-            
             if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'manual' ? 'Manual' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
             setNote(""); setNextDate("");
         } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
@@ -256,70 +253,48 @@ export default function ClubDetailPanel({
 
     // Funciones para IA y Voz
     const toggleDictation = () => {
-        // Si ya está grabando, el usuario quiere pararlo manualmente
         if (isRecording) {
             manualStopRef.current = true;
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
-            }
+            if (recognitionRef.current) recognitionRef.current.stop();
             setIsRecording(false);
             return;
         }
 
-        // Si no está grabando, empezamos de cero
         manualStopRef.current = false;
-        
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert("Tu navegador no soporta el dictado por voz.");
             return;
         }
 
-        // Solo configuramos el reconocimiento una vez y lo guardamos
         if (!recognitionRef.current) {
             const recognition = new SpeechRecognition();
             recognition.lang = 'es-ES';
             recognition.interimResults = false;
             
-            // En móvil quitamos el modo continuo para evitar el error "caption record"
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             recognition.continuous = !isMobile;
 
             recognition.onresult = (event) => {
                 let finalTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    }
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
                 }
-                if (finalTranscript) {
-                    setNote(prev => prev + (prev ? " " : "") + finalTranscript.trim());
-                }
+                if (finalTranscript) setNote(prev => prev + (prev ? " " : "") + finalTranscript.trim());
             };
 
             recognition.onend = () => {
-                // TRUCO: Si el usuario NO pulsó el botón de parar, volvemos a arrancar el micrófono automáticamente
                 if (!manualStopRef.current) {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.error("Error al reiniciar automáticamente", e);
-                        setIsRecording(false);
-                    }
+                    try { recognition.start(); } catch (e) { console.error(e); setIsRecording(false); }
                 } else {
                     setIsRecording(false);
                 }
             };
 
             recognition.onerror = (event) => {
-                // Ignoramos el error de silencio para que 'onend' lo reinicie
                 if (event.error === 'no-speech') return; 
-                
                 console.error("Error de micrófono", event.error);
-                if (event.error === 'not-allowed') {
-                    alert("Permiso de micrófono denegado.");
-                }
-                
+                if (event.error === 'not-allowed') alert("Permiso de micrófono denegado.");
                 manualStopRef.current = true;
                 setIsRecording(false);
             };
@@ -327,12 +302,11 @@ export default function ClubDetailPanel({
             recognitionRef.current = recognition;
         }
 
-        // Iniciamos la grabación
         try {
             recognitionRef.current.start();
             setIsRecording(true);
         } catch (e) {
-            console.error("Error al iniciar el micrófono", e);
+            console.error(e);
             setIsRecording(false);
         }
     };
@@ -352,10 +326,9 @@ export default function ClubDetailPanel({
 
     // Autocompletado CLÁSICO de Google Places
     useEffect(() => {
-        // Silenciamos el aviso publicitario de Google de la consola
         const originalWarn = console.warn;
         console.warn = (...args) => {
-            if (typeof args[0] === 'string' && args[0].includes('google.maps.places.Autocomplete is not available to new customers')) return;
+            if (typeof args[0] === 'string' && args[0].includes('google.maps.places.Autocomplete is not available')) return;
             originalWarn.apply(console, args);
         };
 
@@ -372,7 +345,6 @@ export default function ClubDetailPanel({
 
             listener = autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                
                 if (place.geometry && place.geometry.location) {
                     onUpdateClub({ 
                         ...club, 
@@ -392,18 +364,14 @@ export default function ClubDetailPanel({
 
         return () => {
             console.warn = originalWarn;
-            if (listener) {
-                window.google.maps.event.removeListener(listener);
-            }
+            if (listener) window.google.maps.event.removeListener(listener);
         };
-    }, [club.id]); // Aseguramos que se reinicie si cambiamos de club
+    }, [club.id]);
 
-    // Variable para saber si el club tiene dirección guardada (Para el Check Verde)
     const isAddressSelected = club.address && club.lat !== undefined && club.lat !== '';
 
     return (
         <div className="flex-1 flex flex-col w-full sm:min-w-[400px] h-full bg-white dark:bg-zinc-900 transition-colors overflow-y-auto overflow-x-hidden">
-              {/* Estilos para que la lista clásica de Google se vea perfecta por encima del panel */}
               <style>{`
                   .pac-container {
                       z-index: 99999 !important;
@@ -413,7 +381,7 @@ export default function ClubDetailPanel({
                       border: 1px solid #e4e4e7;
                       margin-top: 4px;
                   }
-                  .pac-item { padding: 8px 12px; cursor: pointer; }
+                  .pac-item { padding: 10px 14px; cursor: pointer; font-size: 1rem; }
                   .pac-item:hover { background-color: #f4f4f5; }
                   .dark .pac-container { background-color: #18181b; border-color: #27272a; }
                   .dark .pac-item { color: #a1a1aa; border-top-color: #27272a; }
@@ -421,10 +389,10 @@ export default function ClubDetailPanel({
                   .dark .pac-item-query { color: #fff; }
               `}</style>
 
-              <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
-                 <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5"/></button>
-                 <div className="flex items-start gap-4 mb-2 pr-6">
-                    <div className="w-12 h-12 rounded-lg flex flex-shrink-0 items-center justify-center text-lg font-bold border bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700">
+              <div className="p-6 md:p-8 border-b border-zinc-200 dark:border-zinc-800 relative bg-zinc-50 dark:bg-zinc-900/50">
+                 <button onClick={onClose} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-6 h-6"/></button>
+                 <div className="flex items-start gap-5 mb-2 pr-8">
+                    <div className="w-16 h-16 rounded-xl flex flex-shrink-0 items-center justify-center text-2xl font-bold border bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700">
                       {club.name.substring(0,2).toUpperCase()}
                     </div>
                     <div className="flex-1">
@@ -432,36 +400,35 @@ export default function ClubDetailPanel({
                          value={tempName} 
                          onChange={(e) => setTempName(e.target.value)} 
                          onBlur={handleSaveName}
-                         className="text-lg font-bold text-zinc-900 dark:text-white leading-tight bg-transparent border-b border-transparent hover:border-zinc-300 focus:border-emerald-500 outline-none w-full transition-colors"
+                         className="text-2xl font-bold text-zinc-900 dark:text-white leading-tight bg-transparent border-b border-transparent hover:border-zinc-300 focus:border-emerald-500 outline-none w-full transition-colors"
                          placeholder="Nombre del Club"
                       />
                       <select 
                          value={currentStatus}
                          onChange={handleStatusChange}
-                         className="mt-1 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded py-1 px-2 outline-none text-zinc-700 dark:text-zinc-300 font-bold cursor-pointer shadow-sm"
+                         className="mt-2 text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg py-1.5 px-3 outline-none text-zinc-700 dark:text-zinc-300 font-bold cursor-pointer shadow-sm"
                       >
                          {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                       </select>
 
-                        {/* NUEVO CAMPO: Deporte */}
-                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-[60]">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1">Deportes</span>
+                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-[60] mt-5">
+                            <span className="text-xs font-bold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">Deportes</span>
                             <div 
                                 onClick={() => setIsSportsOpen(!isSportsOpen)}
-                                className="w-full min-h-[34px] flex flex-wrap items-center gap-1.5 cursor-pointer"
+                                className="w-full min-h-[40px] flex flex-wrap items-center gap-2 cursor-pointer"
                             >
                                 {(!tempCategory || tempCategory.length === 0) ? (
-                                    <span className="text-zinc-400 text-xs font-medium">-- Seleccionar --</span>
+                                    <span className="text-zinc-400 text-sm font-medium">-- Seleccionar --</span>
                                 ) : (
                                     tempCategory.map(sport => (
-                                        <span key={sport} className="flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/50">
+                                        <span key={sport} className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-2.5 py-1 rounded-md text-xs font-bold border border-emerald-200 dark:border-emerald-800/50">
                                             {sport}
                                             <button type="button" onClick={(e) => { 
                                                 e.stopPropagation(); 
                                                 const newVal = tempCategory.filter(s => s !== sport);
                                                 setTempCategory(newVal);
                                                 onUpdateClub({...club, category: newVal}); 
-                                            }} className="hover:text-red-500"><X className="w-3 h-3"/></button>
+                                            }} className="hover:text-red-500"><X className="w-4 h-4"/></button>
                                         </span>
                                     ))
                                 )}
@@ -470,11 +437,11 @@ export default function ClubDetailPanel({
                             {isSportsOpen && (
                                 <>
                                     <div className="fixed inset-0 z-[70]" onClick={() => setIsSportsOpen(false)}></div>
-                                    <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar z-[80]">
+                                    <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar z-[80]">
                                         {sportsList.map(sport => {
                                             const isSelected = tempCategory?.includes(sport);
                                             return (
-                                                <label key={sport} className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800">
+                                                <label key={sport} className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b last:border-0 border-zinc-100 dark:border-zinc-800">
                                                     <input 
                                                         type="checkbox" 
                                                         className="hidden"
@@ -485,10 +452,10 @@ export default function ClubDetailPanel({
                                                             onUpdateClub({...club, category: newVal});
                                                         }}
                                                     />
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
-                                                        {isSelected && <Check className="w-3 h-3" />}
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                        {isSelected && <Check className="w-4 h-4" />}
                                                     </div>
-                                                    <span className={`text-sm font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{sport}</span>
+                                                    <span className={`text-base font-medium ${isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{sport}</span>
                                                 </label>
                                             );
                                         })}
@@ -497,83 +464,83 @@ export default function ClubDetailPanel({
                             )}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> Fichas</span>
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><Users className="w-4 h-4"/> Fichas</span>
                               <input 
                                   type="number" 
                                   value={tempPlayers} 
                                   onChange={(e) => setTempPlayers(e.target.value)} 
                                   onBlur={handleSavePlayers}
-                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  className="text-base font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                   placeholder="Ej: 300" 
                               />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><Target className="w-4 h-4"/> Equipos Tot.</span>
                               <input 
                                   type="number" 
                                   value={tempTotalTeams} 
                                   onChange={(e) => setTempTotalTeams(e.target.value)} 
                                   onBlur={handleSaveTotalTeams}
-                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  className="text-base font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                   placeholder="Ej: 15" 
                               />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><Shield className="w-4 h-4"/> Fútbol Base</span>
                               <input 
                                   type="number" 
                                   value={tempBaseTeams} 
                                   onChange={(e) => setTempBaseTeams(e.target.value)} 
                                   onBlur={handleSaveBaseTeams}
-                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  className="text-base font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                   placeholder="Ej: 12" 
                               />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><MapPin className="w-3 h-3"/> Provincia</span>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><MapPin className="w-4 h-4"/> Provincia</span>
                               <input 
                                   ref={provinciaRef}
                                   type="text" 
                                   value={tempProvincia} 
                                   onChange={(e) => setTempProvincia(e.target.value)} 
                                   onBlur={handleSaveProvincia}
-                                  className="text-sm font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                  className="text-base font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                   placeholder="Ej: Tarragona" 
                               />
                           </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Phone className="w-3 h-3"/> Teléfono Genérico</span>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
+                                <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><Phone className="w-4 h-4"/> Teléfono Genérico</span>
                                 <input 
                                     type="tel" 
                                     value={tempGenericPhone} 
                                     onChange={(e) => setTempGenericPhone(e.target.value)} 
                                     onBlur={handleSaveGenericPhone}
-                                    className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                    className="text-base font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                     placeholder="Ej: 600123456" 
                                 />
                             </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3"/> Email Genérico</span>
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2">
+                                <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><MessageSquare className="w-4 h-4"/> Email Genérico</span>
                                 <input 
                                     type="email" 
                                     value={tempGenericEmail} 
                                     onChange={(e) => setTempGenericEmail(e.target.value)} 
                                     onBlur={handleSaveGenericEmail}
-                                    className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
+                                    className="text-base font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
                                     placeholder="Ej: info@club.com" 
                                 />
                             </div>
 
-                            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-40">
-                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1 flex items-center gap-1">
-                                    <Briefcase className="w-3 h-3"/> Comerciales Asignados
+                            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors col-span-2 relative z-40">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-2 flex items-center gap-1.5">
+                                    <Briefcase className="w-4 h-4"/> Comerciales Asignados
                                 </span>
                                 
                                 <div 
                                     onClick={() => setIsAssignOpen(!isAssignOpen)}
-                                    className="w-full min-h-[36px] flex flex-wrap items-center gap-1.5 bg-transparent outline-none cursor-pointer mt-1"
+                                    className="w-full min-h-[44px] flex flex-wrap items-center gap-2 bg-transparent outline-none cursor-pointer mt-1"
                                 >
                                     {(() => {
                                         const currentArr = Array.isArray(tempAssignedTo) ? tempAssignedTo : [];
@@ -581,8 +548,8 @@ export default function ClubDetailPanel({
                                         if (currentArr.length === 0) {
                                             return (
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className="text-emerald-900/60 dark:text-emerald-400/60 text-sm font-bold">-- Seleccionar responsables --</span>
-                                                    <ChevronDown className={`w-4 h-4 text-emerald-600 shrink-0 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                                                    <span className="text-emerald-900/60 dark:text-emerald-400/60 text-base font-bold">-- Seleccionar responsables --</span>
+                                                    <ChevronDown className={`w-5 h-5 text-emerald-600 shrink-0 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
                                                 </div>
                                             );
                                         }
@@ -590,7 +557,7 @@ export default function ClubDetailPanel({
                                         return (
                                             <>
                                                 {currentArr.map(name => (
-                                                    <div key={name} className="flex items-center gap-1.5 bg-emerald-500 text-white dark:text-zinc-900 px-2 py-1 rounded text-xs font-bold shadow-sm antialiased">
+                                                    <div key={name} className="flex items-center gap-2 bg-emerald-500 text-white dark:text-zinc-900 px-3 py-1.5 rounded-md text-sm font-bold shadow-sm antialiased">
                                                         {name}
                                                         <button 
                                                             type="button"
@@ -600,14 +567,14 @@ export default function ClubDetailPanel({
                                                                 setTempAssignedTo(newAssigned);
                                                                 onUpdateClub({...club, assignedTo: newAssigned});
                                                             }}
-                                                            className="hover:bg-black/20 dark:hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                                                            className="hover:bg-black/20 dark:hover:bg-white/20 rounded-full p-1 transition-colors"
                                                         >
-                                                            <X className="w-3 h-3" />
+                                                            <X className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                 ))}
                                                 <div className="ml-auto">
-                                                    <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
+                                                    <ChevronDown className={`w-5 h-5 text-emerald-600 transition-transform ${isAssignOpen ? 'rotate-180' : ''}`} />
                                                 </div>
                                             </>
                                         );
@@ -618,28 +585,28 @@ export default function ClubDetailPanel({
                                     <>
                                         <div className="fixed inset-0 z-[90]" onClick={() => setIsAssignOpen(false)}></div>
                                         <div className="absolute z-[100] top-[100%] left-0 w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                            <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
+                                            <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50">
                                                 <div className="relative">
-                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                                                     <input 
                                                         autoFocus
                                                         type="text" 
                                                         placeholder="Buscar comercial..." 
                                                         value={assignSearch}
                                                         onChange={(e) => setAssignSearch(e.target.value)}
-                                                        className="w-full pl-8 pr-3 py-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                                        className="w-full pl-10 pr-4 py-3 text-base bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
                                                     />
                                                 </div>
                                             </div>
                                             
-                                            <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1.5 flex flex-col gap-1">
+                                            <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-2 flex flex-col gap-1">
                                                 <button 
                                                     type="button"
                                                     onClick={() => { 
                                                         setTempAssignedTo([]);
                                                         onUpdateClub({...club, assignedTo: []});
                                                     }}
-                                                    className="w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                                    className="w-full flex items-center px-4 py-3 text-base text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                 >
                                                     -- Desmarcar todos --
                                                 </button>
@@ -663,19 +630,18 @@ export default function ClubDetailPanel({
                                                                         newAssigned = [...currentArr, fullName];
                                                                     }
                                                                     setTempAssignedTo(newAssigned);
-                                                                    onUpdateClub({...club, assignedTo: newAssigned}); // Auto guardado Firebase
+                                                                    onUpdateClub({...club, assignedTo: newAssigned}); 
                                                                 }}
-                                                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
+                                                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-colors text-base font-medium ${isSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}
                                                             >
-                                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
                                                                     {fullName.substring(0, 2).toUpperCase()}
                                                                 </div>
                                                                 <span className="flex-1 text-left truncate">{fullName}</span>
-                                                                {u.role === 'admin' && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>}
+                                                                {u.role === 'admin' && <span className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded font-bold uppercase tracking-wider">Admin</span>}
                                                                 
-                                                                {/* Checkbox visual */}
-                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
-                                                                    {isSelected && <Check className="w-3 h-3" />}
+                                                                <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                                    {isSelected && <Check className="w-4 h-4" />}
                                                                 </div>
                                                             </button>
                                                         );
@@ -694,176 +660,143 @@ export default function ClubDetailPanel({
               </div>
 
               <div className="flex border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-[60] bg-white dark:bg-zinc-900 shadow-sm">
-                 <button onClick={() => setActiveTab('details')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'details' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Gestión</button>
-                 <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
+                 <button onClick={() => setActiveTab('details')} className={cn("flex-1 py-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'details' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Gestión</button>
+                 <button onClick={() => setActiveTab('timeline')} className={cn("flex-1 py-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors", activeTab === 'timeline' ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/5" : "border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:hover:text-zinc-300 dark:hover:bg-zinc-900")}>Actividad</button>
               </div>
 
-<div className="flex-1 p-4 sm:p-6">
+<div className="flex-1 p-6 md:p-8">
                  {activeTab === 'details' ? (
-                   <div className="space-y-8">
-                      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-16 h-16 text-blue-500"/></div>
-                          <h4 className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-3 tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3"/> Inteligencia y Actividad</h4>
+                   <div className="space-y-10">
+                      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-5 rounded-2xl relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-5 opacity-10 pointer-events-none"><Sparkles className="w-20 h-20 text-blue-500"/></div>
+                          <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-4 tracking-widest flex items-center gap-2"><Sparkles className="w-4 h-4"/> Inteligencia y Actividad</h4>
                           
-                          <div className="grid grid-cols-2 gap-4 relative z-10">
+                          <div className="grid grid-cols-2 gap-5 relative z-10">
                               <div className="flex flex-col justify-end">
-                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Último Contacto</label>
-                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-3 flex items-center h-[34px] text-xs text-zinc-700 dark:text-zinc-300 font-medium shadow-sm w-full">
+                                  <label className="text-xs text-zinc-500 block mb-1.5 font-bold">Último Contacto</label>
+                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 flex items-center h-11 text-sm text-zinc-700 dark:text-zinc-300 font-medium shadow-sm w-full">
                                       {club.lastContactDate || "Sin historial"}
                                   </div>
                               </div>
                               
                               <div className="flex flex-col justify-end">
-                                  <label className="text-[10px] text-zinc-500 block mb-1 font-bold">Próximo Recomendado</label>
-                                  <div className="flex gap-1 shadow-sm h-[34px]">
+                                  <label className="text-xs text-zinc-500 block mb-1.5 font-bold">Próximo Recomendado</label>
+                                  <div className="flex gap-2 shadow-sm h-11">
                                       <input 
                                           type="date" 
                                           value={tempRecDate} 
                                           onChange={(e) => setTempRecDate(e.target.value)} 
                                           onBlur={handleSaveRecDate}
-                                          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white h-full" 
+                                          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-sm flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white h-full" 
                                       />
-                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-2 h-full flex items-center justify-center">
-                                          <Sparkles className="w-4 h-4" />
+                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-3 h-full flex items-center justify-center">
+                                          <Sparkles className="w-5 h-5" />
                                       </Button>
                                   </div>
                               </div>
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Target className="w-3 h-3"/> Equipos Tot.</span>
-                              <input 
-                                  type="number" 
-                                  value={tempTotalTeams} 
-                                  onChange={(e) => setTempTotalTeams(e.target.value)} 
-                                  onBlur={handleSaveTotalTeams}
-                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
-                                  placeholder="Ej: 15" 
-                              />
-                          </div>
-                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Fútbol Base</span>
-                              <input 
-                                  type="number" 
-                                  value={tempBaseTeams} 
-                                  onChange={(e) => setTempBaseTeams(e.target.value)} 
-                                  onBlur={handleSaveBaseTeams}
-                                  className="text-sm font-mono font-bold bg-transparent outline-none w-full text-zinc-900 dark:text-white" 
-                                  placeholder="Ej: 12" 
-                              />
-                          </div>
-                      </div>
                       
                       {/* --- SECCIÓN DE CONTACTOS REDISEÑADA (ACORDEÓN) --- */}
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                           <div className="flex justify-between items-center">
-                              <h4 className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest flex items-center gap-1">
-                                  <User className="w-3 h-3" /> Personas de Contacto
+                              <h4 className="text-xs font-bold uppercase text-zinc-500 tracking-widest flex items-center gap-2">
+                                  <User className="w-4 h-4" /> Personas de Contacto
                               </h4>
-                              <button onClick={handleAddContact} className="text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-1 rounded-md font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors flex items-center gap-1">
+                              <button onClick={handleAddContact} className="text-xs bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5">
                                   + Añadir Nuevo
                               </button>
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                               {contacts.map((contact, idx) => {
                                   const isExpanded = expandedContactIdx === idx;
                                   
                                   return (
-                                      <div key={idx} className={`bg-white dark:bg-zinc-950 border rounded-xl overflow-hidden transition-all duration-200 ${isExpanded ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                                      <div key={idx} className={`bg-white dark:bg-zinc-950 border rounded-2xl overflow-hidden transition-all duration-200 ${isExpanded ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-800'}`}>
                                           
-{/* CABECERA (Siempre visible y clickeable) */}
+                                          {/* CABECERA */}
                                           <div 
                                               onClick={() => toggleContact(idx)}
-                                              className={`p-3.5 flex items-center gap-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${isExpanded ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+                                              className={`p-4 flex items-center gap-5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${isExpanded ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-b border-zinc-100 dark:border-zinc-800' : ''}`}
                                           >
-                                              {/* Avatar */}
-                                              <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
-                                                  {contact.name ? contact.name.substring(0,2).toUpperCase() : <User className="w-4 h-4"/>}
+                                              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-sm font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
+                                                  {contact.name ? contact.name.substring(0,2).toUpperCase() : <User className="w-5 h-5"/>}
                                               </div>
 
                                               <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                  {/* 1. Línea Superior: Nombre + Teléfono */}
-                                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                                      <span className={`text-base font-bold truncate ${isExpanded ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                      <span className={`text-lg font-bold truncate ${isExpanded ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                                           {contact.name || "Nuevo Contacto"}
                                                       </span>
                                                       
                                                       {!isExpanded && contact.phone && (
-                                                          <span className="flex items-center gap-1 text-sm text-zinc-500 font-medium">
-                                                              <Phone className="w-3.5 h-3.5 text-emerald-500"/>
+                                                          <span className="flex items-center gap-1.5 text-base text-zinc-500 font-medium">
+                                                              <Phone className="w-4 h-4 text-emerald-500"/>
                                                               {contact.phone}
                                                           </span>
                                                       )}
                                                   </div>
                                                   
-                                                  {/* 2. Línea Inferior: Cargo (Con todo el ancho disponible) */}
-                                                  <div className="flex items-center gap-1.5 mt-0.5 text-sm text-zinc-500">
-                                                      <Briefcase className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0"/> 
+                                                  <div className="flex items-center gap-2 mt-1 text-base text-zinc-500">
+                                                      <Briefcase className="w-4 h-4 text-zinc-400 flex-shrink-0"/> 
                                                       <span className="truncate">{contact.role || "Sin cargo asignado"}</span>
                                                   </div>
                                               </div>
 
-                                              {/* Icono de estado (Flecha) */}
-                                              <div className="flex items-center gap-2 pl-2">
-                                                  {isExpanded ? <ChevronUp className="w-5 h-5 text-emerald-500" /> : <ChevronDown className="w-5 h-5 text-zinc-400" />}
+                                              <div className="flex items-center gap-3 pl-3">
+                                                  {isExpanded ? <ChevronUp className="w-6 h-6 text-emerald-500" /> : <ChevronDown className="w-6 h-6 text-zinc-400" />}
                                               </div>
                                           </div>
 
-                                          {/* CUERPO DESPLEGABLE (Contenido detallado) */}
+                                          {/* CUERPO DESPLEGABLE */}
                                           {isExpanded && (
-                                              <div className="p-4 bg-white dark:bg-zinc-950 space-y-4">
-                                                  <div className="grid grid-cols-1 gap-4">
-                                                      
-                                                      {/* Nombre y Cargo (Editables) */}
-                                                      <div className="grid grid-cols-2 gap-3">
-                                                          <div className="space-y-1">
-                                                              <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Nombre</label>
-                                                              <input value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Nombre completo" />
+                                              <div className="p-5 bg-white dark:bg-zinc-950 space-y-5">
+                                                  <div className="grid grid-cols-1 gap-5">
+                                                      <div className="grid grid-cols-2 gap-4">
+                                                          <div className="space-y-1.5">
+                                                              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Nombre</label>
+                                                              <input value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-base focus:border-emerald-500 outline-none transition-colors" placeholder="Nombre completo" />
                                                           </div>
-                                                          <div className="space-y-1">
-                                                              <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Cargo</label>
-                                                              <input value={contact.role} onChange={e => updateContact(idx, 'role', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Cargo (Ej: Presidente)" />
+                                                          <div className="space-y-1.5">
+                                                              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Cargo</label>
+                                                              <input value={contact.role} onChange={e => updateContact(idx, 'role', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-base focus:border-emerald-500 outline-none transition-colors" placeholder="Cargo (Ej: Presidente)" />
                                                           </div>
                                                       </div>
 
-                                                      {/* Teléfono y Email */}
-                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                           <div className="relative">
-                                                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500" />
-                                                              <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Teléfono" />
+                                                              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                                                              <input value={contact.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-11 pr-4 py-3 text-base focus:border-emerald-500 outline-none transition-colors" placeholder="Teléfono" />
                                                           </div>
                                                           <div className="relative">
-                                                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-500" />
-                                                              <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm focus:border-emerald-500 outline-none transition-colors" placeholder="Correo electrónico" />
+                                                              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                                                              <input value={contact.email} onChange={e => updateContact(idx, 'email', e.target.value)} onBlur={handleSaveContacts} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-11 pr-4 py-3 text-base focus:border-emerald-500 outline-none transition-colors" placeholder="Correo electrónico" />
                                                           </div>
                                                       </div>
 
-                                                      {/* Notas */}
-                                                      <div className="space-y-1">
-                                                          <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 flex items-center gap-1">
-                                                              <FileText className="w-3 h-3 text-amber-500"/> Notas y Observaciones
+                                                      <div className="space-y-1.5">
+                                                          <label className="text-xs font-bold text-zinc-400 uppercase ml-1 flex items-center gap-1.5">
+                                                              <FileText className="w-4 h-4 text-amber-500"/> Notas y Observaciones
                                                           </label>
                                                           <textarea 
                                                               value={contact.notes || ''} 
                                                               onChange={e => updateContact(idx, 'notes', e.target.value)} 
                                                               onBlur={handleSaveContacts} 
                                                               rows={3}
-                                                              className="w-full bg-amber-50/30 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-900/30 rounded-lg px-3 py-2 text-sm focus:border-amber-500 outline-none resize-none placeholder:italic transition-colors" 
+                                                              className="w-full bg-amber-50/30 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-900/30 rounded-lg px-4 py-3 text-base focus:border-amber-500 outline-none resize-none placeholder:italic transition-colors" 
                                                               placeholder="Escribe aquí detalles importantes..." 
                                                           />
                                                       </div>
                                                   </div>
 
-                                                  {/* Botón de eliminar */}
-                                                  <div className="pt-2 flex justify-end">
+                                                  <div className="pt-3 flex justify-end">
                                                       <button 
                                                           onClick={() => { if(window.confirm('¿Eliminar este contacto?')) removeContact(idx); }} 
-                                                          className="text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                                          className="text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
                                                       >
-                                                          <Trash2 className="w-3.5 h-3.5"/> Eliminar Contacto
+                                                          <Trash2 className="w-4 h-4"/> Eliminar Contacto
                                                       </button>
                                                   </div>
                                               </div>
@@ -873,23 +806,22 @@ export default function ClubDetailPanel({
                               })}
                           </div>
                       </div>
-                      {/* --- FIN SECCIÓN CONTACTOS --- */}
 
-                      {/* NUEVA UBICACIÓN MAPA (Sencillo y sin Latitud/Longitud visibles) */}
+                      {/* UBICACIÓN MAPA */}
                       <div className="relative z-50">
-                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest">Ubicación (Mapa)</h4>
-                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-3 shadow-sm">
+                          <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4 tracking-widest">Ubicación (Mapa)</h4>
+                          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex flex-col gap-4 shadow-sm">
                               <div className="w-full relative z-50">
                                   <input 
                                       ref={inputRef}
                                       type="text" 
                                       defaultValue={club.address}
                                       placeholder="Escribe la dirección del club..."
-                                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
                                   />
                                   
-                                  <div className={`mt-3 p-2.5 rounded-lg flex items-center gap-2 text-xs break-words leading-relaxed transition-colors duration-300 ${isAddressSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent'}`}>
-                                      {isAddressSelected && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+                                  <div className={`mt-4 p-3 rounded-lg flex items-center gap-3 text-sm break-words leading-relaxed transition-colors duration-300 ${isAddressSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent'}`}>
+                                      {isAddressSelected && <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
                                       <span>
                                           <span className="font-bold">Dirección Guardada:</span> {club.address || "Ninguna seleccionada de la lista"}
                                       </span>
@@ -899,26 +831,26 @@ export default function ClubDetailPanel({
                       </div>
 
                       {/* Visibilidad del Club */}
-                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 flex flex-col shadow-sm col-span-2 mb-6">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase mb-2">👁️ Visibilidad en el CRM (Filtro por Temporadas)</span>
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 flex flex-col shadow-sm col-span-2 mb-8">
+                            <span className="text-xs font-bold text-zinc-500 uppercase mb-3">👁️ Visibilidad en el CRM (Filtro por Temporadas)</span>
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-bold block mb-1">Visible DESDE:</label>
+                                    <label className="text-xs text-zinc-400 font-bold block mb-1.5">Visible DESDE:</label>
                                     <select 
                                         value={tempActiveFrom} 
                                         onChange={handleActiveFromChange} 
-                                        className="w-full text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-2 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
+                                        className="w-full text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
                                     >
                                         <option value="">Siempre visible (Sin límite inicial)</option>
                                         {seasons.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-zinc-400 font-bold block mb-1">Visible HASTA:</label>
+                                    <label className="text-xs text-zinc-400 font-bold block mb-1.5">Visible HASTA:</label>
                                     <select 
                                         value={tempActiveUntil} 
                                         onChange={handleActiveUntilChange} 
-                                        className="w-full text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-2 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
+                                        className="w-full text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 outline-none text-zinc-700 dark:text-zinc-300 font-medium"
                                     >
                                         <option value="">Siempre visible (Sin límite final)</option>
                                         {seasons.map(s => <option key={s} value={s}>{s}</option>)}
@@ -928,43 +860,43 @@ export default function ClubDetailPanel({
                         </div>
 
                       <div>
-                          <h4 className="text-[10px] font-bold uppercase text-zinc-500 mb-3 tracking-widest flex justify-between">
+                          <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4 tracking-widest flex justify-between">
                               <span>Requisitos y Contrato</span>
-                              <span className="text-emerald-500">{currentSeason}</span>
+                              <span className="text-emerald-500 text-sm">{currentSeason}</span>
                           </h4>
-                          <button onClick={() => generateContractFile(club.name, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-all mb-4">
-                              <FileSignature className="w-4 h-4 text-blue-500" />
-                              <span className="text-sm font-bold text-zinc-800 dark:text-white">Generar Contrato PDF</span>
+                          <button onClick={() => generateContractFile(club.name, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-4 rounded-xl shadow-sm hover:shadow-md transition-all mb-5">
+                              <FileSignature className="w-5 h-5 text-blue-500" />
+                              <span className="text-base font-bold text-zinc-800 dark:text-white">Generar Contrato PDF</span>
                           </button>
                           
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                               {checklistConfig.map(item => {
                                   const isChecked = getAssetValue(item);
                                   
                                   return (
-                                      <div key={item.id} className={cn("flex flex-col gap-2 p-2.5 rounded border transition-all", isChecked ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30" : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800")}>
+                                      <div key={item.id} className={cn("flex flex-col gap-3 p-4 rounded-xl border transition-all", isChecked ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30" : "bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800")}>
                                           
-                                          <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleDynamicAsset(item)}>
-                                              <div className={cn("w-4 h-4 rounded border flex items-center justify-center flex-shrink-0", isChecked ? "bg-emerald-500 border-emerald-500 text-white dark:text-black" : "bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600")}>
-                                                  {isChecked && <CheckCircle2 className="w-3 h-3"/>}
+                                          <div className="flex items-center gap-4 cursor-pointer" onClick={() => toggleDynamicAsset(item)}>
+                                              <div className={cn("w-5 h-5 rounded border flex items-center justify-center flex-shrink-0", isChecked ? "bg-emerald-500 border-emerald-500 text-white dark:text-black" : "bg-zinc-100 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600")}>
+                                                  {isChecked && <CheckCircle2 className="w-4 h-4"/>}
                                               </div>
                                               <div className="flex flex-col">
-                                                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                                                  <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                                                       {item.label}
                                                   </span>
-                                                  <span className="text-[9px] uppercase tracking-wider text-zinc-500">
+                                                  <span className="text-xs uppercase tracking-wider text-zinc-500 mt-0.5">
                                                       {item.type === 'global' ? '🌍 Para siempre' : item.type === 'seasonal' ? '🔄 Renovación Anual' : '📜 Documento Legal'}
                                                   </span>
                                               </div>
                                           </div>
 
                                           {item.type === 'contract' && isChecked && (
-                                              <div className="pl-7 pt-2 mt-1 border-t border-emerald-200/50 dark:border-emerald-500/20 flex items-center gap-2">
-                                                  <label className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Válido por:</label>
+                                              <div className="pl-9 pt-3 mt-2 border-t border-emerald-200/50 dark:border-emerald-500/20 flex items-center gap-3">
+                                                  <label className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Válido por:</label>
                                                   <select 
                                                       value={club.assets?.[`${item.id}_duration`] || 1}
                                                       onChange={(e) => updateContractDuration(item.id, parseInt(e.target.value))}
-                                                      className="text-xs bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-500/30 rounded px-1.5 py-1 outline-none focus:border-emerald-500 text-zinc-800 dark:text-zinc-200 font-bold"
+                                                      className="text-sm bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-500/30 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 text-zinc-800 dark:text-zinc-200 font-bold"
                                                   >
                                                       <option value={1}>1 Temporada (Solo {currentSeason})</option>
                                                       <option value={2}>2 Temporadas</option>
@@ -981,76 +913,76 @@ export default function ClubDetailPanel({
                           </div>
                       </div>
 
-                      <div className="pt-6 mt-6 border-t border-red-100 dark:border-red-500/10">
-                          <button onClick={onDeleteClub} className="w-full py-2.5 flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 rounded-lg transition-colors text-sm font-bold">
-                              <Trash2 className="w-4 h-4" /> Eliminar Club Permanentemente
+                      <div className="pt-8 mt-8 border-t border-red-100 dark:border-red-500/10">
+                          <button onClick={onDeleteClub} className="w-full py-3.5 flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 rounded-xl transition-colors text-base font-bold">
+                              <Trash2 className="w-5 h-5" /> Eliminar Club Permanentemente
                           </button>
                       </div>
 
                    </div>
                   ) : (
-                   <div className="space-y-6">
-                     <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg space-y-3 shadow-sm">
+                   <div className="space-y-8">
+                     <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl space-y-4 shadow-sm">
                         <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Registrar Interacción</label>
+                            <label className="text-xs font-bold uppercase text-zinc-500 tracking-widest">Registrar Interacción</label>
                             
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                                 <button 
                                     onClick={toggleDictation} 
-                                    className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-sm' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'}`}
+                                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-sm' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'}`}
                                 >
-                                    <Mic className="w-3 h-3" /> {isRecording ? "Detener grabación" : "Dictar"}
+                                    <Mic className="w-4 h-4" /> {isRecording ? "Detener grabación" : "Dictar"}
                                 </button>
                                 <button 
                                     onClick={handleAISummary} 
                                     disabled={!note || isSummarizing}
-                                    className="flex items-center gap-1 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 text-[10px] font-bold px-2 py-1 rounded transition-colors dark:bg-indigo-500/20 dark:text-indigo-400"
+                                    className="flex items-center gap-1.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 disabled:opacity-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors dark:bg-indigo-500/20 dark:text-indigo-400"
                                 >
-                                    <Sparkles className="w-3 h-3" /> {isSummarizing ? "Procesando..." : "Resumir con IA"}
+                                    <Sparkles className="w-4 h-4" /> {isSummarizing ? "Procesando..." : "Resumir con IA"}
                                 </button>
                             </div>
                         </div>
 
-                        <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none min-h-[80px]" placeholder="Pega aquí el chat de WhatsApp o usa el botón de dictar para grabar una nota de voz..." value={note} onChange={(e) => setNote(e.target.value)} />
+                        <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-base text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none min-h-[120px]" placeholder="Pega aquí el chat de WhatsApp o usa el botón de dictar para grabar una nota de voz..." value={note} onChange={(e) => setNote(e.target.value)} />
                         
-                        <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-3 pt-3">
                              <div className="flex-1">
-                                <input type="date" className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-xs border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1.5 w-full outline-none focus:border-emerald-500" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
+                                <input type="date" className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 w-full outline-none focus:border-emerald-500" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
                              </div>
-                             <Button variant="primary" size="sm" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar Historial</Button>
+                             <Button variant="primary" size="default" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar Historial</Button>
                         </div>
                      </div>
 
-                    <div className="space-y-6 border-l border-zinc-200 dark:border-zinc-800 ml-2 mt-6 pl-4 pb-4">
+                    <div className="space-y-8 border-l-2 border-zinc-200 dark:border-zinc-800 ml-2 pl-6 pb-6 mt-8">
                         {[...interactions].map(event => (
                         <div key={event.id} className="relative group">
-                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
-                            <div className="flex justify-between items-baseline mb-1">
-                             <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                          <div className="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-2 bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
+                            <div className="flex justify-between items-baseline mb-2">
+                             <span className="text-base font-bold text-zinc-800 dark:text-zinc-200">
                                 {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type === 'manual' ? 'Manual' : event.type}
-                                <span className="text-xs font-normal text-zinc-500 ml-2 border-l border-zinc-300 dark:border-zinc-700 pl-2">
+                                <span className="text-sm font-normal text-zinc-500 ml-3 border-l border-zinc-300 dark:border-zinc-700 pl-3">
                                     por {event.user || 'Desconocido'}
                                 </span>
                             </span>
-                             <div className="flex items-center gap-2">
-                                 <span className="text-[10px] text-zinc-500">{event.date}</span>
-                                 <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                                     <button onClick={() => startEditInteraction(event)} className="text-blue-500 hover:text-blue-600"><Edit2 className="w-3.5 h-3.5"/></button>
-                                     <button onClick={() => onDeleteInteraction(event.id)} className="text-red-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5"/></button>
+                             <div className="flex items-center gap-3">
+                                 <span className="text-xs text-zinc-500">{event.date}</span>
+                                 <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
+                                     <button onClick={() => startEditInteraction(event)} className="text-blue-500 hover:text-blue-600"><Edit2 className="w-4 h-4"/></button>
+                                     <button onClick={() => onDeleteInteraction(event.id)} className="text-red-500 hover:text-red-600"><Trash2 className="w-4 h-4"/></button>
                                  </div>
                              </div>
                           </div>
                           
                           {editingInteraction === event.id ? (
-                              <div className="mt-2 bg-zinc-50 dark:bg-zinc-900 p-2 rounded border border-blue-200 dark:border-blue-900/50">
-                                  <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 text-xs text-zinc-900 dark:text-white outline-none focus:border-blue-500 resize-none" rows={2} value={editNote} onChange={e => setEditNote(e.target.value)} />
-                                  <div className="flex gap-2 mt-2">
+                              <div className="mt-3 bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-200 dark:border-blue-900/50">
+                                  <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-base text-zinc-900 dark:text-white outline-none focus:border-blue-500 resize-none" rows={3} value={editNote} onChange={e => setEditNote(e.target.value)} />
+                                  <div className="flex gap-3 mt-3">
                                       <Button size="sm" onClick={() => saveEditInteraction(event.id)}>Guardar</Button>
                                       <Button size="sm" variant="ghost" onClick={() => { setEditingInteraction(null); setEditNote(""); }}>Cancelar</Button>
                                   </div>
                               </div>
                           ) : (
-                              <p className="whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
+                              <p className="whitespace-pre-wrap text-base text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/50">{event.note}</p>
                           )}
                        </div>
                      ))}
