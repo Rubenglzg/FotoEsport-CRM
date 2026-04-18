@@ -92,8 +92,8 @@ export default function PipelineView({ clubs, statuses, onUpdateClub, onSelect, 
                                 </span>
                             </div>
 
-                            {/* Añadido touch-pan-y y overscroll-contain para mejorar la experiencia de scroll en móviles */}
-                            <div className="p-3 flex-1 overflow-y-auto flex flex-col gap-3 custom-scrollbar pb-24 md:pb-3 touch-pan-y overscroll-contain">
+                            {/* Quitamos touch-pan-y para que no bloquee el scroll horizontal del contenedor padre */}
+                            <div className="p-3 flex-1 overflow-y-auto flex flex-col gap-3 custom-scrollbar pb-24 md:pb-3 overscroll-contain">
                                 {statusClubs.map(club => (
                                     <div
                                         key={club.id}
@@ -109,7 +109,7 @@ export default function PipelineView({ clubs, statuses, onUpdateClub, onSelect, 
                                         }}
                                         className={cn(
                                             "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-sm transition-all relative",
-                                            !isMobile ? "cursor-grab hover:border-emerald-500/50" : "touch-pan-y",
+                                            !isMobile ? "cursor-grab hover:border-emerald-500/50" : "",
                                             draggedClubId === club.id ? "ring-2 ring-emerald-500 opacity-50" : ""
                                         )}
                                     >
