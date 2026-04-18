@@ -61,6 +61,7 @@ export default function ClubDetailPanel({
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
     const [tempCategory, setTempCategory] = useState(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
+    const [tempAddress, setTempAddress] = useState(club.address || '');
 
     const [tempPlayers, setTempPlayers] = useState(club.estimatedPlayers || '');
     const [tempTotalTeams, setTempTotalTeams] = useState(club.totalTeams || '');
@@ -122,11 +123,15 @@ export default function ClubDetailPanel({
         setTempCategory(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
         setTempActiveFrom(club.activeFromSeason || '');
         setTempActiveUntil(club.activeUntilSeason || '');
+        setTempAddress(club.address || '');
     }, [club.id, club.name, club.provincia, club.category, club.activeFromSeason, club.activeUntilSeason, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
     const handleSaveProvincia = () => { if (tempProvincia !== club.provincia) onUpdateClub({...club, provincia: tempProvincia}); };
+    const handleSaveAddress = () => { 
+        if (tempAddress !== club.address) onUpdateClub({...club, address: tempAddress}); 
+    };
     const handleSavePlayers = () => { if (Number(tempPlayers) !== club.estimatedPlayers) onUpdateClub({...club, estimatedPlayers: Number(tempPlayers)}); };
     const handleSaveTotalTeams = () => { if (Number(tempTotalTeams) !== club.totalTeams) onUpdateClub({...club, totalTeams: Number(tempTotalTeams)}); };
     const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
@@ -346,12 +351,21 @@ export default function ClubDetailPanel({
             listener = autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
                 if (place.geometry && place.geometry.location) {
+                    const newAddress = place.formatted_address || place.name;
+                    
+                    setTempAddress(newAddress); // Actualizamos el estado local
+                    
                     onUpdateClub({ 
                         ...club, 
-                        address: place.formatted_address || place.name, 
+                        address: newAddress, 
                         lat: place.geometry.location.lat(), 
                         lng: place.geometry.location.lng() 
                     });
+
+                    // Forzar blur para ocultar el teclado en móvil automáticamente
+                    setTimeout(() => {
+                        if (inputRef.current) inputRef.current.blur();
+                    }, 10);
                 }
             });
 
@@ -812,13 +826,15 @@ export default function ClubDetailPanel({
                           <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4 tracking-widest">Ubicación (Mapa)</h4>
                           <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex flex-col gap-4 shadow-sm">
                               <div className="w-full relative z-50">
-                                  <input 
-                                      ref={inputRef}
-                                      type="text" 
-                                      defaultValue={club.address}
-                                      placeholder="Escribe la dirección del club..."
-                                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
-                                  />
+                                    <input 
+                                        ref={inputRef}
+                                        type="text" 
+                                        value={tempAddress}
+                                        onChange={(e) => setTempAddress(e.target.value)}
+                                        onBlur={handleSaveAddress}
+                                        placeholder="Escribe la dirección del club..."
+                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-white shadow-sm"
+                                    />
                                   
                                   <div className={`mt-4 p-3 rounded-lg flex items-center gap-3 text-sm break-words leading-relaxed transition-colors duration-300 ${isAddressSelected ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent'}`}>
                                       {isAddressSelected && <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
