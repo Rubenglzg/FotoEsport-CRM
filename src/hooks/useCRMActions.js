@@ -1,5 +1,5 @@
 // src/hooks/useCRMActions.js
-import { doc, setDoc, updateDoc, writeBatch, deleteDoc, FieldPath, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, writeBatch, deleteDoc, FieldPath, collection, query, where, getDocs, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { exportToCSV } from '../utils/helpers';
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../services/googleCalendar';
@@ -266,25 +266,82 @@ export const useCRMActions = ({
     };
 
     const handleDeleteSeason = async (seasonName) => {
-        if (!window.confirm(`⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}".`)) return;
+        // 1. Identificar clubes que SOLO existen en esta temporada
+        const clubsToDelete = clubs.filter(club => {
+            const statuses = club.seasonStatuses || {};
+            const keys = Object.keys(statuses);
+            return keys.length === 1 && keys[0] === seasonName;
+        });
+
+        // 2. Identificar clubes que están en esta temporada pero también en otras
+        const clubsToUpdate = clubs.filter(club => {
+            const statuses = club.seasonStatuses || {};
+            const keys = Object.keys(statuses);
+            return keys.includes(seasonName) && keys.length > 1;
+        });
+
+        // 3. Generar mensaje de confirmación dinámico
+        let confirmMessage = `⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}".`;
+        
+        if (clubsToDelete.length > 0) {
+            confirmMessage = `⚠️ ADVERTENCIA: Estás a punto de eliminar la temporada "${seasonName}".\n\n🚨 IMPORTANTE: Hay ${clubsToDelete.length} club(es) que SOLO existen en esta temporada. Si continúas, también se eliminarán por completo todos los datos asociados a esos clubes.\n\n¿Deseas continuar?`;
+        } else {
+            confirmMessage += `\n\n¿Deseas continuar?`;
+        }
+
+        if (!window.confirm(confirmMessage)) return;
         
         const updatedSeasons = seasons.filter(s => s !== seasonName);
         if (updatedSeasons.length === 0) {
             showToast("Debe quedar al menos una temporada en el CRM", "error");
             return;
         }
-        
-        const updates = { seasons: updatedSeasons };
-        if (activeSeason === seasonName) {
-            updates.activeSeason = updatedSeasons[0];
-            setActiveSeason(updatedSeasons[0]);
+
+        try {
+            // Usamos writeBatch para hacer todas las eliminaciones y ediciones a la vez
+            const batch = writeBatch(db);
+
+            // A) Eliminar los clubes huérfanos por completo
+            clubsToDelete.forEach(club => {
+                const clubRef = doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', club.id);
+                batch.delete(clubRef);
+            });
+
+            // B) Eliminar el registro de esta temporada en los clubes que sobreviven
+            clubsToUpdate.forEach(club => {
+                const clubRef = doc(db, 'artifacts', appId, 'users', user.uid, 'clubs', club.id);
+                batch.update(clubRef, new FieldPath('seasonStatuses', seasonName), deleteField());
+            });
+
+            // C) Actualizar la configuración general de temporadas
+            const updates = { seasons: updatedSeasons };
+            if (activeSeason === seasonName) {
+                updates.activeSeason = updatedSeasons[0];
+                setActiveSeason(updatedSeasons[0]);
+            }
+            if (selectedSeason === seasonName) {
+                setSelectedSeason(updatedSeasons[0]);
+                updates.currentSeason = updatedSeasons[0];
+            }
+            
+            const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm');
+            batch.update(settingsRef, updates);
+
+            // Ejecutamos todos los cambios a la base de datos juntos
+            await batch.commit();
+            
+            // Si el usuario tenía seleccionado en el panel lateral un club que acaba de ser eliminado, lo deseleccionamos
+            const selectedClubWasDeleted = clubsToDelete.some(c => c.id === window.currentSelectedClubId);
+            if (selectedClubWasDeleted && typeof setSelectedClub === 'function') {
+                setSelectedClub(null);
+            }
+
+            showToast("Temporada y datos relacionados eliminados", "success");
+
+        } catch (error) {
+            console.error("Error al eliminar la temporada:", error);
+            showToast("Error al eliminar la temporada", "error");
         }
-        if (selectedSeason === seasonName) {
-            setSelectedSeason(updatedSeasons[0]);
-        }
-        
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'crm'), updates, { merge: true });
-        showToast("Temporada eliminada", "success");
     };
 
     const handleExportSeason = (seasonName) => {
