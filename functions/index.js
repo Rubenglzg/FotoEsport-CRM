@@ -58,12 +58,14 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
         let userId = ""; 
         let audioBuffer = null;
         let mimeType = "audio/m4a"; 
+        let fechaInteraccion = "";
 
         busboy.on("field", (fieldname, val) => {
             if (fieldname === "club") clubName = val;
             if (fieldname === "token") token = val;
             if (fieldname === "tipo") tipoInteraccion = val; 
             if (fieldname === "userId") userId = val; 
+            if (fieldname === "fecha") fechaInteraccion = val;
         });
 
         busboy.on("file", (fieldname, file, info) => {
@@ -173,7 +175,7 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
                     type: tipoInteraccion, 
                     user: nombreReal,  // <--- AHORA USA EL NOMBRE REAL
                     note: summary,
-                    date: new Date().toLocaleDateString('es-ES')
+                    date: fechaFinal
                 });
 
                 res.status(200).json({ success: true, message: `Resumen guardado en ${targetClubName}` });
