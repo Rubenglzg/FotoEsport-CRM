@@ -978,9 +978,9 @@ export default function ClubDetailPanel({
 
                         <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-base text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none min-h-[120px]" placeholder="Pega aquí el chat de WhatsApp o usa el botón de dictar para grabar una nota de voz..." value={note} onChange={(e) => setNote(e.target.value)} />
                         
-                        <div className="flex items-end gap-3 pt-3">
-                            <div className="flex-1 flex gap-3">
-                                <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 pt-3">
+                            <div className="flex-1 flex flex-col sm:flex-row gap-3 w-full">
+                                <div className="flex-1 w-full">
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1 block">Fecha Actividad</label>
                                     <input 
                                         type="date" 
@@ -989,7 +989,7 @@ export default function ClubDetailPanel({
                                         onChange={(e) => setInteractionDate(e.target.value)} 
                                     />
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 w-full">
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1 block">Próximo Contacto (Tarea)</label>
                                     <input 
                                         type="date" 
@@ -999,9 +999,18 @@ export default function ClubDetailPanel({
                                     />
                                 </div>
                             </div>
-                            <Button variant="primary" size="default" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>
-                                Guardar Historial
-                            </Button>
+                            <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                                <Button 
+                                    variant="primary" 
+                                    size="default" 
+                                    onClick={handleAddInteraction} 
+                                    disabled={!note} 
+                                    isLoading={isSubmitting}
+                                    className="w-full"
+                                >
+                                    Guardar Historial
+                                </Button>
+                            </div>
                         </div>
                      </div>
 
