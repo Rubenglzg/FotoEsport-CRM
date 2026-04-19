@@ -22,6 +22,7 @@ export default function ClubDetailPanel({
     const recognitionRef = useRef(null);
     const [expandedContactIdx, setExpandedContactIdx] = useState(null);
     const manualStopRef = useRef(false);
+    const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0]);
 
     const [tempActiveFrom, setTempActiveFrom] = useState(club.activeFromSeason || '');
     const [tempActiveUntil, setTempActiveUntil] = useState(club.activeUntilSeason || '');
@@ -234,18 +235,34 @@ export default function ClubDetailPanel({
         setIsSubmitting(true);
         try {
             const userName = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
+            
+            // Creamos un objeto de fecha con el valor del input y lo pasamos a formato local (DD/MM/YYYY)
+            const dateObj = new Date(interactionDate);
+            const formattedDate = dateObj.toLocaleDateString();
+
             await onAddInteraction({ 
                 id: Math.random().toString(), 
                 clubId: club.id, 
                 type: interactionType, 
                 user: userName,
                 note, 
-                date: new Date().toLocaleDateString() 
+                date: formattedDate // <--- Ahora usamos la fecha del selector en lugar de la fecha actual
             });
-            if(nextDate) await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'manual' ? 'Manual' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
-            setNote(""); setNextDate("");
-        } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
+            
+            if(nextDate) {
+                await onAddTask({ id: Math.random().toString(), clubId: club.id, task: `Seguimiento: ${interactionType === 'manual' ? 'Manual' : 'Contacto'}`, priority: 'medium', due: nextDate, time: '09:00' });
+            }
+            
+            setNote(""); 
+            setNextDate("");
+            setInteractionDate(new Date().toISOString().split('T')[0]); // Reiniciamos a la fecha de hoy
+        } catch (error) { 
+            console.error(error); 
+        } finally { 
+            setIsSubmitting(false); 
+        }
     };
+
     const startEditInteraction = (event) => {
         setEditingInteraction(event.id);
         setEditNote(event.note);
@@ -961,11 +978,30 @@ export default function ClubDetailPanel({
 
                         <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-base text-zinc-900 dark:text-white outline-none focus:border-emerald-500 resize-none min-h-[120px]" placeholder="Pega aquí el chat de WhatsApp o usa el botón de dictar para grabar una nota de voz..." value={note} onChange={(e) => setNote(e.target.value)} />
                         
-                        <div className="flex items-center gap-3 pt-3">
-                             <div className="flex-1">
-                                <input type="date" className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 w-full outline-none focus:border-emerald-500" value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
-                             </div>
-                             <Button variant="primary" size="default" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>Guardar Historial</Button>
+                        <div className="flex items-end gap-3 pt-3">
+                            <div className="flex-1 flex gap-3">
+                                <div className="flex-1">
+                                    <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1 block">Fecha Actividad</label>
+                                    <input 
+                                        type="date" 
+                                        className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 w-full outline-none focus:border-emerald-500" 
+                                        value={interactionDate} 
+                                        onChange={(e) => setInteractionDate(e.target.value)} 
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1 block">Próximo Contacto (Tarea)</label>
+                                    <input 
+                                        type="date" 
+                                        className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 w-full outline-none focus:border-emerald-500" 
+                                        value={nextDate} 
+                                        onChange={(e) => setNextDate(e.target.value)} 
+                                    />
+                                </div>
+                            </div>
+                            <Button variant="primary" size="default" onClick={handleAddInteraction} disabled={!note} isLoading={isSubmitting}>
+                                Guardar Historial
+                            </Button>
                         </div>
                      </div>
 
