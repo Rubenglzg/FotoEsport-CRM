@@ -139,7 +139,7 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     { id: 'teams', label: 'Equipos (Tot/Base)', flex: 2 },
     { id: 'status', label: 'Estado', flex: 2 },
     { id: 'lastContact', label: 'Último Contacto', flex: 2 },
-    { id: 'recommendedDate', label: 'Recomendado (IA)', flex: 2 },
+    { id: 'recommendedDate', label: 'Próx. Contacto', flex: 2 },
   ];
 
   const toggleColFilterValue = (colId, value) => {

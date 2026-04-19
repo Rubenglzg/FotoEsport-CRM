@@ -8,9 +8,19 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
   const [aiRecommendation, setAiRecommendation] = useState(null);
   const [loadingAI, setLoadingAI] = useState(true);
 
-  const urgentTasks = tasks
-    .filter(t => t.priority === 'high' || new Date(t.due) <= new Date())
-    .slice(0, 3);
+  const todayDate = new Date();
+  todayDate.setHours(0,0,0,0);
+  
+  const dueClubs = clubs
+    .filter(c => {
+        if (!c.recommendedContactDate) return false;
+        const recDate = new Date(c.recommendedContactDate);
+        recDate.setHours(0,0,0,0);
+        // Mostramos los clubes cuya fecha sea hoy o anterior, omitiendo los rechazados
+        return recDate <= todayDate && c.status !== 'rejected';
+    })
+    .sort((a, b) => new Date(a.recommendedContactDate) - new Date(b.recommendedContactDate))
+    .slice(0, 5); // Mostramos los 5 más urgentes
 
   const fetchAIRecommendation = useCallback(async (forceRefresh = false) => {
     try {
@@ -224,25 +234,28 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
 
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm h-fit">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex justify-between items-center">
-              Vencen pronto
-              <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded text-xs">
-                  {urgentTasks.length}
+              Contactar Hoy / Atrasados
+              <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded text-xs font-bold">
+                  {dueClubs.length}
               </span>
           </h3>
           
           <div className="space-y-4">
-            {urgentTasks.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No tienes tareas atrasadas o para hoy. ¡Todo bajo control!</p>
+            {dueClubs.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No hay clubes pendientes de contactar hoy. ¡Buen trabajo!</p>
             ) : (
-                urgentTasks.map(task => (
-                <div key={task.id} className="flex items-start p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-100 dark:border-zinc-800">
-                    <div className="mt-0.5 mr-3 text-slate-400 hover:text-emerald-600 cursor-pointer">
-                    <CheckCircle2 size={20} />
+                dueClubs.map(club => (
+                <div 
+                    key={club.id} 
+                    onClick={() => handleActionClick(club.id)} 
+                    className="flex items-start p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-100 dark:border-zinc-800 cursor-pointer hover:border-emerald-500 hover:shadow-sm transition-all group"
+                >
+                    <div className="mt-0.5 mr-3 text-emerald-500 group-hover:scale-110 transition-transform">
+                        <PhoneCall size={20} />
                     </div>
                     <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white leading-tight">{task.task}</p>
-                    {/* FECHA FORMATEADA AQUÍ */}
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{formatDateToDDMMYYYY(task.due)} {task.time}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 transition-colors">{club.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Próx. Contacto: {formatDateToDDMMYYYY(club.recommendedContactDate)}</p>
                     </div>
                 </div>
                 ))
@@ -250,10 +263,10 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           </div>
           
           <button 
-            onClick={() => onNavigate('calendar')}
+            onClick={() => onNavigate('database')}
             className="w-full mt-6 text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 py-2.5 rounded-lg transition-colors"
           >
-            Ver Calendario Completo
+            Ir a la Cartera Completa
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail, Search, Check } from 'lucide-react';
+import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail, Search, Check, Clock, PhoneCall } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
@@ -698,32 +698,47 @@ export default function ClubDetailPanel({
 <div className="flex-1 p-6 md:p-8">
                  {activeTab === 'details' ? (
                    <div className="space-y-10">
-                      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 p-5 rounded-2xl relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-5 opacity-10 pointer-events-none"><Sparkles className="w-20 h-20 text-blue-500"/></div>
-                          <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-4 tracking-widest flex items-center gap-2"><Sparkles className="w-4 h-4"/> Inteligencia y Actividad</h4>
-                          
-                          <div className="grid grid-cols-2 gap-5 relative z-10">
-                              <div className="flex flex-col justify-end">
-                                  <label className="text-xs text-zinc-500 block mb-1.5 font-bold">Último Contacto</label>
-                                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 flex items-center h-11 text-sm text-zinc-700 dark:text-zinc-300 font-medium shadow-sm w-full">
-                                      {club.lastContactDate || "Sin historial"}
-                                  </div>
+                      {/* --- SECCIÓN DE FECHAS CLAVE (Renovada para ser más intuitiva) --- */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Último contacto */}
+                          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 flex flex-col shadow-sm">
+                              <span className="text-xs font-bold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
+                                  <Clock className="w-4 h-4"/> Último Contacto
+                              </span>
+                              <div className="text-sm text-zinc-900 dark:text-white font-bold h-[42px] flex items-center bg-zinc-50 dark:bg-zinc-900 px-4 rounded-lg border border-zinc-100 dark:border-zinc-800 truncate">
+                                  {club.lastContactDate || "Sin historial de contacto"}
+                              </div>
+                          </div>
+
+                          {/* Próximo contacto (Destacado en verde esmeralda) */}
+                          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4 flex flex-col shadow-sm relative overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
+                              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
+                                  <PhoneCall className="w-16 h-16 text-emerald-600"/>
                               </div>
                               
-                              <div className="flex flex-col justify-end">
-                                  <label className="text-xs text-zinc-500 block mb-1.5 font-bold">Próximo Recomendado</label>
-                                  <div className="flex gap-2 shadow-sm h-11">
-                                      <input 
-                                          type="date" 
-                                          value={tempRecDate} 
-                                          onChange={(e) => setTempRecDate(e.target.value)} 
-                                          onBlur={handleSaveRecDate}
-                                          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-sm flex-1 outline-none focus:border-blue-500 text-zinc-900 dark:text-white h-full" 
-                                      />
-                                      <Button variant="primary" size="sm" onClick={handleAIPredictDate} disabled={isSuggestingDate} title="Sugerir fecha con IA" className="px-3 h-full flex items-center justify-center">
-                                          <Sparkles className="w-5 h-5" />
-                                      </Button>
-                                  </div>
+                              <label className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-2 flex items-center gap-1.5 z-10">
+                                  <PhoneCall className="w-4 h-4"/> Próxima Fecha de Contacto
+                              </label>
+                              
+                              <div className="flex flex-col sm:flex-row gap-2 z-10 w-full">
+                                  <input 
+                                      type="date" 
+                                      value={tempRecDate} 
+                                      onChange={(e) => setTempRecDate(e.target.value)} 
+                                      onBlur={handleSaveRecDate}
+                                      className="bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500 text-zinc-900 dark:text-white font-bold flex-1 shadow-sm h-[42px]" 
+                                  />
+                                  <Button 
+                                    variant="primary" 
+                                    size="sm" 
+                                    onClick={handleAIPredictDate} 
+                                    disabled={isSuggestingDate} 
+                                    className="whitespace-nowrap flex items-center justify-center gap-2 h-[42px]"
+                                    title="Analizar historial y sugerir fecha con Inteligencia Artificial"
+                                   >
+                                      <Sparkles className="w-4 h-4" /> 
+                                      <span className="sm:hidden lg:inline">Sugerir IA</span>
+                                  </Button>
                               </div>
                           </div>
                       </div>
