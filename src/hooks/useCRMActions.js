@@ -150,11 +150,24 @@ export const useCRMActions = ({
 
     const handleUpdateInteraction = async (interactionId, newNote, newDate) => {
         try {
-            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interactionId), {
-                note: newNote, updatedAt: Date.now()
-            });
+            // Preparamos los datos base a actualizar
+            const updateData = {
+                note: newNote, 
+                updatedAt: Date.now()
+            };
+            
+            // Si llega una nueva fecha desde el panel, la añadimos a los datos a guardar
+            if (newDate) {
+                updateData.date = newDate;
+            }
+
+            // Enviamos la actualización a Firebase
+            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interactionId), updateData);
             showToast("Actividad actualizada", "success");
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            showToast("Error al actualizar la actividad", "error");
+        }
     };
 
     const handleDeleteInteraction = async (interactionId) => {
