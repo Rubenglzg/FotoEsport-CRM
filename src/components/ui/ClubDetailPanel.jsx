@@ -61,6 +61,7 @@ export default function ClubDetailPanel({
     const [contacts, setContacts] = useState(club.contacts || []);
     const [editingInteraction, setEditingInteraction] = useState(null);
     const [editNote, setEditNote] = useState("");
+    const [editDate, setEditDate] = useState("");
     const [tempCategory, setTempCategory] = useState(Array.isArray(club.category) ? club.category : (club.category ? [club.category] : []));
     const [tempAddress, setTempAddress] = useState(club.address || '');
 
@@ -266,11 +267,34 @@ export default function ClubDetailPanel({
     const startEditInteraction = (event) => {
         setEditingInteraction(event.id);
         setEditNote(event.note);
+        
+        // Convertimos la fecha (que suele venir en DD/MM/YYYY) a formato YYYY-MM-DD para el input
+        let dateForInput = new Date().toISOString().split('T')[0];
+        if (event.date) {
+            if (event.date.includes('/')) {
+                const parts = event.date.split('/');
+                if (parts.length === 3) {
+                    const [day, month, year] = parts;
+                    dateForInput = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+            } else {
+                dateForInput = event.date; // Por si ya viene en formato compatible
+            }
+        }
+        setEditDate(dateForInput);
     };
+
     const saveEditInteraction = async (id) => {
-        await onUpdateInteraction(id, editNote);
+        // Volvemos a formatear la fecha a DD/MM/YYYY como se guarda originalmente
+        const dateObj = new Date(editDate);
+        const formattedDisplayDate = dateObj.toLocaleDateString();
+
+        // IMPORTANTE: Aquí estamos pasando la fecha como TERCER argumento. 
+        await onUpdateInteraction(id, editNote, formattedDisplayDate);
+        
         setEditingInteraction(null);
         setEditNote("");
+        setEditDate("");
     };
 
     // Funciones para IA y Voz
@@ -1038,12 +1062,38 @@ export default function ClubDetailPanel({
                              </div>
                           </div>
                           
-                          {editingInteraction === event.id ? (
-                              <div className="mt-3 bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-200 dark:border-blue-900/50">
-                                  <textarea className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-base text-zinc-900 dark:text-white outline-none focus:border-blue-500 resize-none" rows={3} value={editNote} onChange={e => setEditNote(e.target.value)} />
-                                  <div className="flex gap-3 mt-3">
-                                      <Button size="sm" onClick={() => saveEditInteraction(event.id)}>Guardar</Button>
-                                      <Button size="sm" variant="ghost" onClick={() => { setEditingInteraction(null); setEditNote(""); }}>Cancelar</Button>
+                            {editingInteraction === event.id ? (
+                              <div className="mt-3 bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-blue-200 dark:border-blue-900/50 shadow-sm">
+                                  {/* Selector de fecha adaptado a móvil */}
+                                  <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                                      <div className="w-full sm:w-[40%]">
+                                          <label className="text-[10px] text-zinc-500 font-bold uppercase mb-1 block">
+                                              Fecha de la actividad
+                                          </label>
+                                          <input 
+                                              type="date" 
+                                              className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 w-full outline-none focus:border-blue-500" 
+                                              value={editDate} 
+                                              onChange={(e) => setEditDate(e.target.value)} 
+                                          />
+                                      </div>
+                                  </div>
+
+                                  <textarea 
+                                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-base text-zinc-900 dark:text-white outline-none focus:border-blue-500 resize-none min-h-[100px]" 
+                                      rows={3} 
+                                      value={editNote} 
+                                      onChange={e => setEditNote(e.target.value)} 
+                                  />
+                                  
+                                  {/* Botones responsivos: apilados en móvil, en línea en escritorio */}
+                                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">
+                                      <Button className="w-full sm:w-auto justify-center" size="sm" onClick={() => saveEditInteraction(event.id)}>
+                                          Guardar Cambios
+                                      </Button>
+                                      <Button className="w-full sm:w-auto justify-center" size="sm" variant="ghost" onClick={() => { setEditingInteraction(null); setEditNote(""); setEditDate(""); }}>
+                                          Cancelar
+                                      </Button>
                                   </div>
                               </div>
                           ) : (

@@ -148,7 +148,7 @@ export const useCRMActions = ({
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interaction.id.toString()), { ...interaction, createdAt: Date.now() });
     };
 
-    const handleUpdateInteraction = async (interactionId, newNote) => {
+    const handleUpdateInteraction = async (interactionId, newNote, newDate) => {
         try {
             await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'interactions', interactionId), {
                 note: newNote, updatedAt: Date.now()
