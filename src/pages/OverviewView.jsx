@@ -44,6 +44,17 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
       const activeClubs = clubs
           .filter(c => c.status !== 'rejected')
           .map(c => ({ id: c.id, nombre: c.name, estado: c.status, interaccion: c.lastInteraction }));
+
+      // NUEVO: Mapeamos las tareas para inyectar el nombre real del club
+      const pendingTasks = tasks.slice(0, 8).map(t => {
+          const clubInfo = clubs.find(c => c.id === t.clubId);
+          return {
+              tituloOriginal: t.title,
+              prioridad: t.priority,
+              nombreClub: clubInfo?.name || 'Club Desconocido',
+              clubId: t.clubId
+          };
+      });
           
       const recentInteractions = interactions.slice(0, 8).map(i => {
           const clubInfo = clubs.find(c => c.id === i.clubId);
@@ -51,13 +62,14 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           return `[Nota escrita el: ${noteDate}] Club: ${clubInfo?.name || 'Desconocido'} | Nota: ${i.note}`;
       });
       
+      // ACTUALIZADO: Cambiamos las variables inyectadas y añadimos una instrucción estricta (Regla 4)
       const prompt = `
         Eres el director comercial y secretario estratégico de un CRM de ventas de merchandising para clubes deportivos.
         Tu objetivo es analizar la agenda y el historial para crear el "Plan de Vuelo" del día para el vendedor.
         
         Datos actuales:
         - FECHA DE HOY: ${todayDateStr} (Usa esto como tu ancla temporal absoluta).
-        - Tareas pendientes: ${JSON.stringify(tasks.slice(0, 8))}
+        - Tareas pendientes: ${JSON.stringify(pendingTasks)}
         - HISTORIAL RECIENTE: ${JSON.stringify(recentInteractions)}
         - Estado de clubes: ${JSON.stringify(activeClubs.slice(0, 15))}
         
@@ -65,7 +77,8 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
         1. Actúa como un jefe/consejero: directo, claro, motivador y enfocado a facturar y no olvidar deadlines.
         2. ANÁLISIS TEMPORAL (CRÍTICO): Revisa cuidadosamente cuándo fue escrita cada nota ("[Nota escrita el: ...]"). Si una nota antigua dice "llama el martes", comprueba si ese martes ya pasó respecto a la FECHA DE HOY. Si ya pasó, la tarea es reclamar porque van tarde, no "prepararse" para un día futuro.
         3. Genera un breve resumen ejecutivo y un plan de acción con las 3 o 4 tareas más críticas de hoy. Considera si es fin de semana para adaptar las tareas.
-        4. REGLA ESTRICTA DE DISEÑO: El campo "action" se mostrará dentro de un botón pequeño en la interfaz. DEBE TENER MÁXIMO 2 O 3 PALABRAS.
+        4. REGLA ESTRICTA DE NOMBRES: En los campos "title" y "reason" debes usar SIEMPRE el nombre real del club (ej. "C.D. Castellón"). Tienes ESTRICTAMENTE PROHIBIDO mostrar o escribir IDs numéricos (como 1776269585762) en los textos generados.
+        5. REGLA ESTRICTA DE DISEÑO: El campo "action" se mostrará dentro de un botón pequeño en la interfaz. DEBE TENER MÁXIMO 2 O 3 PALABRAS.
         
         Devuelve estrictamente un JSON con esta estructura (nada de markdown, solo JSON):
         {
