@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, PhoneCall, Clock, AlertCircle, CheckCircle2, ChevronRight, Target, Loader2, RefreshCw, Briefcase } from 'lucide-react';
+import { Sparkles, PhoneCall, Clock, AlertCircle, Target, Loader2, RefreshCw, Briefcase } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { formatDateToDDMMYYYY } from '../utils/helpers'; // <-- AÑADIDA LA IMPORTACIÓN AQUÍ
+import { formatDateToDDMMYYYY } from '../utils/helpers';
+import AIChat from '../components/ui/AIChat';
 
 const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) => {
   const [activeMode, setActiveMode] = useState(null);
@@ -142,6 +143,8 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* COLUMNA IZQUIERDA (Briefing Diario y Accesos Rápidos) */}
         <div className="lg:col-span-2 space-y-6">
           
           <div className="bg-gradient-to-br from-emerald-700 to-slate-900 rounded-xl p-6 text-white shadow-xl relative overflow-hidden min-h-[300px]">
@@ -188,7 +191,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                                   </h3>
                                   <p className="text-emerald-100/70 text-xs md:text-sm mt-1 ml-9">{plan.reason}</p>
                               </div>
-                              {/* Botón: Ancho completo en móvil (w-full) y normal en PC (md:w-auto) */}
                               <button 
                                   onClick={() => handleActionClick(plan.clubId)}
                                   className="bg-emerald-500 text-slate-900 text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-emerald-400 transition-colors whitespace-nowrap flex-shrink-0 md:ml-4 shadow-sm w-full md:w-auto mt-2 md:mt-0 text-center"
@@ -216,7 +218,6 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
                       if(mode.id === 'cold-calls' || mode.id === 'follow-ups') onNavigate('database');
                       if(mode.id === 'urgent') onNavigate('calendar');
                   }}
-                  // En móvil usamos flex horizontal, en PC block (cuadrado normal)
                   className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 md:p-5 hover:border-emerald-500 cursor-pointer transition-all group shadow-sm flex items-center md:block gap-4 md:gap-0"
                 >
                   <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center md:mb-4 ${mode.color}`}>
@@ -232,42 +233,55 @@ const OverviewView = ({ clubs, tasks, interactions, onNavigate, onSelectClub }) 
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm h-fit">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex justify-between items-center">
-              Contactar Hoy / Atrasados
-              <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded text-xs font-bold">
-                  {dueClubs.length}
-              </span>
-          </h3>
+        {/* COLUMNA DERECHA (Contactos Pendientes + CHAT GEMINI) */}
+        <div className="space-y-6 flex flex-col">
           
-          <div className="space-y-4">
-            {dueClubs.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No hay clubes pendientes de contactar hoy. ¡Buen trabajo!</p>
-            ) : (
-                dueClubs.map(club => (
-                <div 
-                    key={club.id} 
-                    onClick={() => handleActionClick(club.id)} 
-                    className="flex items-start p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-100 dark:border-zinc-800 cursor-pointer hover:border-emerald-500 hover:shadow-sm transition-all group"
-                >
-                    <div className="mt-0.5 mr-3 text-emerald-500 group-hover:scale-110 transition-transform">
-                        <PhoneCall size={20} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 transition-colors">{club.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Próx. Contacto: {formatDateToDDMMYYYY(club.recommendedContactDate)}</p>
-                    </div>
-                </div>
-                ))
-            )}
+          {/* Tarjeta de Atrasados */}
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm h-fit">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex justify-between items-center">
+                Contactar Hoy / Atrasados
+                <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 px-2 py-0.5 rounded text-xs font-bold">
+                    {dueClubs.length}
+                </span>
+            </h3>
+            
+            <div className="space-y-4">
+              {dueClubs.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No hay clubes pendientes de contactar hoy. ¡Buen trabajo!</p>
+              ) : (
+                  dueClubs.map(club => (
+                  <div 
+                      key={club.id} 
+                      onClick={() => handleActionClick(club.id)} 
+                      className="flex items-start p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-100 dark:border-zinc-800 cursor-pointer hover:border-emerald-500 hover:shadow-sm transition-all group"
+                  >
+                      <div className="mt-0.5 mr-3 text-emerald-500 group-hover:scale-110 transition-transform">
+                          <PhoneCall size={20} />
+                      </div>
+                      <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 transition-colors">{club.name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Próx. Contacto: {formatDateToDDMMYYYY(club.recommendedContactDate)}</p>
+                      </div>
+                  </div>
+                  ))
+              )}
+            </div>
+            
+            <button 
+              onClick={() => onNavigate('database')}
+              className="w-full mt-6 text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 py-2.5 rounded-lg transition-colors"
+            >
+              Ir a la Cartera Completa
+            </button>
           </div>
-          
-          <button 
-            onClick={() => onNavigate('database')}
-            className="w-full mt-6 text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 py-2.5 rounded-lg transition-colors"
-          >
-            Ir a la Cartera Completa
-          </button>
+
+          {/* CHAT INTERACTIVO CON GEMINI */}
+          <AIChat 
+             clubs={clubs} 
+             tasks={tasks} 
+             interactions={interactions} 
+          />
+
         </div>
 
       </div>
