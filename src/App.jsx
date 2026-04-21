@@ -107,66 +107,65 @@ export default function App() {
       setTimeout(() => setToast(null), 3500);
   };
 
+    // NUEVO: Interceptar la redirección de Google
   useEffect(() => {
-        // Si el usuario de Firebase aún no ha cargado, esperamos.
-        if (!user) return; 
-        
-        // Capturamos parámetros en URL normal (?code=...)
-        const searchParams = new URLSearchParams(window.location.search);
-        const code = searchParams.get('code');
-        const searchState = searchParams.get('state');
+      // Si Firebase aún no ha cargado el usuario, no hacemos nada
+      if (!user) return; 
 
-        // Capturamos parámetros en el fragmento de la URL (#access_token=...)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const hashState = hashParams.get('state');
+      // Leer parámetros por código (?code=...) o por token (#access_token=...)
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
+      const searchState = searchParams.get('state');
 
-        // Si no hay nada de Google en la URL, no hacemos nada
-        if (!code && !accessToken) return; 
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const hashState = hashParams.get('state');
 
-        const processGoogleRedirect = async () => {
-            if (code && searchState === 'calendar') {
-                showToast("Vinculando calendario...", "info");
-                try {
-                    const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ code, userId: user.uid }) 
-                    }); 
-                    if (!res.ok) throw new Error("Error del servidor"); 
-                    const data = await res.json();
-                    setGoogleToken(data.accessToken); 
-                    showToast("¡Calendario vinculado!", "success");
-                } catch (error) { 
-                    console.error("Error Calendario:", error);
-                    showToast("Fallo al autorizar calendario.", "error"); 
-                }
-            } else if (accessToken && hashState === 'profile') {
-                showToast("Vinculando perfil...", "info");
-                try {
-                    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                        headers: { Authorization: `Bearer ${accessToken}` }
-                    });
-                    const data = await res.json();
-                    if (data.email) {
-                        setGoogleEmail(data.email);
-                        showToast("Perfil de Google vinculado", "success");
-                    }
-                } catch (error) {
-                    console.error("Error Perfil:", error);
-                    showToast("Error al obtener perfil", "error");
-                }
-            }
-            
-            // Limpiamos la URL para no volver a ejecutar esto al recargar la página
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            // Mandamos al usuario de vuelta a la vista de configuración
-            setCurrentView('settings');
-        };
+      // Si no hay respuesta de Google en la URL, salimos
+      if (!code && !accessToken) return;
 
-        processGoogleRedirect();
-    }, [user]); // Se ejecuta cuando el estado del usuario de Firebase está listo
+      const processGoogleRedirect = async () => {
+          if (code && searchState === 'calendar') {
+              showToast("Vinculando calendario...", "info");
+              try {
+                  const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ code, userId: user.uid })
+                  });
+                  if (!res.ok) throw new Error("Error del servidor");
+                  const data = await res.json();
+                  setGoogleToken(data.accessToken);
+                  showToast("¡Calendario vinculado!", "success");
+              } catch (error) {
+                  console.error(error);
+                  showToast("Fallo al autorizar calendario.", "error");
+              }
+          } else if (accessToken && hashState === 'profile') {
+              showToast("Vinculando perfil...", "info");
+              try {
+                  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                      headers: { Authorization: `Bearer ${accessToken}` }
+                  });
+                  const data = await res.json();
+                  if (data.email) {
+                      setGoogleEmail(data.email);
+                      showToast("Perfil de Google vinculado", "success");
+                  }
+              } catch (error) {
+                  console.error(error);
+                  showToast("Error al obtener el perfil", "error");
+              }
+          }
+
+          // Limpiar la URL para que no quede fea y no se vuelva a ejecutar
+          window.history.replaceState({}, document.title, window.location.pathname);
+          // Redirigir a la vista de configuración
+          setCurrentView('settings');
+      };
+
+      processGoogleRedirect();
+  }, [user]); // Se ejecuta cuando el usuario de Firebase ya está listo
 
   // --- RUTAS Y MAPA DESDE EL HOOK ---
   const {

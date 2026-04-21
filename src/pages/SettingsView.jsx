@@ -113,21 +113,25 @@ export default function SettingsView({
         }
     }, [userProfile]);
 
-    const handleCalendarConnect = useGoogleLogin({ 
-        flow: 'auth-code', 
-        ux_mode: 'redirect', // Cambiado a redirect
-        redirect_uri: window.location.origin, // Detecta automáticamente localhost o tu dominio en producción
-        state: 'calendar', // Etiqueta para saber de dónde venimos
-        prompt: 'consent select_account', 
-        scope: 'https://www.googleapis.com/auth/calendar'
-    });
+    // Reemplaza las funciones de useGoogleLogin por estas versiones nativas
+    const handleCalendarConnect = () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const redirectUri = window.location.origin; // Esto será https://fotoesport-crm.web.app
+        
+        // Redirigimos toda la pestaña a Google forzando la selección de cuenta
+        const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/calendar&access_type=offline&prompt=select_account%20consent&state=calendar`;
+        
+        window.location.href = url; 
+    };
 
-    const handleProfileConnect = useGoogleLogin({
-        ux_mode: 'redirect', // Cambiado a redirect
-        redirect_uri: window.location.origin,
-        state: 'profile', // Etiqueta para saber de dónde venimos
-        prompt: 'select_account consent'
-    });
+    const handleProfileConnect = () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const redirectUri = window.location.origin;
+        
+        const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile%20https://www.googleapis.com/auth/userinfo.email&prompt=select_account%20consent&state=profile`;
+        
+        window.location.href = url;
+    };
     const handleSaveObjectives = () => { onUpdateTarget(localTarget); onUpdateTicketMedio(localTicket); showToast("Objetivos guardados", "success"); };
     const handleSaveEdit = (oldName) => { onEditSeason(oldName, editInput); setEditingSeason(null); };
     const handleLogout = () => { if(window.confirm('¿Seguro que deseas cerrar sesión?')) signOut(auth); };

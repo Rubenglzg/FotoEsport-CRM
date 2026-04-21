@@ -29,11 +29,23 @@ export const formatDateToDDMMYYYY = (dateString) => {
 };
 // ---------------------------------------------------------
 
-export const generateContractFile = (club, season) => {
+export const generateContractFile = (club, startSeason, duration = 1) => {
     // Si viene solo el string por algún error, lo manejamos, sino tomamos el nombre del objeto
     const clubName = typeof club === 'string' ? club : (club?.name || 'Club no especificado');
     const printWindow = window.open('', '_blank');
-    const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Cálculo del rango de temporadas según la duración elegida en el selector
+    let seasonDisplay = startSeason;
+    if (duration > 1) {
+        const parts = startSeason.split('/');
+        if (parts.length === 2) {
+            const startYear = parseInt(parts[0]);
+            const endYear = startYear + (duration - 1);
+            seasonDisplay = `${startSeason} a ${endYear}/${endYear + 1}`;
+        } else {
+            seasonDisplay = `${startSeason} (${duration} temporadas)`;
+        }
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -41,29 +53,64 @@ export const generateContractFile = (club, season) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Contrato ${clubName} - ${season}</title>
+        <title> </title>
         <style>
-          @page { size: A4; margin: 1.5cm; }
+          /* ELIMINAMOS EL MARGEN DE LA PÁGINA PARA BORRAR CABECERAS DEL NAVEGADOR */
+          @page { 
+            size: A4; 
+            margin: 0mm; 
+          }
+          
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            line-height: 1.5; color: #111; 
+            /* Aumentado el interlineado de 1.3 a 1.45 para que el texto respire más */
+            line-height: 1.45; 
+            color: #111; 
             max-width: 100%; margin: 0 auto; padding: 0; 
-            background: white; font-size: 11pt; 
+            background: white; font-size: 9.5pt; 
           }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #059669; padding-bottom: 15px; }
-          .logo { font-size: 26px; font-weight: 900; color: #111; letter-spacing: 1px; margin-bottom: 5px; }
+          
+          /* Aumentados los márgenes inferiores para separar más los bloques */
+          .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #059669; padding-bottom: 15px; }
+          .logo { font-size: 22px; font-weight: 900; color: #111; letter-spacing: 1px; margin-bottom: 5px; }
           .logo span { color: #059669; }
-          .title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-top: 10px; color: #333; }
-          .subtitle { font-size: 13px; color: #666; margin-top: 5px; }
-          .details-box { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 25px; font-size: 10pt; }
-          .details-box div { width: 48%; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eaeaea; }
-          .details-box h3 { margin-top: 0; font-size: 11pt; color: #059669; margin-bottom: 10px; border-bottom: 1px solid #eaeaea; padding-bottom: 5px; text-transform: uppercase;}
-          .clause { margin-bottom: 18px; text-align: justify; font-size: 10.5pt; }
-          .clause-title { font-weight: bold; font-size: 11pt; color: #111; display: block; margin-bottom: 5px; }
-          .signatures { display: flex; justify-content: space-between; margin-top: 60px; page-break-inside: avoid; }
-          .signature-box { width: 45%; border-top: 1px solid #111; padding-top: 10px; text-align: center; font-size: 10pt; height: 80px; position: relative;}
-          .signature-box .sign-placeholder { position: absolute; bottom: -20px; left: 0; right: 0; color: #666; font-style: italic; font-size: 9pt; }
-          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 8pt; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+          .title { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-top: 5px; color: #333; }
+          .subtitle { font-size: 11px; color: #666; margin-top: 3px; }
+          
+          /* Más separación bajo las cajas de Proveedor/Club */
+          .details-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 25px; font-size: 9pt; }
+          .details-box div { width: 48%; background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #eaeaea; }
+          .details-box h3 { margin-top: 0; font-size: 10pt; color: #059669; margin-bottom: 8px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px; text-transform: uppercase;}
+          
+          /* Más separación entre cada cláusula (de 10px a 16px) */
+          .clause { margin-bottom: 16px; text-align: justify; font-size: 9.5pt; }
+          .clause-title { font-weight: bold; font-size: 10pt; color: #111; display: inline-block; margin-right: 5px; }
+          
+          /* Más espacio antes de la zona de firmas (de 25px a 40px) */
+          .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
+          .signature-box { 
+            width: 45%; 
+            border: 1px solid #111; 
+            height: 85px; 
+            position: relative;
+            background: #fff;
+          }
+          .signature-box strong {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            font-size: 9pt;
+            text-transform: uppercase;
+          }
+          .signature-placeholder {
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            text-align: center;
+            color: #ccc;
+            font-size: 8pt;
+            font-style: italic;
+          }
           
           /* CONTROLES MÓVILES PARA CERRAR/VOLVER */
           .mobile-controls { display: none; }
@@ -76,7 +123,8 @@ export const generateContractFile = (club, season) => {
             .btn-close { background: #ef4444; color: white; }
           }
           @media print {
-            body { background: white; padding: 0; }
+            /* Mantenemos un margen interno amplio para la impresión */
+            body { background: white; padding: 1.5cm; margin: 0; }
             .document-container { padding: 0; box-shadow: none; max-width: 100%; }
             .mobile-controls { display: none !important; }
           }
@@ -92,22 +140,23 @@ export const generateContractFile = (club, season) => {
             <div class="header">
               <div class="logo">FOTOESPORT <span>MERCH</span></div>
               <div class="title">Contrato de Colaboración y Cesión de Derechos</div>
-              <div class="subtitle">Temporada Oficial ${season}</div>
+              <div class="subtitle">Vigencia: ${seasonDisplay}</div>
             </div>
             
-            <p style="text-align: right; margin-bottom: 25px; font-style: italic;">En Castellón, a <strong>${today}</strong>.</p>
+            <p style="text-align: right; margin-bottom: 25px; font-size: 9.5pt;">
+              En ___________________________________, a _____ de ____________________ de 20___
+            </p>
             
-            <p style="margin-bottom: 15px;"><strong>REUNIDOS:</strong></p>
             <div class="details-box">
               <div>
                 <h3>El Proveedor</h3>
-                <strong>FOTOESPORT MERCH</strong><br><br>
-                Servicio de merchandising deportivo personalizado.<br><br>
+                <strong>FOTOESPORT MERCH</strong><br>
+                Servicio de merchandising deportivo personalizado.<br>
                 <em>Representante Comercial</em>
               </div>
               <div>
                 <h3>El Club</h3>
-                <strong>${clubName.toUpperCase()}</strong><br><br>
+                <strong>${clubName.toUpperCase()}</strong><br>
                 ${club.address ? `📍 ${club.address}<br>` : ''}
                 ${club.genericPhone ? `📞 ${club.genericPhone}<br>` : ''}
                 ${club.genericEmail ? `✉️ ${club.genericEmail}<br>` : ''}
@@ -115,11 +164,11 @@ export const generateContractFile = (club, season) => {
               </div>
             </div>
 
-            <p style="margin-bottom: 20px;">Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato y acuerdan las siguientes cláusulas:</p>
+            <p style="margin-bottom: 20px; font-size: 9.5pt;">Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato y acuerdan las siguientes cláusulas:</p>
 
             <div class="clause">
               <span class="clause-title">I. OBJETO DEL ACUERDO.</span>
-              El presente contrato regula la colaboración para la realización de la sesión fotográfica oficial de la temporada ${season} y la posterior gestión, producción y venta bajo demanda de productos de merchandising personalizado (tazas, gorras, botellas, llaveros, fotos individuales y de equipo, cromos, calendarios de pared y zapatilleros) por parte de FOTOESPORT MERCH.
+              El presente contrato regula la colaboración para la realización de la sesión fotográfica oficial para el periodo ${seasonDisplay} y la posterior gestión, producción y venta bajo demanda de productos de merchandising personalizado (tazas, gorras, botellas, llaveros, fotos individuales y de equipo, cromos, calendarios de pared y zapatilleros) por parte de FOTOESPORT MERCH.
             </div>
             
             <div class="clause">
@@ -134,31 +183,41 @@ export const generateContractFile = (club, season) => {
             
             <div class="clause">
               <span class="clause-title">IV. VIGENCIA.</span>
-              Este contrato tendrá validez durante la temporada deportiva ${season}, finalizando sus efectos a la conclusión de la misma, salvo renovación o firma de acuerdo multianual expresa por ambas partes.
+              Este contrato tendrá validez durante el periodo: ${seasonDisplay}, finalizando sus efectos a la conclusión del mismo, salvo renovación o firma de acuerdo multianual expresa por ambas partes.
+            </div>
+
+            <div class="clause">
+              <span class="clause-title">V. CONDICIONES DE ENTREGA.</span>
+              FOTOESPORT MERCH garantiza la entrega directa de los dos primeros pedidos. Para las siguientes entregas, será necesario que el importe del pedido supere los 500€. En caso de no alcanzar dicho importe, el Club deberá recoger el pedido en nuestro estudio situado en Carrer de Miguel Galan Mestre, n° 8, Bajo Izq, Benicalap, 46025 València.
+            </div>
+
+            <div class="clause">
+              <span class="clause-title">VI. ENTREGA DE FOTOGRAFÍAS.</span>
+              FOTOESPORT MERCH se compromete a entregar al Club las fotografías editadas de manera gratuita. Estas imágenes incluirán obligatoriamente una marca de agua en la parte inferior.
+            </div>
+
+            <div class="clause">
+              <span class="clause-title">VII. BENEFICIOS PARA EL CLUB.</span>
+              El Club percibirá un porcentaje (%) de las ganancias derivadas de los pedidos, el cual quedará establecido según el acuerdo comercial previamente pactado entre ambas partes.
             </div>
 
             <div class="signatures">
               <div class="signature-box">
                 <strong>POR FOTOESPORT MERCH</strong>
-                <div class="sign-placeholder">Firma y Sello</div>
+                <div class="signature-placeholder">Sello y Firma</div>
               </div>
               <div class="signature-box">
                 <strong>POR ${clubName.toUpperCase()}</strong>
-                <div class="sign-placeholder">Firma del Presidente / Responsable</div>
+                <div class="signature-placeholder">Firma del Presidente / Responsable</div>
               </div>
             </div>
-            
-            <div class="footer">Documento generado por CRM Sooner (Grupo Avantia) - Válido a efectos administrativos.</div>
         </div>
         <script>
-          // En móvil a veces el print automático bloquea la UI, 
-          // así que damos un segundo para que cargue la vista y los botones.
           window.onload = function() {
             setTimeout(function() { 
               window.print(); 
             }, 1000);
           };
-          // Intentar cerrar automáticamente la pestaña si el navegador lo permite
           window.onafterprint = function() {
             window.close();
           };

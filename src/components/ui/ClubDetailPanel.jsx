@@ -23,6 +23,7 @@ export default function ClubDetailPanel({
     const [expandedContactIdx, setExpandedContactIdx] = useState(null);
     const manualStopRef = useRef(false);
     const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [contractGenDuration, setContractGenDuration] = useState(1);
 
     const [tempActiveFrom, setTempActiveFrom] = useState(club.activeFromSeason || '');
     const [tempActiveUntil, setTempActiveUntil] = useState(club.activeUntilSeason || '');
@@ -931,16 +932,40 @@ export default function ClubDetailPanel({
                             </div>
                         </div>
 
-                      <div>
+                        <div>
                           <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4 tracking-widest flex justify-between">
                               <span>Requisitos y Contrato</span>
                               <span className="text-emerald-500 text-sm">{currentSeason}</span>
                           </h4>
-                          <button onClick={() => generateContractFile(club, currentSeason)} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-4 rounded-xl shadow-sm hover:shadow-md transition-all mb-5">
-                              <FileSignature className="w-5 h-5 text-blue-500" />
-                              <span className="text-base font-bold text-zinc-800 dark:text-white">Generar Contrato PDF</span>
-                          </button>
                           
+                          {/* --- NUEVO GENERADOR DE CONTRATOS --- */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm mb-5">
+                              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                                  <div className="w-full sm:flex-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Duración a reflejar en PDF</label>
+                                      <select 
+                                          value={contractGenDuration}
+                                          onChange={(e) => setContractGenDuration(parseInt(e.target.value))}
+                                          className="w-full text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 outline-none font-bold text-zinc-700 dark:text-zinc-200 transition-colors focus:border-emerald-500 h-[42px]"
+                                      >
+                                          <option value={1}>1 Temporada ({currentSeason})</option>
+                                          <option value={2}>2 Temporadas</option>
+                                          <option value={3}>3 Temporadas</option>
+                                          <option value={4}>4 Temporadas</option>
+                                          <option value={5}>5 Temporadas</option>
+                                      </select>
+                                  </div>
+                                  <button 
+                                      onClick={() => generateContractFile(club, currentSeason, contractGenDuration)} 
+                                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-5 py-2 rounded-lg shadow-sm hover:shadow-md transition-all h-[42px]"
+                                  >
+                                      <FileSignature className="w-5 h-5 text-blue-500" />
+                                      <span className="text-sm font-bold text-zinc-800 dark:text-white">Generar PDF</span>
+                                  </button>
+                              </div>
+                          </div>
+                          {/* --- FIN NUEVO GENERADOR --- */}
+
                           <div className="space-y-3">
                               {checklistConfig.map(item => {
                                   const isChecked = getAssetValue(item);
