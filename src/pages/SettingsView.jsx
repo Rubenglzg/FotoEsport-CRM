@@ -114,6 +114,28 @@ export default function SettingsView({
     }, [userProfile]);
 
     const handleCalendarConnect = useGoogleLogin({ flow: 'auth-code', ux_mode: 'popup', prompt: 'consent select_account', scope: 'https://www.googleapis.com/auth/calendar', onSuccess: async (codeResponse) => { showToast("Procesando...", "info"); try { const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: codeResponse.code, userId: auth.currentUser.uid }) }); if(!res.ok) throw new Error("Error del servidor"); setGoogleToken((await res.json()).accessToken); showToast("¡Calendario vinculado!", "success"); } catch (error) { showToast("Fallo al autorizar.", "error"); } }, onError: () => showToast("Error de Google.", 'error') });
+    const handleProfileConnect = useGoogleLogin({
+        prompt: 'select_account consent', // Esto fuerza a que siempre pregunte
+        onSuccess: async (tokenResponse) => {
+            showToast("Vinculando perfil...", "info");
+            try {
+                // Obtenemos el email usando el token de acceso
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const data = await res.json();
+                
+                if (data.email) {
+                    setGoogleEmail(data.email);
+                    showToast("Perfil de Google vinculado", "success");
+                }
+            } catch (error) {
+                console.error(error);
+                showToast("Error al obtener el perfil", "error");
+            }
+        },
+        onError: () => showToast("Error de conexión con Google", "error")
+    });
     const handleSaveObjectives = () => { onUpdateTarget(localTarget); onUpdateTicketMedio(localTicket); showToast("Objetivos guardados", "success"); };
     const handleSaveEdit = (oldName) => { onEditSeason(oldName, editInput); setEditingSeason(null); };
     const handleLogout = () => { if(window.confirm('¿Seguro que deseas cerrar sesión?')) signOut(auth); };
@@ -412,13 +434,13 @@ export default function SettingsView({
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800">
                                 <div><div className="font-bold text-sm flex items-center gap-2"><Mail className="w-4 h-4"/> Perfil Google (FedCM) {googleEmail && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}</div>{googleEmail ? <div className="text-xs text-zinc-500 mt-1">Usuario: <span className="font-bold text-emerald-600">{googleEmail}</span></div> : <div className="text-xs text-zinc-500 mt-1">Identidad nativa del navegador</div>}</div>
-                                {googleEmail ? <Button variant="outline" size="sm" onClick={() => setGoogleEmail(null)} className="border-red-200 text-red-600 hover:bg-red-50">Desvincular</Button> : <div className="scale-90 origin-right"><GoogleLogin 
-                                                                                                                                                                                                                                                    onSuccess={(res) => { setGoogleEmail(jwtDecode(res.credential).email); }} 
-                                                                                                                                                                                                                                                    prompt="select_account consent"
-                                                                                                                                                                                                                                                    auto_select={false} 
-                                                                                                                                                                                                                                                    useOneTap={false}
-                                                                                                                                                                                                                                                    shape="rectangular" 
-                                                                                                                                                                                                                                                /></div>}
+                                {googleEmail ? (
+                                    <Button variant="outline" size="sm" onClick={() => setGoogleEmail(null)} className="border-red-200 text-red-600 hover:bg-red-50">Desvincular</Button>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={() => handleProfileConnect()} className="bg-white dark:bg-transparent">
+                                        <Mail className="w-4 h-4 mr-2 text-emerald-500"/> Vincular Cuenta
+                                    </Button>
+                                )}
                             </div>
                             <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800">
                                 <div><div className="font-bold text-sm flex items-center gap-2"><Calendar className="w-4 h-4"/> Calendario de Eventos {googleToken && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}</div><div className="text-xs text-zinc-500 mt-1">{googleToken ? 'Conectado para crear eventos' : 'Requerido para la agenda'}</div></div>
