@@ -113,28 +113,20 @@ export default function SettingsView({
         }
     }, [userProfile]);
 
-    const handleCalendarConnect = useGoogleLogin({ flow: 'auth-code', ux_mode: 'popup', prompt: 'consent select_account', scope: 'https://www.googleapis.com/auth/calendar', onSuccess: async (codeResponse) => { showToast("Procesando...", "info"); try { const res = await fetch("https://us-central1-fotoesport-crm.cloudfunctions.net/conectarCalendario", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: codeResponse.code, userId: auth.currentUser.uid }) }); if(!res.ok) throw new Error("Error del servidor"); setGoogleToken((await res.json()).accessToken); showToast("¡Calendario vinculado!", "success"); } catch (error) { showToast("Fallo al autorizar.", "error"); } }, onError: () => showToast("Error de Google.", 'error') });
+    const handleCalendarConnect = useGoogleLogin({ 
+        flow: 'auth-code', 
+        ux_mode: 'redirect', // Cambiado a redirect
+        redirect_uri: window.location.origin, // Detecta automáticamente localhost o tu dominio en producción
+        state: 'calendar', // Etiqueta para saber de dónde venimos
+        prompt: 'consent select_account', 
+        scope: 'https://www.googleapis.com/auth/calendar'
+    });
+
     const handleProfileConnect = useGoogleLogin({
-        prompt: 'select_account consent', // Esto fuerza a que siempre pregunte
-        onSuccess: async (tokenResponse) => {
-            showToast("Vinculando perfil...", "info");
-            try {
-                // Obtenemos el email usando el token de acceso
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                const data = await res.json();
-                
-                if (data.email) {
-                    setGoogleEmail(data.email);
-                    showToast("Perfil de Google vinculado", "success");
-                }
-            } catch (error) {
-                console.error(error);
-                showToast("Error al obtener el perfil", "error");
-            }
-        },
-        onError: () => showToast("Error de conexión con Google", "error")
+        ux_mode: 'redirect', // Cambiado a redirect
+        redirect_uri: window.location.origin,
+        state: 'profile', // Etiqueta para saber de dónde venimos
+        prompt: 'select_account consent'
     });
     const handleSaveObjectives = () => { onUpdateTarget(localTarget); onUpdateTicketMedio(localTicket); showToast("Objetivos guardados", "success"); };
     const handleSaveEdit = (oldName) => { onEditSeason(oldName, editInput); setEditingSeason(null); };
