@@ -116,6 +116,25 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             font-size: 8pt;
             font-style: italic;
           }
+          .stamp-and-signature {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Alinea verticalmente al centro */
+            margin-left: -00px; /* Espacio entre el sello y la firma */
+          }
+          .stamp-img {
+            max-height: 150px; /* Ajusta el tamaño de tu sello */
+            object-fit: contain;
+            opacity: 0.9; /* Opcional: le da un toque más realista al sello */
+          }
+          .signature-img-inline {
+            max-height: 120px; /* Ajusta el tamaño de tu firma */
+            object-fit: contain;
+          }
           
           /* CONTROLES MÓVILES PARA CERRAR/VOLVER */
           .mobile-controls { display: none; }
@@ -155,7 +174,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             <div class="details-box">
               <div>
                 <h3>El Proveedor</h3>
-                <strong>Juliogmilat Fotografía</strong><br>
+                <strong>Juliogmilat Fotografía / FotoEsport Merch</strong><br>
                 Servicio de merchandising deportivo personalizado.<br>
                 <em>Representante Comercial</em>
               </div>
@@ -206,9 +225,12 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             </div>
 
             <div class="signatures">
-              <div class="signature-box">
-                <strong>POR FOTOESPORT MERCH</strong>
-                <div class="signature-placeholder">Sello y Firma</div>
+                <div class="signature-box">
+                  <strong>POR FOTOESPORT MERCH</strong>
+                  <div class="stamp-and-signature">
+                    <img src="/sello.png" alt="Sello Fotoesport" class="stamp-img" />
+                    <img src="/firma.png" alt="Firma Fotoesport" class="signature-img-inline" />
+                </div>
               </div>
               <div class="signature-box">
                 <strong>POR ${clubName.toUpperCase()}</strong>
