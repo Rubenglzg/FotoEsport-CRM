@@ -32,6 +32,11 @@ export const formatDateToDDMMYYYY = (dateString) => {
 export const generateContractFile = (club, startSeason, duration = 1) => {
     // Si viene solo el string por algún error, lo manejamos, sino tomamos el nombre del objeto
     const clubName = typeof club === 'string' ? club : (club?.name || 'Club no especificado');
+    
+    // --- NUEVO: CAPTURAR EL PORCENTAJE DE BENEFICIO ---
+    // Si el club tiene un % asignado lo muestra (ej: "15%"), si no, deja un espacio en blanco para rellenar a mano
+    const profitPercentage = club?.profitPercentage ? `${club.profitPercentage}%` : '_____%';
+    
     const printWindow = window.open('', '_blank');
 
     // Cálculo del rango de temporadas según la duración elegida en el selector
@@ -53,7 +58,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title> </title>
+        <title>Contrato ${clubName}</title>
         <style>
           /* ELIMINAMOS EL MARGEN DE LA PÁGINA PARA BORRAR CABECERAS DEL NAVEGADOR */
           @page { 
@@ -150,7 +155,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             <div class="details-box">
               <div>
                 <h3>El Proveedor</h3>
-                <strong>FOTOESPORT MERCH</strong><br>
+                <strong>Juliogmilat Fotografía</strong><br>
                 Servicio de merchandising deportivo personalizado.<br>
                 <em>Representante Comercial</em>
               </div>
@@ -160,7 +165,6 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
                 ${club.address ? `📍 ${club.address}<br>` : ''}
                 ${club.genericPhone ? `📞 ${club.genericPhone}<br>` : ''}
                 ${club.genericEmail ? `✉️ ${club.genericEmail}<br>` : ''}
-                ${club.estimatedPlayers ? `👥 Aprox. ${club.estimatedPlayers} fichas<br>` : ''}
               </div>
             </div>
 
@@ -198,7 +202,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
 
             <div class="clause">
               <span class="clause-title">VII. BENEFICIOS PARA EL CLUB.</span>
-              El Club percibirá un porcentaje (%) de las ganancias derivadas de los pedidos, el cual quedará establecido según el acuerdo comercial previamente pactado entre ambas partes.
+              El Club percibirá un beneficio del <strong>${profitPercentage}</strong> de las ganancias derivadas de los pedidos, el cual quedará establecido y será liquidado según el acuerdo comercial previamente pactado entre ambas partes.
             </div>
 
             <div class="signatures">

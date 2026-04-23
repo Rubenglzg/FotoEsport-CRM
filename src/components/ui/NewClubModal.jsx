@@ -15,10 +15,10 @@ export default function NewClubModal({ userProfile, sportsList, onClose, onSave,
     name: '', category: [], provincia: defaultZone, 
     address: '', lat: '', lng: '',
     estimatedPlayers: '', totalTeams: '',
-    baseTeams: '', genericEmail: '', genericPhone: '',
-    assignedTo: [], // <--- ¡CAMBIADO A ARRAY VACÍO!
+    baseTeams: '', profitPercentage: '', genericEmail: '', genericPhone: '', // <-- Añadido profitPercentage
+    assignedTo: [], 
     contacts: [{ name: '', role: '', phone: '', email: '', isDecisionMaker: true, notes: '' }]
-  });
+  }); 
   
   const [error, setError] = useState('');
 
@@ -230,6 +230,22 @@ export default function NewClubModal({ userProfile, sportsList, onClose, onSave,
             <div><label className="text-xs font-bold text-zinc-500 uppercase">Jugadores Aprox.</label><input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.estimatedPlayers} onChange={e => setFormData({...formData, estimatedPlayers: Number(e.target.value)})} placeholder="Ej: 350" /></div>
             <div><label className="text-xs font-bold text-zinc-500 uppercase">Total de Equipos</label><input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.totalTeams} onChange={e => setFormData({...formData, totalTeams: Number(e.target.value)})} placeholder="Ej: 15" /></div>
             <div className="col-span-2"><label className="text-xs font-bold text-zinc-500 uppercase">Fútbol Base (Equipos)</label><input type="number" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.baseTeams} onChange={e => setFormData({...formData, baseTeams: Number(e.target.value)})} placeholder="Ej: 12" /></div>
+            {/* NUEVO CAMPO: % Beneficio Club */}
+            <div className="col-span-2 md:col-span-1">
+              <label className="text-xs font-bold text-emerald-600 uppercase">% Beneficio Club</label>
+              <div className="relative mt-1">
+                  <input 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      className="w-full bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg pl-3 pr-8 py-2 outline-none focus:border-emerald-500 transition-colors font-bold text-emerald-800 dark:text-emerald-400" 
+                      value={formData.profitPercentage} 
+                      onChange={e => setFormData({...formData, profitPercentage: e.target.value ? Number(e.target.value) : ''})} 
+                      placeholder="Ej: 15" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">%</span>
+              </div>
+            </div>
             <div className="col-span-2 md:col-span-1">
               <label className="text-xs font-bold text-zinc-500 uppercase">Teléfono Genérico</label>
               <input className="w-full mt-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2" value={formData.genericPhone} onChange={e => setFormData({...formData, genericPhone: e.target.value})} placeholder="Ej: 600123456" />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail, Search, Check, Clock, PhoneCall } from 'lucide-react';
+import { X, Users, Phone, ChevronDown, ChevronUp, MessageSquare, FileSignature, CheckCircle2, MapPin, Trash2, Edit2, Mic, Sparkles, Target, Shield, FileText, User, Briefcase, Mail, Search, Check, Clock, PhoneCall, Percent } from 'lucide-react';
 import { Button } from './Button';
 import { cn, generateContractFile, summarizeWithAI, predictDateWithAI } from '../../utils/helpers';
 
@@ -69,6 +69,7 @@ export default function ClubDetailPanel({
     const [tempPlayers, setTempPlayers] = useState(club.estimatedPlayers || '');
     const [tempTotalTeams, setTempTotalTeams] = useState(club.totalTeams || '');
     const [tempBaseTeams, setTempBaseTeams] = useState(club.baseTeams || '');
+    const [tempProfitPercentage, setTempProfitPercentage] = useState(club.profitPercentage || '');
     const [tempRecDate, setTempRecDate] = useState(club.recommendedContactDate || '');
     const [tempGenericEmail, setTempGenericEmail] = useState(club.genericEmail || '');
     const [tempGenericPhone, setTempGenericPhone] = useState(club.genericPhone || '');
@@ -119,6 +120,7 @@ export default function ClubDetailPanel({
         setTempPlayers(club.estimatedPlayers || '');
         setTempTotalTeams(club.totalTeams || '');
         setTempBaseTeams(club.baseTeams || '');
+        setTempProfitPercentage(club.profitPercentage || '');
         setTempRecDate(club.recommendedContactDate || '');
         setTempGenericEmail(club.genericEmail || '');
         setTempGenericPhone(club.genericPhone || '');
@@ -127,7 +129,7 @@ export default function ClubDetailPanel({
         setTempActiveFrom(club.activeFromSeason || '');
         setTempActiveUntil(club.activeUntilSeason || '');
         setTempAddress(club.address || '');
-    }, [club.id, club.name, club.provincia, club.category, club.activeFromSeason, club.activeUntilSeason, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo]);
+    }, [club.id, club.name, club.provincia, club.category, club.activeFromSeason, club.activeUntilSeason, club.contacts, club.estimatedPlayers, club.totalTeams, club.baseTeams, club.recommendedContactDate, club.genericEmail, club.genericPhone, club.assignedTo, club.profitPercentage]);
 
     // Lógicas de Actualización
     const handleSaveName = () => { if (tempName.trim() !== club.name) onUpdateClub({...club, name: tempName}); };
@@ -138,6 +140,7 @@ export default function ClubDetailPanel({
     const handleSavePlayers = () => { if (Number(tempPlayers) !== club.estimatedPlayers) onUpdateClub({...club, estimatedPlayers: Number(tempPlayers)}); };
     const handleSaveTotalTeams = () => { if (Number(tempTotalTeams) !== club.totalTeams) onUpdateClub({...club, totalTeams: Number(tempTotalTeams)}); };
     const handleSaveBaseTeams = () => { if (Number(tempBaseTeams) !== club.baseTeams) onUpdateClub({...club, baseTeams: Number(tempBaseTeams)}); };
+    const handleSaveProfitPercentage = () => { if (Number(tempProfitPercentage) !== club.profitPercentage) onUpdateClub({...club, profitPercentage: Number(tempProfitPercentage)}); };
     const handleSaveRecDate = () => { if (tempRecDate !== club.recommendedContactDate) onUpdateClub({...club, recommendedContactDate: tempRecDate}); };
     const handleSaveGenericEmail = () => { if (tempGenericEmail !== club.genericEmail) onUpdateClub({...club, genericEmail: tempGenericEmail}); };
     const handleSaveGenericPhone = () => { if (tempGenericPhone !== club.genericPhone) onUpdateClub({...club, genericPhone: tempGenericPhone}); };
@@ -554,6 +557,24 @@ export default function ClubDetailPanel({
                                   placeholder="Ej: 12" 
                               />
                           </div>
+
+                          {/* NUEVO CAMPO: % Beneficio Club */}
+                          <div className="bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
+                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1.5 flex items-center gap-1.5"><Percent className="w-4 h-4"/> % Beneficio</span>
+                              <div className="flex items-center">
+                                  <input 
+                                      type="number" 
+                                      min="0" max="100"
+                                      value={tempProfitPercentage} 
+                                      onChange={(e) => setTempProfitPercentage(e.target.value)} 
+                                      onBlur={handleSaveProfitPercentage}
+                                      className="text-base font-mono font-bold bg-transparent outline-none w-full text-emerald-800 dark:text-emerald-300 placeholder:text-emerald-300" 
+                                      placeholder="Ej: 15" 
+                                  />
+                                  <span className="text-emerald-500 font-bold ml-1">%</span>
+                              </div>
+                          </div>
+                          
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 flex flex-col shadow-sm focus-within:border-emerald-500 transition-colors">
                               <span className="text-xs font-bold text-zinc-500 uppercase mb-1.5 flex items-center gap-1.5"><MapPin className="w-4 h-4"/> Provincia</span>
                               <input 
