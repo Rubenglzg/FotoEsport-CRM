@@ -61,6 +61,8 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
         let fechaInteraccion = "";
 
         busboy.on("field", (fieldname, val) => {
+            console.log(`Atajo envió -> Clave: "${fieldname}" | Valor: "${val}"`);
+            
             if (fieldname === "club") clubName = val.trim();
             if (fieldname === "token") token = val.trim();
             if (fieldname === "tipo") tipoInteraccion = val.trim(); 

@@ -1093,9 +1093,12 @@ export default function ClubDetailPanel({
                         <div key={event.id} className="relative group">
                           <div className="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-2 bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-600"></div>
                             <div className="flex justify-between items-baseline mb-2">
-                             <span className="text-base font-bold text-zinc-800 dark:text-zinc-200">
-                                {event.type === 'whatsapp' ? 'WhatsApp' : event.type === 'call' ? 'Llamada' : event.type === 'manual' ? 'Manual' : event.type}
-                                <span className="text-sm font-normal text-zinc-500 ml-3 border-l border-zinc-300 dark:border-zinc-700 pl-3">
+                            <span className="text-base font-bold text-zinc-800 dark:text-zinc-200 capitalize">
+                                {event.type === 'whatsapp' ? 'WhatsApp' : 
+                                event.type === 'call' ? 'Llamada' : 
+                                event.type === 'manual' ? 'Manual' : 
+                                (event.type || 'Interacción')}
+                                <span className="text-sm font-normal text-zinc-500 ml-3 border-l border-zinc-300 dark:border-zinc-700 pl-3 normal-case">
                                     por {event.user || 'Desconocido'}
                                 </span>
                             </span>
