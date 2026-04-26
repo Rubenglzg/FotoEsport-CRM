@@ -174,6 +174,22 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
           let valA = sortKey === 'name' ? (a.name || '') : getCellValue(a, sortKey);
           let valB = sortKey === 'name' ? (b.name || '') : getCellValue(b, sortKey);
 
+          // Lógica específica para ordenar fechas cronológicamente
+          if (sortKey === 'lastContact' || sortKey === 'recommendedDate') {
+              // Convertimos a timestamp para comparar. Si no hay fecha, asignamos 0.
+              const timeA = valA ? new Date(valA).getTime() : 0;
+              const timeB = valB ? new Date(valB).getTime() : 0;
+              
+              // Evitar problemas si alguna fecha es inválida (NaN)
+              const finalA = isNaN(timeA) ? 0 : timeA;
+              const finalB = isNaN(timeB) ? 0 : timeB;
+
+              if (finalA < finalB) return sortConfig.direction === 'asc' ? -1 : 1;
+              if (finalA > finalB) return sortConfig.direction === 'asc' ? 1 : -1;
+              return 0;
+          }
+
+          // Lógica por defecto para texto y números
           if (typeof valA === 'string' && typeof valB === 'string') {
               valA = valA.toLowerCase();
               valB = valB.toLowerCase();
