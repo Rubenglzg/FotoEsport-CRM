@@ -316,6 +316,7 @@ export default function App() {
             onNewClub={() => setShowNewClubModal(true)} 
             statuses={statuses} 
             onUpdateStatuses={handleUpdateStatuses} 
+            userProfile={userProfile}
         />;
 
         case 'pipeline': return <PipelineView 

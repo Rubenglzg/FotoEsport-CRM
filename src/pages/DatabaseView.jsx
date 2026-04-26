@@ -1,6 +1,6 @@
 // src/pages/DatabaseView.jsx
-import React, { useState, useMemo } from 'react';
-import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Sparkles } from 'lucide-react'; 
+import React, { useState, useMemo, useEffect } from 'react';
+import { Download, Plus, Users, LayoutList, Settings, X, Trash2, Filter, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Sparkles, MessageSquare } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn, formatDateToDDMMYYYY } from '../utils/helpers';
 
@@ -82,6 +82,20 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
                           className="flex-1 min-w-0 bg-transparent border-b border-transparent focus:border-emerald-500 px-1 md:px-2 py-1 text-sm md:text-base font-bold text-zinc-800 dark:text-white outline-none" 
                           placeholder="Nombre del estado" 
                       />
+
+                        {/* NUEVO: Botón para incluir/excluir de la barra de progreso */}
+                        <button 
+                            onClick={() => updateStatus(status.id, 'showInPipeline', status.showInPipeline === false ? true : false)}
+                            className={cn(
+                                "p-2 rounded-lg transition-all",
+                                status.showInPipeline !== false 
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400" 
+                                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800"
+                            )}
+                            title={status.showInPipeline !== false ? "Incluido en progreso" : "Excluido de progreso"}
+                        >
+                            <Sparkles className="w-4 h-4" />
+                        </button>
                       
                       <button onClick={() => removeStatus(status.id)} className="text-red-500 hover:text-red-600 p-2 rounded hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0" title="Eliminar estado">
                           <Trash2 className="w-5 h-5 md:w-4 md:h-4"/>
@@ -105,11 +119,57 @@ function StatusManagerModal({ statuses, onSave, onClose }) {
   );
 }
 
+// AÑADE ESTO JUSTO AQUÍ, ANTES DEL EXPORT DEFAULT
+const STORAGE_KEY_COLS = 'fotoesport_visible_columns';
+const STORAGE_KEY_VIEW = 'fotoesport_active_view';
 
-export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onUpdateStatuses }) {
-  const [visibleCols, setVisibleCols] = useState(['club', 'category', 'players', 'leadScore', 'teams', 'status', 'lastContact', 'recommendedDate']);
-  const [showStatusModal, setShowStatusModal] = useState(false);
 
+export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onUpdateStatuses, userProfile }) {
+
+    
+    // 2. Creamos claves ÚNICAS para cada usuario usando su ID.
+    const userId = userProfile?.id || userProfile?.uid || 'default';
+    const STORAGE_KEY_VIEW = `fotoesport_view_${userId}`;
+    const STORAGE_KEY_COLS = `fotoesport_cols_${userId}`;
+
+    // 3. Cargamos la vista de la memoria (si no hay, por defecto 'detailed')
+    const [activeView, setActiveView] = useState(() => {
+        return localStorage.getItem(STORAGE_KEY_VIEW) || 'detailed';
+    });
+    
+    // 4. Cargamos las columnas de la memoria (si no hay, por defecto el pack completo)
+    const [visibleCols, setVisibleCols] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_KEY_COLS);
+        return saved ? JSON.parse(saved) : ['club', 'category', 'players', 'leadScore', 'teams', 'status', 'lastContact', 'recommendedDate'];
+    });
+
+    const [showStatusModal, setShowStatusModal] = useState(false);
+
+    // 5. AUTOGUARDADO MÁGICO: Cada vez que 'activeView' cambie, se guarda en el disco duro.
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY_VIEW, activeView);
+    }, [activeView, STORAGE_KEY_VIEW]);
+
+    // 6. AUTOGUARDADO MÁGICO: Cada vez que 'visibleCols' cambie, se guarda en el disco duro.
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(visibleCols));
+    }, [visibleCols, STORAGE_KEY_COLS]);
+
+    const applyView = (viewKey) => {
+      setActiveView(viewKey);
+      localStorage.setItem(STORAGE_KEY_VIEW, viewKey); // <-- GUARDAR VISTA
+
+      let newCols = [];
+      if (viewKey === 'detailed') {
+          newCols = ['club', 'category', 'players', 'leadScore', 'teams', 'status', 'lastContact', 'recommendedDate'];
+      } else if (viewKey === 'progress') {
+          newCols = ['club', 'pipeline', 'lastContact', 'recommendedDate', 'lastNote'];
+      }
+      
+      setVisibleCols(newCols);
+      localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(newCols)); // <-- GUARDAR COLUMNAS
+  };
+  
   // ESTADOS DE FILTRO Y ORDEN
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
@@ -125,6 +185,8 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       if (colId === 'leadScore') return club.leadScore || 0;
       if (colId === 'teams') return club.totalTeams || 0;
       if (colId === 'status') return club.status || '';
+      if (colId === 'lastNote') return club.lastNote || 'Sin registros';
+      if (colId === 'pipeline') return club.status || ''; // <-- AÑADIR ESTA LÍNEA
       if (colId === 'lastContact') return club.lastContactDate || '';
       if (colId === 'recommendedDate') return club.recommendedContactDate || '';
       return '';
@@ -137,7 +199,9 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
     { id: 'players', label: 'Jugadores', flex: 1 },
     { id: 'leadScore', label: 'Scoring', flex: 1 },
     { id: 'teams', label: 'Equipos (Tot/Base)', flex: 2 },
-    { id: 'status', label: 'Estado', flex: 2 },
+    { id: 'status', label: 'Estado (Badge)', flex: 2 },
+    { id: 'pipeline', label: 'Progreso Comercial', flex: 3 },
+    { id: 'lastNote', label: 'Última Conversación', flex: 4 },
     { id: 'lastContact', label: 'Último Contacto', flex: 2 },
     { id: 'recommendedDate', label: 'Próx. Contacto', flex: 2 },
   ];
@@ -214,8 +278,15 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
   };
 
   const toggleColumn = (colId) => {
-    if (visibleCols.includes(colId)) setVisibleCols(visibleCols.filter(id => id !== colId));
-    else setVisibleCols([...visibleCols, colId]);
+      let updatedCols;
+      if (visibleCols.includes(colId)) {
+          updatedCols = visibleCols.filter(id => id !== colId);
+      } else {
+          updatedCols = [...visibleCols, colId];
+      }
+      
+      setVisibleCols(updatedCols);
+      localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(updatedCols)); // <-- GUARDAR CAMBIO MANUAL
   };
 
   const handleSaveStatuses = (newStatuses) => {
@@ -228,11 +299,40 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
       
       {/* CABECERA TOP */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-6">
+        
+        {/* PARTE IZQUIERDA: Títulos y Tabs */}
         <div>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Cartera de Clubes</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Gestiona la base de datos de equipos.</p>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2">
+              <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-lg w-fit">
+                  <button 
+                      onClick={() => applyView('detailed')} 
+                      className={cn(
+                          "px-3 py-1.5 text-xs font-bold rounded-md transition-all", 
+                          activeView === 'detailed' 
+                              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white" 
+                              : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      )}
+                  >
+                      Vista Detallada
+                  </button>
+                  <button 
+                      onClick={() => applyView('progress')} 
+                      className={cn(
+                          "px-3 py-1.5 text-xs font-bold rounded-md transition-all", 
+                          activeView === 'progress' 
+                              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white" 
+                              : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      )}
+                  >
+                      Vista Progreso
+                  </button>
+              </div>
+          </div>
         </div>
         
+        {/* PARTE DERECHA: Botonera original intacta */}
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
            <Button variant="outline" onClick={() => setShowStatusModal(true)} title="Configurar Estados">
                <Settings className="w-4 h-4 text-zinc-500" />
@@ -425,6 +525,95 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
                           {getStatusBadge(club.status)}
                       </div>
                   )}
+
+                  {/* COLUMNA: BARRA DE PROGRESO VISUAL */}
+                  {visibleCols.includes('pipeline') && (
+                      <div style={{ flex: columns.find(c=>c.id==='pipeline').flex }} className="pr-6">
+                          <div className="flex flex-col gap-2 w-full">
+                              {(() => {
+                                  // Filtramos los estados de la barra y buscamos el estado actual
+                                  const activeStatuses = statuses.filter(s => s.showInPipeline !== false);
+                                  const currentStatusObj = statuses.find(s => s.id === club.status);
+                                  
+                                  // ¿Está este estado excluido de la barra de progreso?
+                                  const isExcluded = currentStatusObj?.showInPipeline === false;
+
+                                  // CASO 1: EL ESTADO ESTÁ EXCLUIDO (Ej: Perdido, Pausado, No Interesa)
+                                  if (isExcluded || !currentStatusObj) {
+                                      return (
+                                          <>
+                                              {/* Barra única de color atenuado indicando que no está en flujo */}
+                                              <div className="flex w-full h-2.5">
+                                                  <div 
+                                                      className="h-full flex-1 rounded-full transition-all duration-500 shadow-sm opacity-40"
+                                                      style={{ backgroundColor: currentStatusObj?.color || '#94a3b8' }}
+                                                  />
+                                              </div>
+                                              <div className="flex justify-between items-center px-0.5">
+                                                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: currentStatusObj?.color || '#94a3b8' }}>
+                                                      {currentStatusObj?.label || 'Sin estado'}
+                                                  </span>
+                                                  <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded uppercase">
+                                                      Fuera de Embudo
+                                                  </span>
+                                              </div>
+                                          </>
+                                      );
+                                  }
+
+                                  // CASO 2: EL ESTADO ES ACTIVO (Renderizado normal de la barra)
+                                  const currentStatusIdx = activeStatuses.findIndex(st => st.id === club.status);
+                                  
+                                  return (
+                                      <>
+                                          <div className="flex gap-1.5 w-full h-2.5">
+                                              {activeStatuses.map((s, idx) => {
+                                                  const isActive = idx <= currentStatusIdx;
+                                                  const isCurrent = idx === currentStatusIdx;
+                                                  
+                                                  return (
+                                                      <div 
+                                                          key={s.id} 
+                                                          className={cn(
+                                                              "h-full flex-1 rounded-full transition-all duration-500 shadow-sm",
+                                                              !isActive && "bg-zinc-200 dark:bg-zinc-800"
+                                                          )}
+                                                          style={{ 
+                                                              backgroundColor: isActive ? s.color : undefined,
+                                                              opacity: isCurrent ? 1 : (isActive ? 0.4 : 1),
+                                                              transform: isCurrent ? 'scaleY(1.2)' : 'scaleY(1)'
+                                                          }}
+                                                          title={s.label}
+                                                      />
+                                                  );
+                                              })}
+                                          </div>
+                                          <div className="flex justify-between items-center px-0.5">
+                                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
+                                                  {currentStatusObj.label}
+                                              </span>
+                                              <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                                                  PASO {currentStatusIdx + 1} / {activeStatuses.length}
+                                              </span>
+                                          </div>
+                                      </>
+                                  );
+                              })()}
+                          </div>
+                      </div>
+                  )}
+
+                    {/* COLUMNA: NOTA DE LA ÚLTIMA CONVERSACIÓN */}
+                    {visibleCols.includes('lastNote') && (
+                        <div style={{ flex: columns.find(c=>c.id==='lastNote').flex }} className="pr-4">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2 flex items-start gap-2 group-hover:border-emerald-500/30 transition-colors">
+                                <MessageSquare className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                                <p className="text-xs text-zinc-600 dark:text-zinc-400 italic line-clamp-2 leading-relaxed">
+                                    {club.lastNote || "No hay notas registradas..."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                   {visibleCols.includes('lastContact') && (
                       <div style={{ flex: columns.find(c=>c.id==='lastContact').flex }} className="pr-2">

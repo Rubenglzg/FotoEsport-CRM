@@ -240,8 +240,6 @@ export default function ClubDetailPanel({
         setIsSubmitting(true);
         try {
             const userName = userProfile?.nombre ? `${userProfile.nombre} ${userProfile.apellidos}`.trim() : "Usuario";
-            
-            // Creamos un objeto de fecha con el valor del input y lo pasamos a formato local (DD/MM/YYYY)
             const dateObj = new Date(interactionDate);
             const formattedDate = dateObj.toLocaleDateString();
 
@@ -251,7 +249,14 @@ export default function ClubDetailPanel({
                 type: interactionType, 
                 user: userName,
                 note, 
-                date: formattedDate // <--- Ahora usamos la fecha del selector en lugar de la fecha actual
+                date: formattedDate 
+            });
+            
+            // NUEVO: Guardar la nota directamente en el perfil del club para que se vea en la tabla general
+            onUpdateClub({
+                ...club,
+                lastNote: note,
+                lastContactDate: formattedDate
             });
             
             if(nextDate) {
@@ -260,7 +265,7 @@ export default function ClubDetailPanel({
             
             setNote(""); 
             setNextDate("");
-            setInteractionDate(new Date().toISOString().split('T')[0]); // Reiniciamos a la fecha de hoy
+            setInteractionDate(new Date().toISOString().split('T')[0]); 
         } catch (error) { 
             console.error(error); 
         } finally { 
@@ -289,12 +294,17 @@ export default function ClubDetailPanel({
     };
 
     const saveEditInteraction = async (id) => {
-        // Volvemos a formatear la fecha a DD/MM/YYYY como se guarda originalmente
         const dateObj = new Date(editDate);
         const formattedDisplayDate = dateObj.toLocaleDateString();
 
-        // IMPORTANTE: Aquí estamos pasando la fecha como TERCER argumento. 
         await onUpdateInteraction(id, editNote, formattedDisplayDate);
+        
+        // NUEVO: Actualizar la nota del club también al editar
+        onUpdateClub({
+            ...club,
+            lastNote: editNote,
+            lastContactDate: formattedDisplayDate
+        });
         
         setEditingInteraction(null);
         setEditNote("");
