@@ -61,11 +61,11 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
         let fechaInteraccion = "";
 
         busboy.on("field", (fieldname, val) => {
-            if (fieldname === "club") clubName = val;
-            if (fieldname === "token") token = val;
-            if (fieldname === "tipo") tipoInteraccion = val; 
-            if (fieldname === "userId") userId = val; 
-            if (fieldname === "fecha") fechaInteraccion = val;
+            if (fieldname === "club") clubName = val.trim();
+            if (fieldname === "token") token = val.trim();
+            if (fieldname === "tipo") tipoInteraccion = val.trim(); 
+            if (fieldname === "userId") userId = val.trim();
+            if (fieldname === "fecha") fechaInteraccion = val.trim();
         });
 
         busboy.on("file", (fieldname, file, info) => {
@@ -172,10 +172,10 @@ exports.recibirLlamadaiOS = onRequest({ secrets: [geminiApiKey, webhookToken] },
                 await userClubsRef.parent.collection("interactions").doc(interactionId).set({
                     id: interactionId,
                     clubId: targetClubRef.id,
-                    type: tipoInteraccion, 
-                    user: nombreReal,  // <--- AHORA USA EL NOMBRE REAL
+                    type: tipoInteraccion, // Si el atajo manda "Atajo Móvil", se guardará "Atajo Móvil"
+                    user: nombreReal,      // Ahora pondrá "Rubén González (App iOS)"
                     note: summary,
-                    date: fechaFinal
+                    date: fechaInteraccion // <-- CORREGIDO (antes decía fechaFinal)
                 });
 
                 res.status(200).json({ success: true, message: `Resumen guardado en ${targetClubName}` });
