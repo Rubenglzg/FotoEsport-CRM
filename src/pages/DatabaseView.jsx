@@ -240,13 +240,36 @@ export default function DatabaseView({ clubs, onSelect, onNewClub, statuses, onU
 
           // Lógica específica para ordenar fechas cronológicamente
           if (sortKey === 'lastContact' || sortKey === 'recommendedDate') {
-              // Convertimos a timestamp para comparar. Si no hay fecha, asignamos 0.
-              const timeA = valA ? new Date(valA).getTime() : 0;
-              const timeB = valB ? new Date(valB).getTime() : 0;
               
-              // Evitar problemas si alguna fecha es inválida (NaN)
+              const parseDateForSorting = (dateVal) => {
+                  if (!dateVal) return 0;
+                  
+                  const strVal = String(dateVal);
+                  const separator = strVal.includes('/') ? '/' : (strVal.includes('-') ? '-' : null);
+                  
+                  // Si tiene formato DD-MM-YYYY o DD/MM/YYYY lo damos la vuelta para JavaScript
+                  if (separator) {
+                      const parts = strVal.split(separator);
+                      if (parts.length === 3 && parts[0].length <= 2) {
+                          const isoStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                          const time = new Date(isoStr).getTime();
+                          if (!isNaN(time)) return time;
+                      }
+                  }
+                  
+                  // Fallback normal por si la fecha ya está en YYYY-MM-DD o ISO
+                  return new Date(strVal).getTime();
+              };
+
+              const timeA = parseDateForSorting(valA);
+              const timeB = parseDateForSorting(valB);
+              
               const finalA = isNaN(timeA) ? 0 : timeA;
               const finalB = isNaN(timeB) ? 0 : timeB;
+
+              // Enviar siempre los valores vacíos (0) al final de la tabla, sin importar si es ASC o DESC
+              if (finalA === 0 && finalB !== 0) return 1;
+              if (finalB === 0 && finalA !== 0) return -1;
 
               if (finalA < finalB) return sortConfig.direction === 'asc' ? -1 : 1;
               if (finalA > finalB) return sortConfig.direction === 'asc' ? 1 : -1;
