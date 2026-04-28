@@ -60,6 +60,11 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Contrato ${clubName}</title>
         <style>
+          /* Añadimos box-sizing para que los paddings no aumenten el tamaño total */
+          * {
+            box-sizing: border-box;
+          }
+
           /* ELIMINAMOS EL MARGEN DE LA PÁGINA PARA BORRAR CABECERAS DEL NAVEGADOR */
           @page { 
             size: A4; 
@@ -68,30 +73,28 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
           
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            /* Aumentado el interlineado de 1.3 a 1.45 para que el texto respire más */
             line-height: 1.45; 
             color: #111; 
-            max-width: 100%; margin: 0 auto; padding: 0; 
-            background: white; font-size: 9.5pt; 
+            max-width: 100%; 
+            margin: 0 auto; 
+            padding: 0; 
+            background: white; 
+            font-size: 9.5pt; 
           }
           
-          /* Aumentados los márgenes inferiores para separar más los bloques */
           .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #059669; padding-bottom: 15px; }
           .logo { font-size: 22px; font-weight: 900; color: #111; letter-spacing: 1px; margin-bottom: 5px; }
           .logo span { color: #059669; }
           .title { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-top: 5px; color: #333; }
           .subtitle { font-size: 11px; color: #666; margin-top: 3px; }
           
-          /* Más separación bajo las cajas de Proveedor/Club */
           .details-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 25px; font-size: 9pt; }
           .details-box div { width: 48%; background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #eaeaea; }
           .details-box h3 { margin-top: 0; font-size: 10pt; color: #059669; margin-bottom: 8px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px; text-transform: uppercase;}
           
-          /* Más separación entre cada cláusula (de 10px a 16px) */
           .clause { margin-bottom: 16px; text-align: justify; font-size: 9.5pt; }
           .clause-title { font-weight: bold; font-size: 10pt; color: #111; display: inline-block; margin-right: 5px; }
           
-          /* Más espacio antes de la zona de firmas (de 25px a 40px) */
           .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
           .signature-box { 
             width: 45%; 
@@ -123,16 +126,16 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             width: 100%;
             display: flex;
             justify-content: center;
-            align-items: center; /* Alinea verticalmente al centro */
-            margin-left: -00px; /* Espacio entre el sello y la firma */
+            align-items: center; 
+            margin-left: -00px; 
           }
           .stamp-img {
-            max-height: 150px; /* Ajusta el tamaño de tu sello */
+            max-height: 150px; 
             object-fit: contain;
-            opacity: 0.9; /* Opcional: le da un toque más realista al sello */
+            opacity: 0.9; 
           }
           .signature-img-inline {
-            max-height: 120px; /* Ajusta el tamaño de tu firma */
+            max-height: 120px; 
             object-fit: contain;
           }
           
@@ -146,10 +149,27 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             .btn-print { background: #059669; color: white; }
             .btn-close { background: #ef4444; color: white; }
           }
+          
+          /* REGLAS ESPECÍFICAS DE IMPRESIÓN PARA EVITAR LA PÁGINA EN BLANCO */
           @media print {
-            /* Mantenemos un margen interno amplio para la impresión */
-            body { background: white; padding: 1.5cm; margin: 0; }
-            .document-container { padding: 0; box-shadow: none; max-width: 100%; }
+            html, body { 
+              margin: 0; 
+              padding: 0; 
+              /* Esto fuerza a que corte el milímetro extra sobrante y no cree otra página */
+              height: 100vh; 
+              overflow: hidden; 
+            }
+            body { 
+              background: white; 
+              /* Reducimos ligeramente el padding vertical (de 1.5cm a 1.2cm) para dar un poco más de margen interno */
+              padding: 1.2cm 1.5cm; 
+            }
+            .document-container { 
+              padding: 0; 
+              box-shadow: none; 
+              max-width: 100%; 
+              margin-bottom: 0; 
+            }
             .mobile-controls { display: none !important; }
           }
         </style>
