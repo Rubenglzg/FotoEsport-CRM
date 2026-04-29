@@ -236,7 +236,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
 
             <div class="clause">
               <span class="clause-title">VI. ENTREGA DE FOTOGRAFÍAS.</span>
-              FOTOESPORT MERCH se compromete a entregar al Club las fotografías editadas de manera gratuita. Estas imágenes incluirán obligatoriamente una marca de agua en la parte inferior.
+              FOTOESPORT MERCH entregará al Club las fotografías editadas gratuitamente, las cuales incluirán obligatoriamente una marca de agua. Estas imágenes no podrán comercializarse ni enviarse a terceros. Su uso queda limitado exclusivamente a la web y redes sociales del club una vez finalizada la campaña de Navidad. Hasta el 1 de febrero, las imágenes solo podrán publicarse en formatos que impidan su captura de pantalla directa (ej. recortadas o integradas dentro de otro diseño).
             </div>
 
             <div class="clause">
