@@ -73,7 +73,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
           
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            line-height: 1.45; 
+            line-height: 1.35; /* Reducido de 1.45 para ganar espacio global */
             color: #111; 
             max-width: 100%; 
             margin: 0 auto; 
@@ -82,24 +82,28 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             font-size: 9.5pt; 
           }
           
-          .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #059669; padding-bottom: 15px; }
+          /* Reducidos márgenes en la cabecera */
+          .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #059669; padding-bottom: 10px; }
           .logo { font-size: 22px; font-weight: 900; color: #111; letter-spacing: 1px; margin-bottom: 5px; }
           .logo span { color: #059669; }
           .title { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-top: 5px; color: #333; }
           .subtitle { font-size: 11px; color: #666; margin-top: 3px; }
           
-          .details-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 25px; font-size: 9pt; }
+          /* Reducido margen inferior en details-box */
+          .details-box { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 15px; font-size: 9pt; }
           .details-box div { width: 48%; background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #eaeaea; }
           .details-box h3 { margin-top: 0; font-size: 10pt; color: #059669; margin-bottom: 8px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px; text-transform: uppercase;}
           
-          .clause { margin-bottom: 16px; text-align: justify; font-size: 9.5pt; }
+          /* Reducido margen entre cláusulas de 16px a 12px */
+          .clause { margin-bottom: 12px; text-align: justify; font-size: 9.5pt; }
           .clause-title { font-weight: bold; font-size: 10pt; color: #111; display: inline-block; margin-right: 5px; }
           
-          .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
+          /* AUMENTADO margen a 60px sobre las firmas para separarlas más */
+          .signatures { display: flex; justify-content: space-between; margin-top: 60px; page-break-inside: avoid; }
           .signature-box { 
             width: 45%; 
             border: 1px solid #111; 
-            height: 85px; 
+            height: 65px; 
             position: relative;
             background: #fff;
           }
@@ -161,8 +165,8 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             }
             body { 
               background: white; 
-              /* Reducimos ligeramente el padding vertical (de 1.5cm a 1.2cm) para dar un poco más de margen interno */
-              padding: 1.2cm 1.5cm; 
+              /* Mantenemos margen inferior extra grande de 2cm */
+              padding: 1.2cm 1.5cm 2cm 1.5cm; 
             }
             .document-container { 
               padding: 0; 
@@ -187,7 +191,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
               <div class="subtitle">Vigencia: ${seasonDisplay}</div>
             </div>
             
-            <p style="text-align: right; margin-bottom: 25px; font-size: 9.5pt;">
+            <p style="text-align: right; margin-bottom: 15px; font-size: 8.5pt;">
               En ___________________________________, a _____ de ____________________ de 20___
             </p>
             
@@ -207,7 +211,8 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
               </div>
             </div>
 
-            <p style="margin-bottom: 20px; font-size: 9.5pt;">Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato y acuerdan las siguientes cláusulas:</p>
+            <!-- Reducido el margen de 20px a 15px aquí también -->
+            <p style="margin-bottom: 15px; font-size: 9.5pt;">Ambas partes se reconocen mutuamente la capacidad legal necesaria para la firma del presente contrato y acuerdan las siguientes cláusulas:</p>
 
             <div class="clause">
               <span class="clause-title">I. OBJETO DEL ACUERDO.</span>
@@ -231,7 +236,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
 
             <div class="clause">
               <span class="clause-title">V. CONDICIONES DE ENTREGA.</span>
-              FOTOESPORT MERCH garantiza la entrega directa de los dos primeros pedidos. Para las siguientes entregas, será necesario que el importe del pedido supere los 500€. En caso de no alcanzar dicho importe, el Club deberá recoger el pedido en nuestro estudio situado en Carrer de Miguel Galan Mestre, n° 8, Bajo Izq, Benicalap, 46025 València.
+              Los envíos se gestionarán mediante una empresa de transporte externa, siendo los portes asumidos por FOTOESPORT MERCH. Todos los pedidos se entregarán en la sede del Club, salvo que este prefiera recogerlo en nuestro estudio en Carrer de Miguel Galan Mestre, n° 8, Bajo Izq, Benicalap, 46025 València.
             </div>
 
             <div class="clause">
@@ -331,14 +336,12 @@ export const summarizeWithAI = async (text) => {
     
     const data = await response.json();
 
-    // 1. Si Google devuelve un error HTTP (ej. 400, 403, 404)
     if (!response.ok) {
         console.error(">>> ERROR DETALLADO DE GEMINI:", data);
         alert(`Error de Google: ${data.error?.message || 'Error desconocido'}`);
-        return text; // Devolvemos el texto original para no perderlo
+        return text; 
     }
 
-    // 2. Si la respuesta es exitosa
     if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
         return data.candidates[0].content.parts[0].text;
     } else {
