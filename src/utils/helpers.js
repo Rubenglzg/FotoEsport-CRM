@@ -98,8 +98,8 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
           .clause { margin-bottom: 16px; text-align: justify; font-size: 10pt; }
           .clause-title { font-weight: bold; font-size: 10pt; color: #111; display: inline-block; margin-right: 5px; }
           
-          /* AUMENTADO margen a 60px sobre las firmas para separarlas más */
-          .signatures { display: flex; justify-content: space-between; margin-top: 80px; page-break-inside: avoid; }
+          /* REDUCIDO margen a 40px sobre las firmas para juntarlas más a la última cláusula */
+          .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
           .signature-box { 
             width: 45%; 
             border: 1px solid #111; 
