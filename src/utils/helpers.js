@@ -73,13 +73,13 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
           
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            line-height: 1.35; /* Reducido de 1.45 para ganar espacio global */
+            line-height: 1.45; /* Aumentado para rellenar mejor la hoja */
             color: #111; 
             max-width: 100%; 
             margin: 0 auto; 
             padding: 0; 
             background: white; 
-            font-size: 9.5pt; 
+            font-size: 10pt; 
           }
           
           /* Reducidos márgenes en la cabecera */
@@ -95,11 +95,11 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
           .details-box h3 { margin-top: 0; font-size: 10pt; color: #059669; margin-bottom: 8px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px; text-transform: uppercase;}
           
           /* Reducido margen entre cláusulas de 16px a 12px */
-          .clause { margin-bottom: 12px; text-align: justify; font-size: 9.5pt; }
+          .clause { margin-bottom: 16px; text-align: justify; font-size: 10pt; }
           .clause-title { font-weight: bold; font-size: 10pt; color: #111; display: inline-block; margin-right: 5px; }
           
           /* AUMENTADO margen a 60px sobre las firmas para separarlas más */
-          .signatures { display: flex; justify-content: space-between; margin-top: 60px; page-break-inside: avoid; }
+          .signatures { display: flex; justify-content: space-between; margin-top: 80px; page-break-inside: avoid; }
           .signature-box { 
             width: 45%; 
             border: 1px solid #111; 
@@ -166,7 +166,7 @@ export const generateContractFile = (club, startSeason, duration = 1) => {
             body { 
               background: white; 
               /* Mantenemos margen inferior extra grande de 2cm */
-              padding: 1.2cm 1.5cm 2cm 1.5cm; 
+              padding: 1.2cm 1.5cm 1.5cm 1.5cm; 
             }
             .document-container { 
               padding: 0; 
